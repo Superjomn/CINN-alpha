@@ -1,5 +1,9 @@
 #pragma once
 
+/*
+ * We borrows many concepts from Halide/IR.
+ */
+
 #include <string>
 #include <vector>
 #include "cinn/ref_pointer.h"
@@ -10,9 +14,9 @@ namespace ir {
 
 /// All the node types supported by cinn.
 enum class NodeType {
-  Int32,
-  UInt32,
-  Float32,
+  Int,
+  UInt,
+  Float,
   String,
 
   // Mathematical ones
@@ -46,33 +50,72 @@ class Node {
 };
 
 /// A handle to store any expression.
-class IRHandle {
+class IRHandle : public Referenced, RefPointer<ir::Node> {
  public:
-};
+  IRHandle() : RefPointer<ir::Node>() {}
+  IRHandle(Node* node) : RefPointer<ir::Node>(node) {}
 
-class ExprNode {};
-
-class StmtNode {};
-
-/// Integer constants
-class IntNode : ExprNode {
-  int64_t val_;
-
- public:
-  static IntNode* make(NodeType type, int64_t val) {
-    auto* x = new IntNode;
-    x->val_ = val;
+  template <typename T>
+  T& As() {
+    // TODO(Superjomn) check the type
+    if (ptr_) return static_cast<T*>(ptr_);
+    return nullptr;
   }
 };
 
-class HandleBase : public Referenced, RefPointer<HandleBase> {
+template <typename T>
+class ExprNode : public Node {
  public:
-  template <typename T>
-  T& As();
+  ExprNode() : Node(T::_node_type) {}
+  ExprNode(NodeType type) : Node(type) {}
+};
+
+template <typename T>
+class StmtNode : public Node {
+ public:
+  StmtNode() : Node(T::_node_type) {}
+  StmtNode(NodeType type) : Node(type) {}
+};
+
+/// Integer constants
+class IntImm : public ExprNode<IntImm> {
+  int64_t val_;
+
+ public:
+  static IntImm* make(NodeType type, int64_t val) {
+    auto* x = new IntImm;
+    x->val_ = val;
+  }
+
+  static const NodeType _node_type = NodeType::Int;
+};
+
+/// Float constants
+class FloatImm : public ExprNode<FloatImm> {
+  double val_;
+
+ public:
+  static FloatImm* make(Type type, float val) {
+    auto* x = new FloatImm;
+
+    switch (type.bits()) {
+      case 16:
+      case 32:
+      case 64:
+        val_ = val;
+
+    }
+    x->val_ = val;
+  }
+
+  static const NodeType _node_type = NodeType::Float;
 };
 
 class Expr : public IRHandle {
  public:
+  Expr() : IRHandle() {}
+  template <typename T>
+  Expr(const ExprNode<T>* n) : IRHandle(n) {}
 };
 
 }  // namespace ir

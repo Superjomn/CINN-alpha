@@ -22,16 +22,21 @@ RefCount& ref_count(Referenced& x) {
 /// T should be a type that inherient from Referenced.
 template <typename T>
 class RefPointer {
+ protected:
+  T* ptr_{};
+
  public:
+  RefPointer() = default;
+  RefPointer(T* ptr) : ptr_(ptr) {}
   T* get() const { return ptr_; }
   T& operator*() { return *get(); }
   T* operator->() { return ptr_; }
 
   ~RefPointer() { DecRef(); }
 
-  RefPointer(RefPointer&& other) ptr_(other.ptr_) {}
+  RefPointer(RefPointer&& other) : ptr_(other.ptr_) {}
 
-  RefPointer(const RefPointer& other) ptr_(other.ptr_) { IncRef(); }
+  RefPointer(const RefPointer& other) : ptr_(other.ptr_) { IncRef(); }
 
  private:
   void IncRef() const {
@@ -47,9 +52,6 @@ class RefPointer {
   }
 
   void Destroy() { static_cast<T*>(ptr_)->Destroy(); }
-
- protected:
-  T* ptr_{};
 };
 
 }  // namespace cinn
