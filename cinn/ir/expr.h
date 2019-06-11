@@ -7,6 +7,7 @@
 #include <glog/logging.h>
 #include <string>
 #include <vector>
+#include "cinn/ir/ir_visitor.h"
 #include "cinn/ref_pointer.h"
 #include "cinn/type.h"
 
@@ -45,6 +46,9 @@ enum class NodeType {
 class Node : public Referenced {
  public:
   explicit Node(NodeType type) : type_(type) {}
+
+  /// Visitor pattern to traverse the IR.
+  virtual void Accept(IRVisitor* x) const = 0;
 
  private:
   NodeType type_;
@@ -88,6 +92,9 @@ class IntImm : public ExprNode<IntImm> {
     x->val_ = val;
   }
 
+
+  void Accept(IRVisitor* x) const override;
+
   static const NodeType _node_type = NodeType::Int;
 };
 
@@ -107,8 +114,10 @@ class FloatImm : public ExprNode<FloatImm> {
       default:
         LOG(FATAL) << "unsupported bits " << type.bits() << "for Float";
     }
-    x->val_ = val;
+    return x;
   }
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeType _node_type = NodeType::Float;
 };

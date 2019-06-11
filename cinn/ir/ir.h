@@ -14,6 +14,8 @@ struct Add : public ExprNode<Add> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeType _node_type = NodeType::Add;
 };
 
@@ -40,6 +42,7 @@ struct EQ : public ExprNode<EQ> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
   static const NodeType _node_type = NodeType::EQ;
 };
 
@@ -48,6 +51,7 @@ struct NE : public ExprNode<EQ> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
   static const NodeType _node_type = NodeType::NE;
 };
 
