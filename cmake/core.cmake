@@ -18,7 +18,6 @@ function(cc_library TARGET_NAME)
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
-      common_link(${TARGET_NAME})
     endif()
 
     # cpplint code style

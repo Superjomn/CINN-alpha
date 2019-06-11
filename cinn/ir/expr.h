@@ -4,6 +4,7 @@
  * We borrows many concepts from Halide/IR.
  */
 
+#include <glog/logging.h>
 #include <string>
 #include <vector>
 #include "cinn/ref_pointer.h"
@@ -19,7 +20,7 @@ enum class NodeType {
   Float,
   String,
 
-  // Mathematical ones
+  // Mathematical ones Add,
   Add,
   Sub,
   Mul,
@@ -41,19 +42,19 @@ enum class NodeType {
 };
 
 /// The base class for all the IR nodes.
-class Node {
+class Node : public Referenced {
  public:
-  Node(NodeType type) : type_(type) {}
+  explicit Node(NodeType type) : type_(type) {}
 
  private:
   NodeType type_;
 };
 
 /// A handle to store any expression.
-class IRHandle : public Referenced, RefPointer<ir::Node> {
+class IRHandle : public Referenced, public RefPointer<const ir::Node> {
  public:
-  IRHandle() : RefPointer<ir::Node>() {}
-  IRHandle(Node* node) : RefPointer<ir::Node>(node) {}
+  IRHandle() : RefPointer<const ir::Node>() {}
+  IRHandle(const Node* node) : RefPointer<const ir::Node>(node) {}
 
   template <typename T>
   T& As() {
@@ -102,8 +103,9 @@ class FloatImm : public ExprNode<FloatImm> {
       case 16:
       case 32:
       case 64:
-        val_ = val;
-
+        x->val_ = val;
+      default:
+        LOG(FATAL) << "unsupported bits " << type.bits() << "for Float";
     }
     x->val_ = val;
   }

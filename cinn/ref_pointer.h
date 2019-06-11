@@ -3,19 +3,32 @@
 namespace cinn {
 
 struct RefCount {
-  void inc() { ++count; }
-  void dec() { --count; }
+  RefCount() = default;
+  RefCount(const RefCount& other) { count.store(other.count); }
+  RefCount(RefCount&& other) { count.store(other.count); }
+  const RefCount& operator=(const RefCount& other) {
+    count.store(other.count);
+    return *this;
+  }
 
-  std::atomic<int> count;
+  void inc() const { ++count; }
+  void dec() const { --count; }
+
+  mutable std::atomic<int> count{};
 };
 
 class Referenced {
  public:
-  RefCount ref_count;
+  mutable RefCount ref_count;
+
+  Referenced() = default;
+  Referenced(const Referenced& other) : ref_count(other.ref_count) {}
+  Referenced(Referenced&& other) : ref_count(std::move(other.ref_count)) {}
+  const Referenced& operator=(const Referenced& other) { ref_count = other.ref_count; }
 };
 
 template <typename Referenced>
-RefCount& ref_count(Referenced& x) {
+const RefCount& ref_count(Referenced& x) {
   return x.ref_count;
 }
 
@@ -28,15 +41,16 @@ class RefPointer {
  public:
   RefPointer() = default;
   RefPointer(T* ptr) : ptr_(ptr) {}
+  RefPointer(RefPointer&& other) : ptr_(other.ptr_) {}
+  RefPointer(const RefPointer& other) : ptr_(other.ptr_) { IncRef(); }
+  void operator=(const RefPointer&& other) { ptr_ = other.ptr_; }
+
   T* get() const { return ptr_; }
   T& operator*() { return *get(); }
   T* operator->() { return ptr_; }
+  bool valid() const { return ptr_; }
 
   ~RefPointer() { DecRef(); }
-
-  RefPointer(RefPointer&& other) : ptr_(other.ptr_) {}
-
-  RefPointer(const RefPointer& other) : ptr_(other.ptr_) { IncRef(); }
 
  private:
   void IncRef() const {
