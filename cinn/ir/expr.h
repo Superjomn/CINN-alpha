@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include "cinn/ir/ir_visitor.h"
 #include "cinn/ref_pointer.h"
 #include "cinn/type.h"
 
@@ -44,6 +45,9 @@ enum class NodeType {
 class Node {
  public:
   Node(NodeType type) : type_(type) {}
+
+  /// Visitor pattern to traverse the IR.
+  void Accept(IRVisitor* x) const = 0;
 
  private:
   NodeType type_;
@@ -103,7 +107,6 @@ class FloatImm : public ExprNode<FloatImm> {
       case 32:
       case 64:
         val_ = val;
-
     }
     x->val_ = val;
   }
