@@ -1,0 +1,52 @@
+before_script:
+  - env
+
+image: lite_server
+
+stages:
+  - ci
+  - build_server
+
+check:prebuilt:
+    tags:
+        - lite
+    stage: ci
+    script:
+        - rm -rf ~/.pip
+        - pip install pre-commit
+        - pre-commit install
+
+        # merge the latest code
+        - git config --global user.email "you@example.com"
+        - git config --global user.name "Your Name"
+        - git fetch origin master
+        - git merge --no-ff origin/master
+
+        - ./build.sh check_style
+    cache:
+        key: check_style
+        paths:
+            - $CI_USER_DIR/.cache
+
+build:server:
+    tags:
+        - lite
+    stage: build_server
+    cache:
+        key: server_thirdparty
+        paths:
+            - build/third_party
+            - ~/.ccache
+    script:
+        - apt install ccache
+
+        # merge the latest code
+        - git config --global user.email "you@example.com"
+        - git config --global user.name "Your Name"
+        - git fetch origin master
+        - git merge --no-ff origin/master
+
+        - ./build.sh ci
+
+    dependencies:
+        - check:prebuilt
