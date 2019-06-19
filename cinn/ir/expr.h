@@ -92,7 +92,6 @@ class IntImm : public ExprNode<IntImm> {
     x->val_ = val;
   }
 
-
   void Accept(IRVisitor* x) const override;
 
   static const NodeType _node_type = NodeType::Int;
