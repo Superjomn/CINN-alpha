@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.0)
 
 add_definitions(-std=c++11)
 
-include(cmake/core.cmake)
+option(WITH_TESTING         "Compile with Unittests"          ON)
 
+include(cmake/core.cmake)
 include_directories(${CMAKE_SOURCE_DIR})
 
 # Include third-party libraries.
