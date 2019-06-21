@@ -48,8 +48,6 @@ struct Add : public ExprNode<Add> {
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {}
-
   static const NodeTy node_type = NodeTy::Add;
 };
 
@@ -70,11 +68,14 @@ struct Sub : public ExprNode<Sub> {
 struct Mul : public ExprNode<Mul> {
   Expr a, b;
 
-  static Expr make(Expr a, Expr b);
+  static Expr make(Expr a, Expr b) {
+    CHECK(a.valid()) << "Mul a not defined";
+    CHECK(b.valid()) << "Mul b not defined";
 
-  void Accept(IRVisitor* x) const override {
-    a.Accept(x);
-    b.Accept(x);
+    auto* x = new Mul;
+    x->a = std::move(a);
+    x->b = std::move(b);
+    return Expr(x);
   }
 
   static const NodeTy node_type = NodeTy::Mul;
@@ -85,11 +86,6 @@ struct Div : public ExprNode<Div> {
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {
-    a.Accept(x);
-    b.Accept(x);
-  }
-
   static const NodeTy node_type = NodeTy::Div;
 };
 
@@ -99,11 +95,6 @@ struct EQ : public ExprNode<EQ> {
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {
-    a.Accept(x);
-    b.Accept(x);
-  }
-
   static const NodeTy node_type = NodeTy::EQ;
 };
 
@@ -111,11 +102,6 @@ struct NE : public ExprNode<NE> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
-
-  void Accept(IRVisitor* x) const override {
-    a.Accept(x);
-    b.Accept(x);
-  }
 
   static const NodeTy node_type = NodeTy::NE;
 };
