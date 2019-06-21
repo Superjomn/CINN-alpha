@@ -50,13 +50,13 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
  public:
   explicit IRNode(NodeTy type) : type_(type) {}
 
-  std::shared_ptr<IRNode> getptr() { return shared_from_this(); }
+  std::shared_ptr<const IRNode> getptr() const { return shared_from_this(); }
 
   /// Visitor pattern to traverse the IR.
   virtual void Accept(IRVisitor* x) const = 0;
 
  protected:
-  NodeTy type_;
+  NodeTy type_{NodeTy::Var};
 };
 
 /// A handle to store any expression.
@@ -67,7 +67,7 @@ class IRHandle {
  public:
   IRHandle() = default;
   IRHandle(const IRHandle& other) : ptr_(other.ptr_) {}
-  explicit IRHandle(const IRNode* x) : ptr_(x) {}
+  explicit IRHandle(const IRNode* x) { ptr_.reset(x); }
 
   template <typename T>
   const T* As() const {
@@ -84,7 +84,22 @@ class ExprNodeBase : public IRNode {
   ExprNodeBase() : IRNode(T::node_type) {}
   explicit ExprNodeBase(NodeTy type) : IRNode(type) {}
 
-  void Accept(IRVisitor* visitor) const override {}
+  void Accept(IRVisitor* visitor) const override { const_self()->Accept(visitor); }
+
+  T* self() { return static_cast<T*>(this); }
+  const T* const_self() const { return static_cast<const T*>(this); }
+};
+
+template <typename T>
+class ExprNode : public ExprNodeBase<T> {
+ public:
+  ExprNode() = default;
+  explicit ExprNode(NodeTy type) : ExprNodeBase<T>(type) {}
+
+  void Accept(IRVisitor* visitor) const override { const_self()->Accept(visitor); }
+
+  T* self() { return static_cast<T*>(this); }
+  const T* const_self() const { return static_cast<const T*>(this); }
 };
 
 /// Base class of all the Stmts. A Stmt is a statement that do not represent a value (e.g. assert(a>10)).

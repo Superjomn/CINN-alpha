@@ -15,7 +15,7 @@ enum class ScalarT {
   string,
 };
 
-class Var : public Expr {
+class Var : public ExprNode<Var> {
   std::string name_;
   Any val_;
   ScalarT data_type_;
@@ -26,11 +26,13 @@ class Var : public Expr {
     Var v;
     v.data_type_ = ScalarT::string;
     v.val_.set(x);
+    return v;
   }
   static Var make(int32_t x) {
     Var v;
     v.data_type_ = ScalarT::int32;
     v.val_.set(x);
+    return v;
   }
   static Var make(int64_t x);
   static Var make(float x);
@@ -41,7 +43,7 @@ class Var : public Expr {
 };
 
 //-------------------- Arithmetical expressions -------------------------
-struct Add : public ExprNodeBase<Add> {
+struct Add : public ExprNode<Add> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
@@ -51,44 +53,69 @@ struct Add : public ExprNodeBase<Add> {
   static const NodeTy node_type = NodeTy::Add;
 };
 
-struct Sub : public ExprNodeBase<Sub> {
+struct Sub : public ExprNode<Sub> {
  public:
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {}
+  void Accept(IRVisitor* x) const override {
+    a.Accept(x);
+    b.Accept(x);
+  }
 
   static const NodeTy node_type = NodeTy::Sub;
 };
 
-struct Mul : public ExprNodeBase<Mul> {
+struct Mul : public ExprNode<Mul> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {}
+  void Accept(IRVisitor* x) const override {
+    a.Accept(x);
+    b.Accept(x);
+  }
 
   static const NodeTy node_type = NodeTy::Mul;
 };
 
-//-------------------- Logical expressions -------------------------
-struct EQ : public ExprNodeBase<EQ> {
+struct Div : public ExprNode<Div> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {}
+  void Accept(IRVisitor* x) const override {
+    a.Accept(x);
+    b.Accept(x);
+  }
+
+  static const NodeTy node_type = NodeTy::Div;
+};
+
+//-------------------- Logical expressions -------------------------
+struct EQ : public ExprNode<EQ> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override {
+    a.Accept(x);
+    b.Accept(x);
+  }
 
   static const NodeTy node_type = NodeTy::EQ;
 };
 
-struct NE : public ExprNodeBase<EQ> {
+struct NE : public ExprNode<NE> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {}
+  void Accept(IRVisitor* x) const override {
+    a.Accept(x);
+    b.Accept(x);
+  }
 
   static const NodeTy node_type = NodeTy::NE;
 };
