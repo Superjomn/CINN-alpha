@@ -22,5 +22,10 @@ TEST(ir, basic) {
   ASSERT_EQ(cc->b.As<IntImm>()->val(), 2);
 }
 
+TEST(ir, complex1) {
+  Expr a(1), b(2), c, d(3);
+  c = (a + b) * d;
+}
+
 }  // namespace ir
 }  // namespace cinn

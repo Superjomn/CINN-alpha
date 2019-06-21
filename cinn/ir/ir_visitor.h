@@ -3,24 +3,34 @@
 namespace cinn {
 namespace ir {
 
+struct Var;
 struct Stmt;
+struct Expr;
 struct Add;
 struct Sub;
+struct Div;
 struct Mul;
+struct NE;
+struct EQ;
 struct IntImm;
 struct FloatImm;
 
-/// Visitor pattern for IR nodes.
+/// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
  public:
   IRVisitor() = default;
 
-  void visit(const Stmt*);
-  void visit(const Add*);
-  void visit(const Sub*);
-  void visit(const Mul*);
-  void visit(const IntImm*);
-  void visit(const FloatImm*);
+  virtual void Visit(const Var* op);
+  virtual void Visit(const Expr* op);
+  virtual void Visit(const Stmt* op);
+  virtual void Visit(const Add* op);
+  virtual void Visit(const Sub* op);
+  virtual void Visit(const Mul* op);
+  virtual void Visit(const Div* op);
+  virtual void Visit(const NE* op);
+  virtual void Visit(const EQ* op);
+  virtual void Visit(const IntImm* op);
+  virtual void Visit(const FloatImm* op);
 };
 
 }  // namespace ir
