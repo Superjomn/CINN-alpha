@@ -98,6 +98,7 @@ struct EQ : public ExprNode<EQ> {
   static const NodeTy node_type = NodeTy::EQ;
 };
 
+/// Not equal.
 struct NE : public ExprNode<NE> {
   Expr a, b;
 
