@@ -1,3 +1,10 @@
+#=================================== ISL =======================================
+find_library(isl_lib isl PATHS "${ISL_LIB_DIRECTORY}/lib" NO_DEFAULT_PATH)
+include_directories(${ISL_LIB_DIRECTORY}/include)
+link_directories(${ISL_LIB_DIRECTORY}/lib)
+message(STATUS "isl path: ${ISL_LIB_DIRECTORY}")
+
+
 find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -36,4 +43,5 @@ cc_library(module SRCS module.cc)
 
 add_subdirectory(utils)
 add_subdirectory(ir)
+add_subdirectory(core)
 add_subdirectory(backends)

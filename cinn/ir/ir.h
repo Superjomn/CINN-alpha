@@ -20,6 +20,13 @@ class Var : public ExprNode<Var> {
   Any val_;
   ScalarT data_type_;
 
+  // lower bound.
+  Expr lower_;
+  // upper bound.
+  Expr upper_;
+
+  primitive_t primitive_type_;
+
  public:
   // constants
   static Var make(const std::string& x) {
@@ -34,6 +41,9 @@ class Var : public ExprNode<Var> {
     v.val_.set(x);
     return v;
   }
+
+  primitive_t primitive_type() const { return primitive_type_; }
+
   static Var make(int64_t x);
   static Var make(float x);
 
@@ -68,15 +78,7 @@ struct Sub : public ExprNode<Sub> {
 struct Mul : public ExprNode<Mul> {
   Expr a, b;
 
-  static Expr make(Expr a, Expr b) {
-    CHECK(a.valid()) << "Mul a not defined";
-    CHECK(b.valid()) << "Mul b not defined";
-
-    auto* x = new Mul;
-    x->a = std::move(a);
-    x->b = std::move(b);
-    return Expr(x);
-  }
+  static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Mul;
 };
@@ -87,6 +89,14 @@ struct Div : public ExprNode<Div> {
   static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Div;
+};
+
+struct Mod : public ExprNode<Mod> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::Mod;
 };
 
 //-------------------- Logical expressions -------------------------
