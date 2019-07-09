@@ -46,7 +46,7 @@ enum class NodeTy {
 };
 
 /// The base class for all the IR nodes.
-class IRNode : std::enable_shared_from_this<IRNode> {
+class IRNode : public std::enable_shared_from_this<IRNode> {
  public:
   explicit IRNode(NodeTy type) : type_(type) {}
 

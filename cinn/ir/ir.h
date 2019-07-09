@@ -1,5 +1,4 @@
 #pragma once
-#include <lcms2_plugin.h>
 #include <string>
 #include <vector>
 #include "cinn/ir/expr.h"
