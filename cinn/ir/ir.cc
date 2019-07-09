@@ -9,29 +9,32 @@ Expr Add::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
   CHECK(b.valid()) << "Expr b not defined";
 
-  auto* x = new Add;
-  x->a = std::move(a);
-  x->b = std::move(b);
-  return Expr(x);
+  auto x = std::make_shared<Add>();
+  x->a = a;
+  x->b = b;
+
+  Expr res(x);
+
+  return res;
 }
 
 //-------------------- Logical expressions -------------------------
 Expr EQ::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
   CHECK(b.valid()) << "Expr b not defined";
-  auto* node = new EQ;
+  auto node = std::make_shared<EQ>();
   node->a = std::move(a);
   node->b = std::move(b);
-  return node;
+  return Expr(node);
 }
 
 Expr NE::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
   CHECK(b.valid()) << "Expr b not defined";
-  auto* node = new NE;
+  auto node = std::make_shared<NE>();
   node->a = std::move(a);
   node->b = std::move(b);
-  return node;
+  return Expr(node);
 }
 
 }  // namespace ir

@@ -25,5 +25,11 @@ TEST(LLVM, basic) {
   WriteBitcodeToFile(*M, outs());
 }
 
+TEST(x, xx) {
+  const int* a = new int(32);
+  std::shared_ptr<const int> int32;
+  int32.reset(a);
+}
+
 }  // namespace backends
 }  // namespace cinn

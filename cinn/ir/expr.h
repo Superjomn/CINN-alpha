@@ -46,7 +46,7 @@ enum class NodeTy {
 };
 
 /// The base class for all the IR nodes.
-class IRNode : public std::enable_shared_from_this<IRNode> {
+class IRNode : std::enable_shared_from_this<IRNode> {
  public:
   explicit IRNode(NodeTy type) : type_(type) {}
 
@@ -62,12 +62,13 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
 /// A handle to store any expression.
 class IRHandle {
  protected:
-  std::shared_ptr<const IRNode> ptr_;
+  std::shared_ptr<IRNode> ptr_{};
 
  public:
   IRHandle() = default;
-  IRHandle(const IRHandle& other) : ptr_(other.ptr_) {}
-  explicit IRHandle(const IRNode* x) { ptr_.reset(x); }
+  IRHandle(IRHandle& other) : ptr_(other.ptr_) {}
+  explicit IRHandle(IRNode* x) { ptr_.reset(x); }
+  explicit IRHandle(const std::shared_ptr<IRNode>& x) { ptr_ = x; }
 
   template <typename T>
   const T* As() const {
@@ -164,14 +165,18 @@ class FloatImm : public ExprNodeBase<FloatImm> {
 
 class Expr : public IRHandle {
  public:
-  Expr() {}
-  Expr(const IRNode* n) : IRHandle(n) {}  // NOLINT
+  Expr() : IRHandle() {}
+  Expr(const std::shared_ptr<IRNode>& x) : IRHandle(x) {}
+  Expr(const Expr& n) : IRHandle(n.ptr_) {}
+  Expr(Expr&& other) { ptr_ = std::move(other.ptr_); }
 
   explicit Expr(int32_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 32), x); }
   explicit Expr(int64_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 64), x); }
   explicit Expr(float x) { ptr_ = FloatImm::make(Type(type_code_t::Float, 32), x); }
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
+
+  void operator=(const Expr& other) { ptr_ = other.ptr_; }
 
   // Check whether this Expr is valid for use.
   bool valid() const { return ptr_.get(); }

@@ -72,7 +72,7 @@ struct Mul : public ExprNode<Mul> {
     CHECK(a.valid()) << "Mul a not defined";
     CHECK(b.valid()) << "Mul b not defined";
 
-    auto* x = new Mul;
+    auto x = std::make_shared<Mul>();
     x->a = std::move(a);
     x->b = std::move(b);
     return Expr(x);

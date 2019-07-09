@@ -1,6 +1,6 @@
-#include "cinn/ir/ir.h"
-#include "cinn/ir/expr.h"
 #include "cinn/ir/ir_visitor.h"
+#include "cinn/ir/expr.h"
+#include "cinn/ir/ir.h"
 #include "ir_visitor.h"
 
 namespace cinn {
