@@ -1,4 +1,5 @@
 #pragma once
+#include <lcms2_plugin.h>
 #include <string>
 #include <vector>
 #include "cinn/ir/expr.h"
@@ -15,26 +16,65 @@ enum class ScalarT {
   string,
 };
 
+/*
+ * Interval for Var and Parameter.
+ */
+class Interval {
+ public:
+  Interval(Expr lower_bound, Expr upper_bound) : lower_bound_(lower_bound), upper_bound_(upper_bound) {}
+
+  const Expr& lower_bound() const { return lower_bound_; }
+  const Expr& upper_bound() const { return upper_bound_; }
+
+  std::string __str__() const {}
+
+ private:
+  Expr lower_bound_;
+  Expr upper_bound_;
+};
+
+class Tensor : public ExprNode<Tensor> {
+ public:
+};
+
+/*
+ * Var is a variable in IR.
+ *
+ * Usage:
+ *
+ * Var i, j;
+ * Param M("M"), N("N");
+ * Interval row(0, M-1);
+ * Interval col(0, N-1);
+ * Tensor tensor("image"), {M, N});
+ *
+ * Var tmp;
+ * tmp(i,j) = tensor(i,j) / 255;
+ *
+ * Function func({i,j}, {col, row}, tmp);
+ *
+ */
 class Var : public ExprNode<Var> {
   std::string name_;
   Any val_;
   ScalarT data_type_;
+  Interval interval_;
 
  public:
-  // constants
-  static Var make(const std::string& x) {
-    Var v;
-    v.data_type_ = ScalarT::string;
-    v.val_.set(x);
-    return v;
-  }
-  static Var make(int32_t x) {
-    Var v;
-    v.data_type_ = ScalarT::int32;
-    v.val_.set(x);
-    return v;
-  }
+  // make a variable with name and interval set.
+  Var(const std::string& name, ScalarT type, const Interval& interval)
+      : name_(name), data_type_(type), interval_(interval) {}
+
+  // make string constants
+  static Var make(const std::string& x);
+
+  // make int32 constraint
+  static Var make(int32_t x);
+
+  // make int64 constraint
   static Var make(int64_t x);
+
+  // make float constraint
   static Var make(float x);
 
   void Accept(IRVisitor* x) const override;
