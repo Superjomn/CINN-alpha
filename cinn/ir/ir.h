@@ -21,6 +21,7 @@ enum class ScalarT {
  */
 class Interval {
  public:
+  Interval() = default;
   Interval(Expr lower_bound, Expr upper_bound) : lower_bound_(lower_bound), upper_bound_(upper_bound) {}
 
   const Expr& lower_bound() const { return lower_bound_; }
@@ -60,22 +61,34 @@ class Var : public ExprNode<Var> {
   ScalarT data_type_;
   Interval interval_;
 
+  // lower bound.
+  Expr lower_;
+  // upper bound.
+  Expr upper_;
+
+  primitive_t primitive_type_;
+
  public:
+  Var() = default;
   // make a variable with name and interval set.
   Var(const std::string& name, ScalarT type, const Interval& interval)
       : name_(name), data_type_(type), interval_(interval) {}
 
   // make string constants
-  static Var make(const std::string& x);
+  static Var make(const std::string& x) {
+    Var v;
+    v.data_type_ = ScalarT::string;
+    v.val_.set(x);
+    return v;
+  }
+  static Var make(int32_t x) {
+    Var v;
+    v.data_type_ = ScalarT::int32;
+    v.val_.set(x);
+    return v;
+  }
 
-  // make int32 constraint
-  static Var make(int32_t x);
-
-  // make int64 constraint
-  static Var make(int64_t x);
-
-  // make float constraint
-  static Var make(float x);
+  primitive_t primitive_type() const { return primitive_type_; }
 
   void Accept(IRVisitor* x) const override;
 
@@ -127,6 +140,14 @@ struct Div : public ExprNode<Div> {
   static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Div;
+};
+
+struct Mod : public ExprNode<Mod> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::Mod;
 };
 
 //-------------------- Logical expressions -------------------------
