@@ -1,6 +1,8 @@
 #=================================== ISL =======================================
 find_library(isl_lib isl PATHS "${ISL_LIB_DIRECTORY}/lib" NO_DEFAULT_PATH)
 include_directories(${ISL_LIB_DIRECTORY}/include)
+include_directories(${CMAKE_SOURCE_DIR}/3rdparty/isl_interface/include)
+
 link_directories(${ISL_LIB_DIRECTORY}/lib)
 message(STATUS "isl path: ${ISL_LIB_DIRECTORY}")
 

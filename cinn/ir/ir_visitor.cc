@@ -38,9 +38,12 @@ void IRVisitor::Visit(const Div *op) {
 
 void IRVisitor::Visit(const IntImm *op) {}
 void IRVisitor::Visit(const FloatImm *op) {}
-void IRVisitor::Visit(const Var *op) {}
 void IRVisitor::Visit(const NE *op) {}
 void IRVisitor::Visit(const EQ *op) {}
+
+void IRVisitor::Visit(const Tensor *op) {}
+void IRVisitor::Visit(const Var *op) {}
+void IRVisitor::Visit(const Parameter *op) {}
 
 }  // namespace ir
 }  // namespace cinn

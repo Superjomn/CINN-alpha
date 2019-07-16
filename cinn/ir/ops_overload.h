@@ -10,6 +10,11 @@ namespace cinn {
 namespace ir {
 
 inline Expr operator+(Expr a, Expr b) { return Add::make(a, b); }
+template <typename T>
+inline Expr operator+(Expr a, T b) {
+  return Add::make(a, Expr(b));
+}
+
 inline Expr operator-(Expr a, Expr b) { return Sub::make(a, b); }
 inline Expr operator*(Expr a, Expr b) { return Mul::make(a, b); }
 inline Expr operator/(Expr a, Expr b) { return Div::make(a, b); }
