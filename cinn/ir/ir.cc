@@ -37,5 +37,7 @@ Expr NE::make(Expr a, Expr b) {
   return Expr(node);
 }
 
+size_t Var::counter_ = 0;
+
 }  // namespace ir
 }  // namespace cinn

@@ -55,10 +55,10 @@ class Tensor : public ExprNode<Tensor> {
  *
  */
 class Var : public ExprNode<Var> {
-  std::string name_;
   Any val_;
   ScalarT data_type_;
   Interval interval_;
+  std::string name_;
 
   // lower bound.
   Expr lower_;
@@ -67,11 +67,18 @@ class Var : public ExprNode<Var> {
 
   primitive_t primitive_type_;
 
+  static size_t counter_;
+  static std::set<std::string> name_set_;  // All registerred var's name here.
+
  public:
-  Var() = default;
+  Var() { SetDefaultName(); }
+
   // make a variable with name and interval set.
   Var(const std::string& name, ScalarT type, const Interval& interval)
-      : name_(name), data_type_(type), interval_(interval) {}
+      : name_(name), data_type_(type), interval_(interval) {
+    inc_counter();
+    check_set_name(name_);
+  }
 
   // make string constants
   static Var make(const std::string& x) {
@@ -91,7 +98,22 @@ class Var : public ExprNode<Var> {
 
   void Accept(IRVisitor* x) const override;
 
+  static bool check_set_name(const std::string& name) {
+    if (name_set_.count(name)) {
+      name_set_.insert(name);
+      return true;
+    }
+    return false;
+  }
+
+  void SetDefaultName() {
+    name_ = "var" + std::to_string(inc_counter());
+    CHECK(check_set_name(name_));
+  }
+
   static const NodeTy node_type = NodeTy::Var;
+
+  static size_t inc_counter() { return counter_++; }
 };
 
 //-------------------- Arithmetical expressions -------------------------
