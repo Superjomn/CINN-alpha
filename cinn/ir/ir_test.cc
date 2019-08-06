@@ -31,7 +31,7 @@ TEST(ir, Image) {
   Parameter C("C", ScalarT::int32);
   Parameter H("H", ScalarT::int32);
   Parameter W("W", ScalarT::int32);
-  Tensor input("image0", ScalarT ::float32, {C, H, W});
+  Tensor input("image0", ScalarT::float32, {C, H, W});
 }
 
 TEST(ir, Var) {
@@ -46,7 +46,7 @@ TEST(ir, basic1) {
   Parameter C("C", 200);
   Parameter H("H", 100);
   Parameter W("W", 20);
-  Tensor input("image0", ScalarT ::float32, {C, H, W});
+  Tensor input("image0", ScalarT::float32, {C, H, W});
 
   Parameter zero("zero", 0);
   Var i("c", ScalarT::int32, zero, C);

@@ -21,6 +21,7 @@ class Parameter : public ExprNode<Parameter> {
   int32_t int32_val_;
 
  public:
+  Parameter() = default;
   Parameter(const std::string& name, ScalarT type) : name_(name), type_(type) {}
   Parameter(const std::string& name, int32_t val) : name_(name), type_(ScalarT::int32), int32_val_(val) {}
 

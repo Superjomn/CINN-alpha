@@ -46,7 +46,7 @@ enum class NodeTy {
   Parameter,
   Tensor,
   Reference,
-  //Computation,
+  // Computation,
 };
 
 /// The base class for all the IR nodes.

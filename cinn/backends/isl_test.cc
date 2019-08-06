@@ -208,3 +208,5 @@ TEST(isl, basic) {
   sched = isl_map_add_dim_and_eq_constraint(sched, 0, 0);
   LOG(INFO) << "map " << isl_to_str(sched);
 }
+
+TEST(isl, cpp) { isl::ctx ctx(isl_ctx_alloc()); }
