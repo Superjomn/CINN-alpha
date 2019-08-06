@@ -46,6 +46,7 @@ enum class NodeTy {
   Parameter,
   Tensor,
   Reference,
+  //Computation,
 };
 
 /// The base class for all the IR nodes.
@@ -57,6 +58,8 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
 
   /// Visitor pattern to traverse the IR.
   virtual void Accept(IRVisitor* x) const = 0;
+
+  NodeTy type() const { return type_; }
 
  protected:
   NodeTy type_{NodeTy::Var};
@@ -86,6 +89,8 @@ class IRHandle {
   IRHandle(IRHandle& other) : ptr_(other.ptr_) {}
   explicit IRHandle(IRNode* x) { ptr_.reset(x); }
   explicit IRHandle(const std::shared_ptr<IRNode>& x) { ptr_ = x; }
+
+  NodeTy type() const { return ptr_->type(); }
 
   template <typename T>
   const T* As() const {

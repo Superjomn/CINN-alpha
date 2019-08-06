@@ -14,6 +14,10 @@ template <typename T>
 inline Expr operator+(Expr a, T b) {
   return Add::make(a, Expr(b));
 }
+template <typename T>
+inline Expr operator/(Expr a, T b) {
+  return Div::make(a, Expr(b));
+}
 
 inline Expr operator-(Expr a, Expr b) { return Sub::make(a, b); }
 inline Expr operator*(Expr a, Expr b) { return Mul::make(a, b); }

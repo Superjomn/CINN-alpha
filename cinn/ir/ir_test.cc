@@ -53,7 +53,10 @@ TEST(ir, basic1) {
   Var j("j", ScalarT::int32, zero, H);
   Var k("k", ScalarT::int32, zero, W);
   Expr expr0 = input(i, j, k);
+  expr0 = (expr0 + 0.5f) / 2.f;
+
   ASSERT_TRUE(expr0.valid());
+  LOG(INFO) << static_cast<int>(expr0.type());
 
   // Expr expr0 = input(i, j, k) + 0.5f;
 }

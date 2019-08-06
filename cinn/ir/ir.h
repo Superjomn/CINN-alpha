@@ -126,6 +126,9 @@ class Reference : public ExprNodeBase<Reference> {
   }
 };
 
+/*
+ * Tensor is a placeholder for the inputs of the whole program.
+ */
 class Tensor : public ExprNode<Tensor> {
   std::string name_;
   ScalarT type_;
@@ -187,7 +190,15 @@ struct Mul : public ExprNode<Mul> {
 struct Div : public ExprNode<Div> {
   Expr a, b;
 
-  static Expr make(Expr a, Expr b);
+  static Expr make(Expr a, Expr b) {
+    CHECK(a.valid()) << "Div a not defined";
+    CHECK(b.valid()) << "Div b not defined";
+
+    auto x = std::make_shared<Div>();
+    x->a = std::move(a);
+    x->b = std::move(b);
+    return Expr(x);
+  }
 
   static const NodeTy node_type = NodeTy::Div;
 };
@@ -217,6 +228,22 @@ struct NE : public ExprNode<NE> {
 
   static const NodeTy node_type = NodeTy::NE;
 };
+
+/*
+class Computation : public ExprNode<Computation> {
+  std::vector<Var> inters_;
+  Expr expr_;
+
+ public:
+  Computation(Var i) : inters_({i}) {}
+  Computation(Var i, Var j) : inters_({i, j}) {}
+  Computation(Var i, Var j, Var k) : inters_({i, j, k}) {}
+
+  void operator=(Expr expr) { expr_ = expr; }
+
+  static const NodeTy node_type = NodeTy::Computation;
+};
+ */
 
 }  // namespace ir
 }  // namespace cinn
