@@ -3,7 +3,6 @@ cc_library(ir_visitor SRCS ir_visitor)
 cc_library(ir_printer SRCS ir_printer DEPS ir_visitor)
 cc_library(ir_node_base SRCS node_base.cc)
 cc_library(ir SRCS ir.cc DEPS expr ir_node_base any)
-cc_library(ir_buffer SRCS buffer.cc DEPS expr)
 cc_library(ops_overload SRCS ops_overload.cc DEPS ir)
 
 cc_test(test_ir SRCS ir_test.cc DEPS ir ops_overload)

@@ -12,6 +12,7 @@ enum class type_code_t {
 };
 
 enum class primitive_t {
+  unknown = -1,
   uint8,
   uint16,
   uint32,
@@ -23,6 +24,17 @@ enum class primitive_t {
   float32,
   float64,
   boolean,
+};
+
+enum class memory_location_t {
+  host = 0,
+  gpu = 1,
+};
+
+enum class arg_t {
+  unknown = -1,
+  input = 0,
+  output = 1,
 };
 
 class Type {

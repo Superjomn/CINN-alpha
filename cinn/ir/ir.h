@@ -8,24 +8,33 @@
 namespace cinn {
 namespace ir {
 
-enum class ScalarT {
-  int32,
-  int64,
-  float32,
-  string,
-};
-
 class Parameter : public ExprNode<Parameter> {
   std::string name_;
-  ScalarT type_;
-  int32_t int32_val_;
+  primitive_t type_;
+  union {
+    int8_t int8_val_;
+    int32_t int32_val_;
+    float fp32_val_;
+    double fp64_val_;
+  };
 
  public:
   Parameter() = default;
-  Parameter(const std::string& name, ScalarT type) : name_(name), type_(type) {}
-  Parameter(const std::string& name, int32_t val) : name_(name), type_(ScalarT::int32), int32_val_(val) {}
+  Parameter(const std::string& name, primitive_t type) : name_(name), type_(type) {}
+  Parameter(const std::string& name, int32_t val) : name_(name), type_(primitive_t::int32), int32_val_(val) {}
+
+  template <typename T>
+  Parameter(const std::string& name, T val);
+  template <typename T>
+  Parameter(T val);
 
   static const NodeTy node_type = NodeTy::Parameter;
+
+ private:
+  // Generate a random default name.
+  std::string DefaultUniqueName() { return "p" + std::to_string(counter++); }
+
+  static unsigned int counter;
 };
 
 /*
@@ -65,7 +74,7 @@ class Interval {
  */
 class Var : public ExprNode<Var> {
   Any val_;
-  ScalarT data_type_;
+  primitive_t data_type_;
   Interval interval_;
   std::string name_;
 
@@ -77,14 +86,16 @@ class Var : public ExprNode<Var> {
  public:
   Var() { SetDefaultName(); }
 
+  Var(const std::string& name) : name_(name) {}
+
   // make a variable with name and interval set.
-  Var(const std::string& name, ScalarT type, const Interval& interval)
+  Var(const std::string& name, primitive_t type, const Interval& interval)
       : name_(name), data_type_(type), interval_(interval) {
     inc_counter();
     check_set_name(name_);
   }
 
-  Var(const std::string& name, ScalarT type, Parameter lower_bound, Parameter upper_bound)
+  Var(const std::string& name, primitive_t type, Parameter lower_bound, Parameter upper_bound)
       : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {}
 
   primitive_t primitive_type() const { return primitive_type_; }
@@ -154,11 +165,11 @@ class Reference : public ExprNodeBase<Reference> {
  */
 class Tensor : public ExprNode<Tensor> {
   std::string name_;
-  ScalarT type_;
+  primitive_t type_;
   std::vector<Parameter> dims_;
 
  public:
-  Tensor(const std::string& name, ScalarT type, const std::vector<Parameter>& dims)
+  Tensor(const std::string& name, primitive_t type, const std::vector<Parameter>& dims)
       : name_(name), type_(type), dims_(dims) {}
 
   Expr operator()(Var i) { return Reference::make({i}); }

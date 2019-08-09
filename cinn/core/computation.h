@@ -1,28 +1,70 @@
 #include <cinn/ir/ir.h>
-#include "isl/map.h"
-#include "isl/set.h"
+#include <isl/aff.h>
+#include <isl/ast_build.h>
+#include <isl/constraint.h>
+#include <isl/ctx.h>
+#include <isl/id.h>
+#include <isl/map.h>
+#include <isl/set.h>
+#include <isl/union_map.h>
+#include <isl/union_set.h>
+
+#include "cinn/core/buffer.h"
 
 namespace cinn {
 
+isl_map* isl_map_add_dim_and_eq_constraint(isl_map* map, int dim_pos, int constant) {
+  CHECK(map != NULL);
+  CHECK(dim_pos >= 0);
+  CHECK(dim_pos <= (signed int)isl_map_dim(map, isl_dim_out));
+
+  map = isl_map_insert_dims(map, isl_dim_out, dim_pos, 1);
+  map = isl_map_set_tuple_name(map, isl_dim_out, isl_map_get_tuple_name(map, isl_dim_in));
+
+  isl_space* sp = isl_map_get_space(map);
+  isl_local_space* lsp = isl_local_space_from_space(isl_space_copy(sp));
+  isl_constraint* cst = isl_constraint_alloc_equality(lsp);
+  cst = isl_constraint_set_coefficient_si(cst, isl_dim_out, dim_pos, 1);
+  cst = isl_constraint_set_constant_si(cst, (-1) * constant);
+  map = isl_map_add_constraint(map, cst);
+
+  return map;
+}
+
 class Computation {
   // ISL context.
-  isl_ctx* ctx_;
+  isl_ctx* ctx_{};
 
   // Iteration domain.
-  isl_set* iter_domain_;
+  isl_set* iter_domain_{};
 
   ir::Expr expr_;
 
   // The schedules of this computation.
-  isl_map* schedule_;
+  isl_map* schedule_{};
 
   // Name of this computation.
   std::string name_;
 
- public:
-  Computation() : ctx_(isl_ctx_alloc()) {}
+  static std::set<std::string> names_;
 
+ public:
   isl_ctx* ctx() { return ctx_; }
+
+  Computation() : ctx_(isl_ctx_alloc()) {}
+  Computation(const std::string& name, const std::string& iter_domain) : ctx_(isl_ctx_alloc()) {
+    CHECK(ctx_);
+    iter_domain_ = isl_set_read_from_str(ctx_, iter_domain.c_str());
+    CHECK(iter_domain_);
+    InitSchedule();
+  }
+
+  void SetName(const std::string& name) {
+    CHECK(!name.empty());
+    CHECK(!names_.count(name)) << "duplicate name for Computation, " << name;
+    name_ = name;
+    names_.insert(name_);
+  }
 
   /*
    * Apply a transformation on the domain of the schedule.
@@ -70,6 +112,23 @@ class Computation {
   void SetSchedule(isl_map* x) {
     CHECK(x);
     schedule_ = x;
+  }
+
+ private:
+  // Init schedule with identity schedule.
+  void InitSchedule() {
+    CHECK(iter_domain_);
+    isl_space* space = isl_set_get_space(iter_domain_);
+    isl_map* schedule = isl_map_identity(isl_space_map_from_set(space));
+    VLOG(2) << "identity schedule: " << isl_map_to_str(schedule);
+    schedule = isl_map_intersect_domain(schedule, isl_set_copy(iter_domain_));
+    schedule = isl_map_coalesce(schedule);
+
+    for (int i = 0; i < isl_space_dim(space, isl_dim_out); i++) {
+      schedule = isl_map_add_dim_and_eq_constraint(schedule, 2 * i, 0);
+    }
+
+    SetSchedule(schedule);
   }
 };
 

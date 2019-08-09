@@ -1,4 +1,6 @@
 #include "cinn/ir/ir.h"
+#include "ir.h"
+
 #include <glog/logging.h>
 #include <utility>
 
@@ -38,6 +40,32 @@ Expr NE::make(Expr a, Expr b) {
 }
 
 size_t Var::counter_ = 0;
+
+template <>
+Parameter::Parameter(const std::string &name, int32_t val) : name_(name) {
+  type_ = primitive_t::int32;
+  int32_val_ = val;
+}
+
+template <>
+Parameter::Parameter(const std::string &name, float val) : name_(name) {
+  type_ = primitive_t::float32;
+  fp32_val_ = val;
+}
+
+template <>
+Parameter::Parameter(int32_t val) : name_(DefaultUniqueName()) {
+  type_ = primitive_t::int32;
+  int32_val_ = val;
+}
+
+template <>
+Parameter::Parameter(float val) : name_(DefaultUniqueName()) {
+  type_ = primitive_t::float32;
+  fp32_val_ = val;
+}
+
+unsigned int Parameter::counter = 0;
 
 }  // namespace ir
 }  // namespace cinn
