@@ -3,6 +3,7 @@
 #include <isl/constraint.h>
 #include <isl/map.h>
 #include <isl/set.h>
+#include <isl/union_set.h>
 
 std::string isl_to_str(isl_set *x) { return isl_set_to_str(x); }
 std::string isl_to_str(isl_map *x) { return isl_map_to_str(x); }
@@ -186,6 +187,9 @@ TEST(isl, basic) {
   LOG(INFO) << "isl_space " << isl_to_str(iter_domain_space);
   LOG(INFO) << "space tuple name: " << isl_space_get_tuple_name(iter_domain_space, isl_dim_type::isl_dim_set);
   LOG(INFO) << "num of dims " << isl_set_dim(iter_domain, isl_dim_type::isl_dim_set);
+  LOG(INFO) << "num of in dims " << isl_set_dim(iter_domain, isl_dim_type::isl_dim_in);
+  LOG(INFO) << "num of out dims " << isl_set_dim(iter_domain, isl_dim_type::isl_dim_out);
+
   LOG(INFO) << "isl had dim name " << isl_set_has_dim_name(iter_domain, isl_dim_type::isl_dim_set, 0);
   LOG(INFO) << "isl had dim name " << isl_set_has_dim_name(iter_domain, isl_dim_type::isl_dim_set, 1);
 
@@ -209,4 +213,86 @@ TEST(isl, basic) {
   LOG(INFO) << "map " << isl_to_str(sched);
 }
 
-TEST(isl, cpp) { isl::ctx ctx(isl_ctx_alloc()); }
+TEST(isl, basic2) {
+    isl_ctx* ctx = isl_ctx_alloc();
+    isl_set* domain = isl_set_read_from_str(ctx, "[n] -> { A[i] : 0 < i < n }");
+    isl_space* space = isl_set_get_space(domain);
+    LOG(INFO) << "space: " << isl_space_to_str(space);
+    LOG(INFO) << "domain: " << isl_set_to_str(domain);
+    // space: [n] -> { [i, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10] }
+    space = isl_space_add_dims(space, isl_dim_type::isl_dim_out, 10);
+    LOG(INFO) << "space: " << isl_space_to_str(space);
+    // domain is not changed.
+    LOG(INFO) << "domain: " << isl_set_to_str(domain);
+
+    LOG(INFO) << "domain dim: " << isl_set_get_const_dim(domain, 0);
+    LOG(INFO) << "domain dim: " << isl_set_get_const_dim(domain, 1);
+
+    isl_map* transform0 = isl_map_read_from_str(ctx, "{A[i] -> [i+1]}");
+    LOG(INFO) << "transform: " << isl_map_to_str(transform0);
+    isl_map* scheduled = isl_map_intersect_domain(transform0, domain);
+    LOG(INFO) << "schedule: " << isl_map_to_str(scheduled);
+
+    // tuple name
+    LOG(INFO) << "tuple name: " << isl_set_get_tuple_name(domain);
+    domain = isl_set_set_tuple_name(domain, "S0");
+    LOG(INFO) << "tuple name: " << isl_set_get_tuple_name(domain);
+    LOG(INFO) << "domain: " << isl_set_to_str(domain);
+    isl_id* dim_id = isl_id_alloc(ctx, "ii", nullptr);
+    domain = isl_set_set_dim_id(domain, isl_dim_type::isl_dim_out, 0, dim_id);
+    LOG(INFO) << "domain: " << isl_set_to_str(domain);
+}
+
+TEST(isl, basic3) {
+    isl_ctx* ctx = isl_ctx_alloc();
+    isl_union_set* domain = isl_union_set_read_from_str(ctx, "{ S1[i,j]: 0 <= i,j <= 10 and i < j-1; S2[i,j]: 0 <=i,j<=10 and i >j+1}");
+    auto* domain1 = isl_union_set_read_from_str(ctx, "{S[i] : 0 < i,j<10}");
+    LOG(INFO) << "domain: " << isl_union_set_to_str(domain);
+    auto* domain2 = isl_union_set_intersect(domain, domain1);
+    LOG(INFO) << "domain2: " << isl_union_set_to_str(domain2);
+}
+
+TEST(isl, map_set_tuple_name) {
+    isl_ctx* ctx = isl_ctx_alloc();
+    auto* schedule = isl_map_read_from_str(ctx, "{S[i] -> T[i]}");
+    schedule = isl_map_set_tuple_name(schedule, isl_dim_in, "S1");
+    schedule = isl_map_set_tuple_name(schedule, isl_dim_out, "T1");
+    LOG(INFO) << "schedule " << isl_map_to_str(schedule);
+}
+
+TEST(isl, map_dim_name) {
+    isl_ctx* ctx = isl_ctx_alloc();
+    auto* schedule = isl_map_read_from_str(ctx, "{S[i] -> T[j, k]}");
+    std::string name = isl_map_get_dim_name(schedule, isl_dim_in, 0);
+    ASSERT_EQ(name, "i");
+    LOG(INFO) << "in dim0 " << name;
+    name = isl_map_get_dim_name(schedule, isl_dim_out, 0);
+    LOG(INFO) << "out dim0 " << name;
+    ASSERT_EQ(name, "j");
+
+    int d = isl_map_find_dim_by_name(schedule, isl_dim_out, "j");
+    ASSERT_EQ(d, 0);
+    LOG(INFO) << "j offset: " << d;
+    d = isl_map_find_dim_by_name(schedule, isl_dim_out, "dim_not_exists");
+    LOG(INFO) << "notexist dim offset: " << d;
+    ASSERT_EQ(d, -1);
+
+    d = isl_space_dim(isl_map_get_space(schedule), isl_dim_out);
+    ASSERT_EQ(d, 2);
+    LOG(INFO) << "out dim num: " << d;
+
+    d = isl_space_dim(isl_map_get_space(schedule), isl_dim_in);
+    LOG(INFO) << "space: " << isl_space_to_str(isl_map_get_space(schedule));
+    ASSERT_EQ(d, 1);
+
+    // Whether the 0th dim has name.
+    ASSERT_TRUE(isl_map_has_dim_name(schedule, isl_dim_out, 0) == isl_bool_true);
+    std::string dim_name = isl_map_get_dim_name(schedule, isl_dim_out, 0); // j
+    ASSERT_EQ(dim_name, "j");
+    dim_name = isl_map_get_dim_name(schedule, isl_dim_out, 1); // j
+    ASSERT_EQ(dim_name, "k");
+    schedule = isl_map_set_dim_name(schedule, isl_dim_out, 0, "jj");
+    schedule = isl_map_set_dim_name(schedule, isl_dim_out, 1, "kk");
+    LOG(INFO) << "schedule after rename out dims: " << isl_map_to_str(schedule);
+}
+
