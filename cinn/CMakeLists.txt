@@ -1,5 +1,5 @@
 #=================================== ISL =======================================
-set(ISL_LIB_DIRECTORY "/usr")
+set(ISL_LIB_DIRECTORY "/home/chunwei/project2/tiramisu/3rdParty/isl/build")
 find_library(isl_lib isl PATHS "${ISL_LIB_DIRECTORY}/lib" NO_DEFAULT_PATH)
 include_directories(${ISL_LIB_DIRECTORY}/include)
 include_directories(${CMAKE_SOURCE_DIR}/3rdparty/isl_interface/include)
@@ -7,6 +7,7 @@ include_directories(${CMAKE_SOURCE_DIR}/3rdparty/isl_interface/include)
 link_directories(${ISL_LIB_DIRECTORY}/lib)
 message(STATUS "isl path: ${ISL_LIB_DIRECTORY}")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 find_package(LLVM REQUIRED CONFIG)
 

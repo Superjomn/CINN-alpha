@@ -8,6 +8,7 @@
 #include <isl/set.h>
 #include <isl/union_map.h>
 #include <isl/union_set.h>
+#include <sstream>
 
 #include "cinn/core/buffer.h"
 
@@ -74,7 +75,10 @@ class Computation {
     isl_map* map = isl_map_read_from_str(ctx_, map_str.c_str());
     CHECK(map) << "map parse failed, " << map_str;
 
+    LOG(INFO) << "map " << map_str;
     auto* scheduled = isl_map_apply_domain(isl_map_copy(schedule_), isl_map_copy(map));
+    LOG(INFO) << "apply transformation on schedule domain: "
+              << isl_map_to_str(isl_map_intersect_domain(isl_map_copy(schedule_), isl_set_copy(iter_domain_)));
     SetSchedule(scheduled);
     VLOG(2) << "schedule: " << isl_map_to_str(schedule_);
   }
@@ -106,6 +110,19 @@ class Computation {
     }
   }
 
+  // Dump the schedule to human-readable code.
+  std::string Dump() const {
+    std::stringstream ss;
+    CHECK(schedule_);
+    CHECK(iter_domain_);
+    CHECK(ctx_);
+    auto* T = isl_union_map_from_map(isl_map_intersect_domain(schedule_, iter_domain_));
+    auto* C = isl_set_read_from_str(ctx_, "{:}");
+    auto* build = isl_ast_build_from_context(C);
+    auto* ast = isl_ast_build_node_from_schedule_map(build, T);
+    ss << "generated code:\n" << isl_ast_node_to_C_str(ast);
+  }
+
   /*
    * Set the computation's schedule.
    */
@@ -129,6 +146,10 @@ class Computation {
     }
 
     SetSchedule(schedule);
+
+    LOG(INFO) << "after init: " << isl_map_to_str(schedule_);
+    LOG(INFO) << "schedule: "
+              << isl_map_to_str(isl_map_intersect_domain(isl_map_copy(schedule), isl_set_copy(iter_domain_)));
   }
 };
 
