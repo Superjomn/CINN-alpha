@@ -5,8 +5,8 @@
 namespace cinn {
 
 TEST(computation, Construct) {
-  Computation comp("comp1", "[n] -> { A[i,j] : 0 < i < n and 0 < j < n}");
-  comp.ApplyTransformationOnScheduleDomain("[n] -> {A[i,j] -> [j, i+1]}");
+  Computation comp("comp1", "[T,N]->{S[t,i]: 0 <= t < T and 1 <=i < N}");
+  comp.ApplyTransformationOnScheduleRange("[T,N] -> {S[o0,t', o2,i'] -> S[o0,t'+10,o2,i'] }");
   LOG(INFO) << comp.Dump();
 
   /*

@@ -299,6 +299,36 @@ TEST(isl, map_dim_name) {
   LOG(INFO) << "schedule after rename out dims: " << isl_map_to_str(schedule);
 }
 
+TEST(isl, apply_range) {
+  auto *ctx = isl_ctx_alloc();
+  auto *t0 = isl_map_read_from_str(ctx, "[N] -> {S[i] -> [i]}");
+  auto *t1 = isl_map_read_from_str(ctx, "[N] -> {S[i,ii] -> [i, 0]}");
+  auto *t2 = isl_map_read_from_str(ctx, "{[i] -> [i, 0]}");
+
+  auto *t0_ = isl_map_apply_range(isl_map_copy(t0), isl_map_copy(t2));
+
+  LOG(INFO) << "left " << isl_space_get_tuple_name(isl_map_get_space(t0), isl_dim_out);
+  LOG(INFO) << "right " << isl_space_get_tuple_name(isl_map_get_space(t2), isl_dim_in);
+  LOG(INFO) << "t0_ " << isl_map_to_str(t0_);
+}
+
+TEST(isl, code_gen_basic) {
+  auto *ctx = isl_ctx_alloc();
+  auto *context = isl_set_read_from_str(ctx, "{:}");
+  auto *domain = isl_set_read_from_str(ctx, "[T,N]->{S[t,i]: 0 <= t < T and 1 <=i < N}");
+  auto *transform = isl_map_read_from_str(ctx, "[T,N] -> {S[t,i] -> [t,i]}");
+  auto *T = isl_union_map_from_map(isl_map_intersect_domain(transform, domain));
+  LOG(INFO) << "T: " << isl_union_map_to_str(T);
+
+  auto *builder = isl_ast_build_from_context(context);
+  auto *ast = isl_ast_build_node_from_schedule_map(builder, T);
+
+  // isl_printer *p = isl_printer_to_str(ctx);
+  // isl_printer_set_output_format(p, 0);
+  // isl_printer_print_ast_node(p, ast);
+  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
+}
+
 TEST(isl, code_gen) {
   auto *ctx = isl_ctx_alloc();
   auto *context = isl_set_read_from_str(ctx, "{:}");
