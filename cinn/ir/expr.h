@@ -41,6 +41,9 @@ enum class NodeTy {
   And,
   Or,
   Not,
+  For,
+
+  Block,
 
   Var,
   Parameter,

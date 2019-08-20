@@ -27,31 +27,36 @@ TEST(ir, complex1) {
   c = (a + b) * d;
 }
 
+TEST(ir, complex2) {
+  Expr a(1), b(2), c;
+  c = a % b + 1;
+}
+
 TEST(ir, Image) {
-  Parameter C("C", ScalarT::int32);
-  Parameter H("H", ScalarT::int32);
-  Parameter W("W", ScalarT::int32);
-  Tensor input("image0", ScalarT::float32, {C, H, W});
+  Parameter C("C", primitive_t::int32);
+  Parameter H("H", primitive_t::int32);
+  Parameter W("W", primitive_t::int32);
+  Tensor input("image0", primitive_t::float32, {C, H, W});
 }
 
 TEST(ir, Var) {
-  Parameter zero("zero", ScalarT::int32);
-  Parameter N("N", ScalarT::int32);
+  Parameter zero("zero", primitive_t::int32);
+  Parameter N("N", primitive_t::int32);
   Interval interval(zero, N);
 
-  Var i("i", ScalarT::int32, interval);
+  Var i("i", primitive_t::int32, interval);
 }
 
 TEST(ir, basic1) {
   Parameter C("C", 200);
   Parameter H("H", 100);
   Parameter W("W", 20);
-  Tensor input("image0", ScalarT::float32, {C, H, W});
+  Tensor input("image0", primitive_t::float32, {C, H, W});
 
   Parameter zero("zero", 0);
-  Var i("c", ScalarT::int32, zero, C);
-  Var j("j", ScalarT::int32, zero, H);
-  Var k("k", ScalarT::int32, zero, W);
+  Var i("c", primitive_t::int32, zero, C);
+  Var j("j", primitive_t::int32, zero, H);
+  Var k("k", primitive_t::int32, zero, W);
   Expr expr0 = input(i, j, k);
   expr0 = (expr0 + 0.5f) / 2.f;
 

@@ -16,6 +16,9 @@ namespace cinn {
 
 isl_map* isl_map_add_dim_and_eq_constraint(isl_map* map, int dim_pos, int constant);
 
+/*
+ * Computation is the schedule of an AST.
+ */
 class Computation {
   // ISL context.
   isl_ctx* ctx_{};

@@ -10,8 +10,16 @@ struct Add;
 struct Sub;
 struct Div;
 struct Mul;
+struct Mod;
+
 struct NE;
 struct EQ;
+struct LE;
+struct LT;
+struct GT;
+struct GE;
+struct For;
+
 struct IntImm;
 struct FloatImm;
 
@@ -31,8 +39,16 @@ class IRVisitor {
   virtual void Visit(const Sub* op);
   virtual void Visit(const Mul* op);
   virtual void Visit(const Div* op);
+  virtual void Visit(const Mod* op);
+
   virtual void Visit(const NE* op);
   virtual void Visit(const EQ* op);
+  virtual void Visit(const For* op);
+  virtual void Visit(const GT* op);
+  virtual void Visit(const GE* op);
+  virtual void Visit(const LT* op);
+  virtual void Visit(const LE* op);
+
   virtual void Visit(const IntImm* op);
   virtual void Visit(const FloatImm* op);
 

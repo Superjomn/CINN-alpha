@@ -208,15 +208,7 @@ struct Sub : public ExprNode<Sub> {
 struct Mul : public ExprNode<Mul> {
   Expr a, b;
 
-  static Expr make(Expr a, Expr b) {
-    CHECK(a.valid()) << "Mul a not defined";
-    CHECK(b.valid()) << "Mul b not defined";
-
-    auto x = std::make_shared<Mul>();
-    x->a = std::move(a);
-    x->b = std::move(b);
-    return Expr(x);
-  }
+  static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Mul;
 };
@@ -224,15 +216,7 @@ struct Mul : public ExprNode<Mul> {
 struct Div : public ExprNode<Div> {
   Expr a, b;
 
-  static Expr make(Expr a, Expr b) {
-    CHECK(a.valid()) << "Div a not defined";
-    CHECK(b.valid()) << "Div b not defined";
-
-    auto x = std::make_shared<Div>();
-    x->a = std::move(a);
-    x->b = std::move(b);
-    return Expr(x);
-  }
+  static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Div;
 };
@@ -263,21 +247,55 @@ struct NE : public ExprNode<NE> {
   static const NodeTy node_type = NodeTy::NE;
 };
 
-/*
-class Computation : public ExprNode<Computation> {
-  std::vector<Var> inters_;
-  Expr expr_;
+struct LE : public ExprNode<LE> {
+  Expr a, b;
 
- public:
-  Computation(Var i) : inters_({i}) {}
-  Computation(Var i, Var j) : inters_({i, j}) {}
-  Computation(Var i, Var j, Var k) : inters_({i, j, k}) {}
+  static Expr make(Expr a, Expr b);
 
-  void operator=(Expr expr) { expr_ = expr; }
-
-  static const NodeTy node_type = NodeTy::Computation;
+  static const NodeTy node_type = NodeTy::LE;
 };
- */
+
+struct LT : public ExprNode<LT> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::LT;
+};
+
+struct GT : public ExprNode<GT> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::GT;
+};
+
+struct GE : public ExprNode<GE> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::GE;
+};
+
+struct For : public ExprNode<For> {
+  Expr min, extent;
+  Expr body;
+
+  static Expr make(Expr min, Expr extent, Expr body);
+
+  static const NodeTy node_type = NodeTy::For;
+};
+
+// Block of code.
+struct Block : public ExprNode<Block> {
+  std::vector<Expr> list;
+
+  static Expr make(const std::vector<Expr>& list);
+
+  static const NodeTy node_type = NodeTy::Block;
+};
 
 }  // namespace ir
 }  // namespace cinn
