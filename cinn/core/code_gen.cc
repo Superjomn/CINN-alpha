@@ -33,8 +33,8 @@ void CinnExprFromIslAstExpr(isl_ast_expr* node, ir::Expr* expr) {
         isl_ast_expr_free(expr0);
         ops.push_back(op);
       }
-
-      switch (isl_ast_expr_get_op_type(node)) {
+      isl_ast_op_type op_type = isl_ast_expr_get_op_type(node);
+      switch (op_type) {
         case isl_ast_op_and:
           *expr = ir::And::make(ops[0], ops[1]);
           break;
@@ -47,8 +47,36 @@ void CinnExprFromIslAstExpr(isl_ast_expr* node, ir::Expr* expr) {
         case isl_ast_op_max:
           *expr = ir::Max::make(ops[0], ops[1]);
           break;
+        case isl_ast_op_minus:
+          *expr = ir::Minus::make(ops[0]);
+          break;
+        case isl_ast_op_add:
+          *expr = ir::Add::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_sub:
+          *expr = ir::Sub::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_mul:
+          *expr = ir::Mul::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_div:
+          *expr = ir::Div::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_le:
+          *expr = ir::LE::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_lt:
+          *expr = ir::LT::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_ge:
+          *expr = ir::GE::make(ops[0], ops[1]);
+          break;
+        case isl_ast_op_gt:
+          *expr = ir::GT::make(ops[0], ops[1]);
+          break;
+        default:
+          LOG(FATAL) << "unsupported op " << op_type;
       }
-
     } break;
     default:
       break;
