@@ -1,5 +1,5 @@
-//
-// Created by chunwei on 19-6-9.
-//
+#include "cinn/ir/expr.h"
 
-#include "expr.h"
+namespace cinn {
+namespace ir {}  // namespace ir
+}  // namespace cinn

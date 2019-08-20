@@ -1,28 +1,49 @@
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/ir/expr.h"
+#include "cinn/ir/ir.h"
+#include "ir_visitor.h"
 
 namespace cinn {
 namespace ir {
 
-void IRVisitor::visit(const Stmt*) {}
-
-void IRVisitor::visit(const Add* x) {
-  x->a.Accept(this);
-  x->b.Accept(this);
+void IRVisitor::Visit(const Expr *op) {}
+void IRVisitor::Visit(const Stmt *op) {}
+void IRVisitor::Visit(const Add *op) {
+  CHECK(op->a.valid());
+  CHECK(op->b.valid());
+  op->a.Accept(this);
+  op->b.Accept(this);
 }
 
-void IRVisitor::visit(const Sub* x) {
-  x->a.Accept(this);
-  x->b.Accept(this);
+void IRVisitor::Visit(const Sub *op) {
+  CHECK(op->a.valid());
+  CHECK(op->b.valid());
+  op->a.Accept(this);
+  op->b.Accept(this);
 }
 
-void IRVisitor::visit(const Mul* x) {
-  x->a.Accept(this);
-  x->b.Accept(this);
+void IRVisitor::Visit(const Mul *op) {
+  CHECK(op->a.valid());
+  CHECK(op->b.valid());
+  op->a.Accept(this);
+  op->b.Accept(this);
 }
 
-void IRVisitor::visit(const IntImm* x) {}
-void IRVisitor::visit(const FloatImm* x) {}
+void IRVisitor::Visit(const Div *op) {
+  CHECK(op->a.valid());
+  CHECK(op->b.valid());
+  op->a.Accept(this);
+  op->b.Accept(this);
+}
+
+void IRVisitor::Visit(const IntImm *op) {}
+void IRVisitor::Visit(const FloatImm *op) {}
+void IRVisitor::Visit(const NE *op) {}
+void IRVisitor::Visit(const EQ *op) {}
+
+void IRVisitor::Visit(const Tensor *op) {}
+void IRVisitor::Visit(const Var *op) {}
+void IRVisitor::Visit(const Parameter *op) {}
 
 }  // namespace ir
 }  // namespace cinn
