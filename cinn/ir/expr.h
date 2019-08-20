@@ -31,6 +31,8 @@ enum class NodeTy {
   Min,
   Max,
 
+  Minus,
+
   // Conditional ones
   EQ,
   NE,

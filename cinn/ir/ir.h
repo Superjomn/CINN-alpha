@@ -98,6 +98,8 @@ class Var : public ExprNode<Var> {
   Var(const std::string& name, primitive_t type, Parameter lower_bound, Parameter upper_bound)
       : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {}
 
+  operator Expr();
+
   primitive_t primitive_type() const { return primitive_type_; }
 
   void Accept(IRVisitor* x) const override {}
@@ -229,6 +231,30 @@ struct Mod : public ExprNode<Mod> {
   static const NodeTy node_type = NodeTy::Mod;
 };
 
+struct Min : public ExprNode<Mod> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::Min;
+};
+
+struct Max : public ExprNode<Mod> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::Max;
+};
+
+struct Minus : public ExprNode<Minus> {
+  Expr a;
+
+  static Expr make(Expr a);
+
+  static const NodeTy node_type = NodeTy::Minus;
+};
+
 //-------------------- Logical expressions -------------------------
 struct EQ : public ExprNode<EQ> {
   Expr a, b;
@@ -279,6 +305,22 @@ struct GE : public ExprNode<GE> {
   static const NodeTy node_type = NodeTy::GE;
 };
 
+struct And : public ExprNode<And> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::And;
+};
+
+struct Or : public ExprNode<Or> {
+  Expr a, b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::Or;
+};
+
 struct For : public ExprNode<For> {
   Expr min, extent;
   Expr body;
@@ -292,7 +334,7 @@ struct For : public ExprNode<For> {
 struct Block : public ExprNode<Block> {
   std::vector<Expr> list;
 
-  static Expr make(const std::vector<Expr>& list);
+  static Expr make(std::vector<Expr>&& list);
 
   static const NodeTy node_type = NodeTy::Block;
 };

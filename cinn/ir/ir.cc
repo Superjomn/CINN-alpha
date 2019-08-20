@@ -64,6 +64,31 @@ Expr Sub::make(Expr a, Expr b) {
   return Expr(node);
 }
 
+Expr Min::make(Expr a, Expr b) {
+  CHECK(a.valid());
+  CHECK(b.valid());
+  auto node = std::make_shared<Min>();
+  node->a = std::move(a);
+  node->b = std::move(b);
+  return Expr(node);
+}
+
+Expr Max::make(Expr a, Expr b) {
+  CHECK(a.valid());
+  CHECK(b.valid());
+  auto node = std::make_shared<Max>();
+  node->a = std::move(a);
+  node->b = std::move(b);
+  return Expr(node);
+}
+
+Expr Minus::make(Expr a) {
+  CHECK(a.valid());
+  auto node = std::make_shared<Minus>();
+  node->a = a;
+  return Expr(node);
+}
+
 size_t Var::counter_ = 0;
 
 template <>
@@ -150,12 +175,35 @@ Expr GE::make(Expr a, Expr b) {
 
 std::set<std::string> Var::name_set_;
 
-Expr Block::make(const std::vector<Expr> &list) {
+Expr Block::make(std::vector<Expr> &&list) {
   for (auto &v : list) {
     CHECK(v.valid());
   }
   auto node = std::make_shared<Block>();
-  node->list = list;
+  node->list = std::move(list);
+  return Expr(node);
+}
+
+Expr And::make(Expr a, Expr b) {
+  CHECK(a.valid()) << "Expr a not defined";
+  CHECK(b.valid()) << "Expr b not defined";
+  auto node = std::make_shared<And>();
+  node->a = std::move(a);
+  node->b = std::move(b);
+  return Expr(node);
+}
+
+Expr Or::make(Expr a, Expr b) {
+  CHECK(a.valid()) << "Expr a not defined";
+  CHECK(b.valid()) << "Expr b not defined";
+  auto node = std::make_shared<Or>();
+  node->a = std::move(a);
+  node->b = std::move(b);
+  return Expr(node);
+}
+
+Var::operator Expr() {
+  auto node = std::make_shared<Var>(name_, primitive_type_, interval_.lower_bound(), interval_.upper_bound());
   return Expr(node);
 }
 

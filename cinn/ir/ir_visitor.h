@@ -12,6 +12,8 @@ struct Div;
 struct Mul;
 struct Mod;
 
+struct Minus;
+
 struct NE;
 struct EQ;
 struct LE;
@@ -27,6 +29,12 @@ struct Tensor;
 struct Parameter;
 struct Reference;
 struct Var;
+struct Block;
+struct And;
+struct Or;
+
+struct Min;
+struct Max;
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
@@ -41,6 +49,11 @@ class IRVisitor {
   virtual void Visit(const Div* op);
   virtual void Visit(const Mod* op);
 
+  virtual void Visit(const Minus* op);
+
+  virtual void Visit(const Min* op);
+  virtual void Visit(const Max* op);
+
   virtual void Visit(const NE* op);
   virtual void Visit(const EQ* op);
   virtual void Visit(const For* op);
@@ -48,6 +61,9 @@ class IRVisitor {
   virtual void Visit(const GE* op);
   virtual void Visit(const LT* op);
   virtual void Visit(const LE* op);
+  virtual void Visit(const And* op);
+  virtual void Visit(const Or* op);
+  virtual void Visit(const Block* op);
 
   virtual void Visit(const IntImm* op);
   virtual void Visit(const FloatImm* op);
