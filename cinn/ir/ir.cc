@@ -1,4 +1,6 @@
 #include "cinn/ir/ir.h"
+#include "ir.h"
+
 #include <glog/logging.h>
 #include <memory>
 #include <set>
