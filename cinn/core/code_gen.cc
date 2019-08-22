@@ -29,7 +29,7 @@ void CinnExprFromIslAstExpr(isl_ast_expr* node, ir::Expr* expr) {
       for (int i = 0; i < n_args; i++) {
         ir::Expr op;
         isl_ast_expr* expr0 = isl_ast_expr_get_op_arg(node, 0);
-        ExprFromIslAstExpr(expr0, &op);
+        CinnExprFromIslAstExpr(expr0, &op);
         isl_ast_expr_free(expr0);
         ops.push_back(op);
       }

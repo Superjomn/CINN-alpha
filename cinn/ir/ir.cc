@@ -1,8 +1,9 @@
 #include "cinn/ir/ir.h"
-#include "ir.h"
-
 #include <glog/logging.h>
+#include <memory>
+#include <set>
 #include <utility>
+#include "cinn/utils/macros.h"
 
 namespace cinn {
 namespace ir {
@@ -35,7 +36,7 @@ Expr NE::make(Expr a, Expr b) {
   return Expr(node);
 }
 
-Expr For::make(Expr min, Expr extent, Expr body) {
+Expr For::make(Expr min, Expr extent, Expr body, Var iterator) {
   CHECK(min.valid());
   CHECK(extent.valid());
   CHECK(body.valid());
@@ -43,6 +44,7 @@ Expr For::make(Expr min, Expr extent, Expr body) {
   node->min = std::move(min);
   node->extent = std::move(extent);
   node->body = std::move(body);
+  node->iterator = std::move(iterator);
   return Expr(node);
 }
 
@@ -201,6 +203,20 @@ Expr Or::make(Expr a, Expr b) {
   node->b = std::move(b);
   return Expr(node);
 }
+
+#define OP_2_ARG_ACCEPT(op__)             \
+  void op__::Accept(IRVisitor *x) const { \
+    a.Accept(x);                          \
+    b.Accept(x);                          \
+  }
+
+OP_2_ARGS_FOR_EACH(OP_2_ARG_ACCEPT);
+
+void Minus::Accept(IRVisitor *x) const { a.Accept(x); }
+
+void For::Accept(IRVisitor *x) const { LOG(ERROR) << "get a for"; }
+
+void Block::Accept(IRVisitor *x) const { LOG(ERROR) << "get a block"; }
 
 Var::operator Expr() {
   auto node = std::make_shared<Var>(name_, primitive_type_, interval_.lower_bound(), interval_.upper_bound());

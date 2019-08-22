@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iosfwd>
 namespace cinn {
 namespace ir {
 

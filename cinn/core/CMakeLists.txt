@@ -3,5 +3,7 @@ cc_library(schedule_tree SRCS schedule_tree.cc DEPS ir)
 cc_library(computation SRCS computation.cc DEPS ir)
 cc_library(buffer SRCS buffer.cc DEPS ir)
 cc_library(code_gen SRCS code_gen.cc DEPS ir)
+
 cc_test(test_computation SRCS computation_test.cc DEPS computation)
+cc_test(test_code_gen SRCS code_gen_test.cc DEPS code_gen)
 target_link_libraries(test_computation ${isl_lib})

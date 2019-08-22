@@ -1,5 +1,7 @@
 #pragma once
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "cinn/ir/expr.h"
 #include "cinn/type.h"
@@ -190,6 +192,8 @@ struct Add : public ExprNode<Add> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Add;
 };
 
@@ -199,10 +203,7 @@ struct Sub : public ExprNode<Sub> {
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {
-    a.Accept(x);
-    b.Accept(x);
-  }
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Sub;
 };
@@ -212,6 +213,8 @@ struct Mul : public ExprNode<Mul> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Mul;
 };
 
@@ -219,6 +222,8 @@ struct Div : public ExprNode<Div> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Div;
 };
@@ -228,6 +233,8 @@ struct Mod : public ExprNode<Mod> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Mod;
 };
 
@@ -235,6 +242,8 @@ struct Min : public ExprNode<Mod> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Min;
 };
@@ -244,6 +253,8 @@ struct Max : public ExprNode<Mod> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Max;
 };
 
@@ -251,6 +262,8 @@ struct Minus : public ExprNode<Minus> {
   Expr a;
 
   static Expr make(Expr a);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Minus;
 };
@@ -261,6 +274,8 @@ struct EQ : public ExprNode<EQ> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::EQ;
 };
 
@@ -270,6 +285,8 @@ struct NE : public ExprNode<NE> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::NE;
 };
 
@@ -277,6 +294,8 @@ struct LE : public ExprNode<LE> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::LE;
 };
@@ -286,6 +305,8 @@ struct LT : public ExprNode<LT> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::LT;
 };
 
@@ -293,6 +314,8 @@ struct GT : public ExprNode<GT> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::GT;
 };
@@ -302,6 +325,8 @@ struct GE : public ExprNode<GE> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::GE;
 };
 
@@ -309,6 +334,8 @@ struct And : public ExprNode<And> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::And;
 };
@@ -318,14 +345,19 @@ struct Or : public ExprNode<Or> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Or;
 };
 
 struct For : public ExprNode<For> {
   Expr min, extent;
   Expr body;
+  Var iterator;
 
-  static Expr make(Expr min, Expr extent, Expr body);
+  static Expr make(Expr min, Expr extent, Expr body, Var iterator);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::For;
 };
@@ -335,6 +367,8 @@ struct Block : public ExprNode<Block> {
   std::vector<Expr> list;
 
   static Expr make(std::vector<Expr>&& list);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Block;
 };
