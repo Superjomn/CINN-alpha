@@ -25,5 +25,34 @@ TEST(IRPrinter, basic) {
   LOG(INFO) << "log: " << log;
 }
 
+TEST(IRPrinter, test1) {
+  Expr a((float)0.1);
+  Expr b((int)3);
+  auto c = a > b;
+
+  std::stringstream os;
+  IRPrinter printer(os);
+  printer.Visit(&c);
+  auto log = os.str();
+  LOG(INFO) << log;
+  ASSERT_EQ(log, "(0.1 > 3)");
+}
+
+TEST(IRPrinter, block) {
+    Expr a((float)0.1), b((int)1);
+    Expr c = a>b;
+    Expr c0 = a != b;
+    Expr c1 = a + b;
+
+    auto block = Block::make(std::vector<Expr>({c,c0,c1}));
+
+    std::stringstream os;
+    IRPrinter printer(os);
+    printer.Print(block);
+
+    auto log = os.str();
+    LOG(INFO) << log;
+}
+
 }  // namespace ir
 }  // namespace cinn

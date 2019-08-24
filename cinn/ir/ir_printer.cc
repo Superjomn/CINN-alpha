@@ -1,5 +1,6 @@
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir.h"
+#include "cinn/utils/macros.h"
 
 namespace cinn {
 namespace ir {
@@ -35,9 +36,35 @@ void IRPrinter::Visit(const Div *op) {
 void IRPrinter::Visit(const IntImm *op) { os_ << op->val(); }
 void IRPrinter::Visit(const FloatImm *op) { os_ << op->val(); }
 
-void IRPrinter::Visit(const Expr *op) { op->Accept(this); }
+void IRPrinter::Visit(const Expr *op) {
+  switch (op->type()) {
+#define FOR_NODE(op__)     \
+  case NodeTy::op__:       \
+    Visit(op->As<op__>()); \
+    break;
 
-void IRPrinter::Print(Expr op) { op.Accept(this); }
+    OP_1_ARGS_FOR_EACH(FOR_NODE);
+    OP_2_ARGS_FOR_EACH(FOR_NODE);
+
+    case NodeTy::Int:
+      Visit(op->As<IntImm>());
+      break;
+    case NodeTy::Float:
+      Visit(op->As<FloatImm>());
+      break;
+    case NodeTy::Block: {
+      indent_size_++;
+      Visit(op->As<Block>());
+      indent_size_--;
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unsupported NodeTy " << static_cast<int>(op->type());
+  }
+#undef FOR_NODE
+}
+
+void IRPrinter::Print(Expr op) { Visit(&op); }
 
 void IRPrinter::Visit(const Mod *op) {
   os_ << "(";
@@ -142,7 +169,15 @@ void IRPrinter::Visit(const For *op) {
   Print(op->min);
 }
 
-void IRPrinter::Visit(const Block *op) { IRVisitor::Visit(op); }
+void IRPrinter::Visit(const Block *op) {
+  os_ << "{\n";
+  for (auto expr : op->list) {
+    os_ << std::string(indent_block_ * indent_size_, ' ');
+    Print(expr);
+    os_ << ";\n";
+  }
+  os_ << "}\n";
+}
 void IRPrinter::Visit(const Parameter *op) { IRVisitor::Visit(op); }
 void IRPrinter::Visit(const Var *op) { IRVisitor::Visit(op); }
 void IRPrinter::Visit(const Reference *op) { IRVisitor::Visit(op); }

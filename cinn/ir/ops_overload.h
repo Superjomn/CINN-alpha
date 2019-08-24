@@ -51,6 +51,10 @@ template <typename T>
 inline Expr operator==(Expr a, T b) {
   return EQ::make(a, Expr(b));
 }
+template <typename T>
+inline Expr operator!=(Expr a, T b) {
+  return NE::make(a, Expr(b));
+}
 
 inline Expr operator-(Expr a, Expr b) { return Sub::make(a, b); }
 inline Expr operator*(Expr a, Expr b) { return Mul::make(a, b); }

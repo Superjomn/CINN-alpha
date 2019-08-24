@@ -13,14 +13,15 @@ struct Stmt;
 
 class IRPrinter : public IRVisitor {
   std::ostream &os_;
+  const int indent_block_;
+  int indent_size_{0};
 
  public:
-  IRPrinter(std::ostream &os) : os_(os) {}
+  IRPrinter(std::ostream &os, int indent_num=4) : os_(os), indent_block_(indent_num) {}
 
   void Print(Expr);
 
   void Visit(const Expr *op) override;
-  void Visit(const Stmt *op) override;
   void Visit(const Add *op) override;
   void Visit(const Sub *op) override;
   void Visit(const Mul *op) override;
