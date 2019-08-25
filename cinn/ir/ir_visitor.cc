@@ -39,6 +39,7 @@ void IRVisitor::Visit(const Var *op) {}
 void IRVisitor::Visit(const Parameter *op) {}
 void IRVisitor::Visit(const For *op) {}
 void IRVisitor::Visit(const Block *op) {}
+void IRVisitor::Visit(const IfThenElse *op) {}
 
 }  // namespace ir
 }  // namespace cinn

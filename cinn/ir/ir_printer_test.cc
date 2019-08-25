@@ -39,19 +39,42 @@ TEST(IRPrinter, test1) {
 }
 
 TEST(IRPrinter, block) {
-    Expr a((float)0.1), b((int)1);
-    Expr c = a>b;
-    Expr c0 = a != b;
-    Expr c1 = a + b;
+  Expr a((float)0.1), b((int)1);
+  Expr c = a > b;
+  Expr c0 = a != b;
+  Expr c1 = a + b;
 
-    auto block = Block::make(std::vector<Expr>({c,c0,c1}));
+  auto block = Block::make(std::vector<Expr>({c, c0, c1}));
 
-    std::stringstream os;
-    IRPrinter printer(os);
-    printer.Print(block);
+  std::stringstream os;
+  IRPrinter printer(os);
+  printer.Print(block);
 
-    auto log = os.str();
-    LOG(INFO) << log;
+  auto log = os.str();
+  LOG(INFO) << log;
+}
+
+TEST(IRPrinter, IfThenElse) {
+  Expr a(0.1f);
+  Expr b(0.2f);
+
+  Expr x(100.f);
+  Expr y(20.f);
+
+  auto true_block = Block::make({x + y});
+  auto false_block = Block::make({x - y});
+
+  auto if_then_else = IfThenElse::make(a > b,  // condition
+                                       true_block,
+                                       false_block);
+
+  std::stringstream os;
+  IRPrinter printer(os);
+  printer.Print(if_then_else);
+
+  auto log = os.str();
+
+  LOG(INFO) << "log:\n" << log;
 }
 
 }  // namespace ir

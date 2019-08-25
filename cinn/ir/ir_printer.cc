@@ -1,6 +1,7 @@
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
+#include "ir_printer.h"
 
 namespace cinn {
 namespace ir {
@@ -58,6 +59,9 @@ void IRPrinter::Visit(const Expr *op) {
       indent_size_--;
       break;
     }
+    case NodeTy::IfThenElse:
+      Visit(op->As<IfThenElse>());
+      break;
     default:
       LOG(FATAL) << "Unsupported NodeTy " << static_cast<int>(op->type());
   }
@@ -65,6 +69,8 @@ void IRPrinter::Visit(const Expr *op) {
 }
 
 void IRPrinter::Print(Expr op) { Visit(&op); }
+void IRPrinter::Print(Block op) { Visit(&op); }
+void IRPrinter::Print(const std::string &x) { os_ << x; }
 
 void IRPrinter::Visit(const Mod *op) {
   os_ << "(";
@@ -167,6 +173,15 @@ void IRPrinter::Visit(const For *op) {
   LOG(FATAL) << "not supported";
   os_ << "for(";
   Print(op->min);
+}
+
+void IRPrinter::Visit(const IfThenElse *op) {
+  Print("if(");
+  Print(op->condition);
+  Print(")");
+  Print(op->true_block);
+  Print("else");
+  Print(op->false_block);
 }
 
 void IRPrinter::Visit(const Block *op) {

@@ -22,6 +22,7 @@ struct LT;
 struct GT;
 struct GE;
 struct For;
+struct IfThenElse;
 
 struct IntImm;
 struct FloatImm;
@@ -58,6 +59,7 @@ class IRVisitor {
   virtual void Visit(const NE* op);
   virtual void Visit(const EQ* op);
   virtual void Visit(const For* op);
+  virtual void Visit(const IfThenElse* op);
   virtual void Visit(const GT* op);
   virtual void Visit(const GE* op);
   virtual void Visit(const LT* op);

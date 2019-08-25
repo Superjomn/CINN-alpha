@@ -62,7 +62,7 @@ Expr Mod::make(Expr a, Expr b) {
 Expr Sub::make(Expr a, Expr b) {
   CHECK(a.valid());
   CHECK(b.valid());
-  auto node = std::make_shared<Mod>();
+  auto node = std::make_shared<Sub>();
   node->a = std::move(a);
   node->b = std::move(b);
   return Expr(node);
@@ -204,6 +204,19 @@ Expr Or::make(Expr a, Expr b) {
   node->a = std::move(a);
   node->b = std::move(b);
   return Expr(node);
+}
+
+Expr IfThenElse::make(Expr condition, Expr true_block, Expr false_block) {
+  auto node = std::make_shared<IfThenElse>();
+  node->condition = condition;
+  node->true_block = true_block;
+  node->false_block = false_block;
+  return Expr(node);
+}
+void IfThenElse::Accept(IRVisitor *x) const {
+  condition.Accept(x);
+  true_block.Accept(x);
+  false_block.Accept(x);
 }
 
 #define OP_2_ARG_ACCEPT(op__)             \

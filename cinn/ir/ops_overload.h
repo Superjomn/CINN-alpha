@@ -9,7 +9,6 @@
 namespace cinn {
 namespace ir {
 
-inline Expr operator+(Expr a, Expr b) { return Add::make(a, b); }
 template <typename T>
 inline Expr operator+(Expr a, T b) {
   return Add::make(a, Expr(b));
@@ -28,6 +27,7 @@ inline Expr operator/(Expr a, T b) {
 }
 template <typename T>
 inline Expr operator%(Expr a, T b) {
+  LOG(INFO) << "get a mod%";
   return Mod::make(a, Expr(b));
 }
 
@@ -55,11 +55,6 @@ template <typename T>
 inline Expr operator!=(Expr a, T b) {
   return NE::make(a, Expr(b));
 }
-
-inline Expr operator-(Expr a, Expr b) { return Sub::make(a, b); }
-inline Expr operator*(Expr a, Expr b) { return Mul::make(a, b); }
-inline Expr operator/(Expr a, Expr b) { return Div::make(a, b); }
-inline Expr operator%(Expr a, Expr b) { return Mod::make(a, b); }
 
 }  // namespace ir
 }  // namespace cinn

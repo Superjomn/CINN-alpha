@@ -44,6 +44,7 @@ enum class NodeTy {
   Or,
   Not,
   For,
+  IfThenElse,
 
   Block,
 

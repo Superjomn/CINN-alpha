@@ -17,9 +17,11 @@ class IRPrinter : public IRVisitor {
   int indent_size_{0};
 
  public:
-  IRPrinter(std::ostream &os, int indent_num=4) : os_(os), indent_block_(indent_num) {}
+  IRPrinter(std::ostream &os, int indent_num = 4) : os_(os), indent_block_(indent_num) {}
 
   void Print(Expr);
+  void Print(Block);
+  void Print(const std::string &);
 
   void Visit(const Expr *op) override;
   void Visit(const Add *op) override;
@@ -33,6 +35,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const NE *op) override;
   void Visit(const EQ *op) override;
   void Visit(const For *op) override;
+  void Visit(const IfThenElse *op) override;
   void Visit(const GT *op) override;
   void Visit(const GE *op) override;
   void Visit(const LT *op) override;

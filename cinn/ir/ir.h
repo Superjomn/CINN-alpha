@@ -350,6 +350,29 @@ struct Or : public ExprNode<Or> {
   static const NodeTy node_type = NodeTy::Or;
 };
 
+// Block of code.
+struct Block : public ExprNode<Block> {
+  std::vector<Expr> list;
+
+  static Expr make(std::vector<Expr>&& list);
+
+  void Accept(IRVisitor* x) const override;
+
+  static const NodeTy node_type = NodeTy::Block;
+};
+
+struct IfThenElse : public ExprNode<IfThenElse> {
+  Expr condition;
+  Expr true_block;
+  Expr false_block;
+
+  static Expr make(Expr condition, Expr true_block, Expr false_block);
+
+  void Accept(IRVisitor* x) const override;
+
+  static const NodeTy node_type = NodeTy::IfThenElse;
+};
+
 struct For : public ExprNode<For> {
   Expr min, extent;
   Expr body;
@@ -360,17 +383,6 @@ struct For : public ExprNode<For> {
   void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::For;
-};
-
-// Block of code.
-struct Block : public ExprNode<Block> {
-  std::vector<Expr> list;
-
-  static Expr make(std::vector<Expr>&& list);
-
-  void Accept(IRVisitor* x) const override;
-
-  static const NodeTy node_type = NodeTy::Block;
 };
 
 }  // namespace ir
