@@ -106,8 +106,13 @@ class Var : public ExprNode<Var> {
 
   void Accept(IRVisitor* x) const override {}
 
+  const std::string& name() const { return name_; }
+
+  static const NodeTy node_type = NodeTy::Var;
+
+ private:
   static bool check_set_name(const std::string& name) {
-    if (name_set_.count(name)) {
+    if (!name_set_.count(name)) {
       name_set_.insert(name);
       return true;
     }
@@ -118,8 +123,6 @@ class Var : public ExprNode<Var> {
     name_ = "var" + std::to_string(inc_counter());
     CHECK(check_set_name(name_));
   }
-
-  static const NodeTy node_type = NodeTy::Var;
 
   static size_t inc_counter() { return counter_++; }
 };

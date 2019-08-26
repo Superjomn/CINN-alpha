@@ -59,6 +59,9 @@ void IRPrinter::Visit(const Expr *op) {
       indent_size_--;
       break;
     }
+    case NodeTy::For:
+      Visit(op->As<For>());
+      break;
     case NodeTy::IfThenElse:
       Visit(op->As<IfThenElse>());
       break;
@@ -69,6 +72,7 @@ void IRPrinter::Visit(const Expr *op) {
 }
 
 void IRPrinter::Print(Expr op) { Visit(&op); }
+void IRPrinter::Print(Var op) { os_ << op.name(); }
 void IRPrinter::Print(Block op) { Visit(&op); }
 void IRPrinter::Print(const std::string &x) { os_ << x; }
 
@@ -170,9 +174,14 @@ void IRPrinter::Visit(const Or *op) {
 void IRPrinter::Visit(const Tensor *op) { os_ << "tensor<>"; }
 
 void IRPrinter::Visit(const For *op) {
-  LOG(FATAL) << "not supported";
   os_ << "for(";
+  Print(op->iterator);
+  os_ << ", ";
   Print(op->min);
+  Print(", ");
+  Print(op->extent);
+  os_ << ")";
+  Print(op->body);
 }
 
 void IRPrinter::Visit(const IfThenElse *op) {

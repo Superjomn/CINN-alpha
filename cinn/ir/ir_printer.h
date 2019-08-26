@@ -21,6 +21,7 @@ class IRPrinter : public IRVisitor {
 
   void Print(Expr);
   void Print(Block);
+  void Print(Var);
   void Print(const std::string &);
 
   void Visit(const Expr *op) override;

@@ -77,5 +77,25 @@ TEST(IRPrinter, IfThenElse) {
   LOG(INFO) << "log:\n" << log;
 }
 
+TEST(IRPrinter, For) {
+  Expr min(0);
+  Expr extent(10);
+
+  Expr x(100.f);
+  Expr y(10.f);
+  Expr body = Block::make({x + y});
+
+  Var i("i");
+
+  Expr for_ = For::make(min, extent, body, i);
+
+  std::stringstream os;
+  IRPrinter printer(os);
+  printer.Print(for_);
+  auto log = os.str();
+
+  LOG(INFO) << "log:\n" << log;
+}
+
 }  // namespace ir
 }  // namespace cinn
