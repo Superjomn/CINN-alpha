@@ -37,6 +37,7 @@ struct Or;
 
 struct Min;
 struct Max;
+struct Call;
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
@@ -75,6 +76,7 @@ class IRVisitor {
   virtual void Visit(const Parameter* op);
   virtual void Visit(const Var* op);
   virtual void Visit(const Reference* op) {}
+  virtual void Visit(const Call* op) {}
 };
 
 }  // namespace ir

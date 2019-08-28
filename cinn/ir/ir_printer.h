@@ -11,6 +11,9 @@ namespace ir {
 struct Expr;
 struct Stmt;
 
+// Dump a human-readable string from an Expr.
+std::string Dump(const ir::Expr &expr);
+
 class IRPrinter : public IRVisitor {
   std::ostream &os_;
   const int indent_block_;
@@ -50,6 +53,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const Parameter *op) override;
   void Visit(const Var *op) override;
   void Visit(const Reference *op) override;
+  void Visit(const Call *op) override;
 
   virtual ~IRPrinter() = default;
 };

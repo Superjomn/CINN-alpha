@@ -369,6 +369,9 @@ struct IfThenElse : public ExprNode<IfThenElse> {
   Expr true_block;
   Expr false_block;
 
+  // Only has the true condition.
+  static Expr make(Expr condition, Expr true_block);
+  // Has both the true and false condition.
   static Expr make(Expr condition, Expr true_block, Expr false_block);
 
   void Accept(IRVisitor* x) const override;
@@ -386,6 +389,15 @@ struct For : public ExprNode<For> {
   void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::For;
+};
+
+struct Call : public ExprNode<Call> {
+  std::vector<Expr> arguments;
+  std::string caller;
+
+  static Expr make(const std::string &caller, std::vector<Expr> arguments);
+
+  static const NodeTy node_type = NodeTy::Call;
 };
 
 }  // namespace ir

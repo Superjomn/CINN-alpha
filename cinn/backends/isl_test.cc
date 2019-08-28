@@ -361,6 +361,12 @@ TEST(isl, code_gen) {
   LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
 }
 
+TEST(isl, hull) {
+    isl_ctx* ctx = isl_ctx_alloc();
+    isl_set* set = isl_set_read_from_str(ctx, "[N] -> { A[i] : 0 < i < N }");
+    LOG(INFO) << "hull: " << isl_set_to_str(isl_set_from_basic_set(isl_set_affine_hull(set)));
+}
+
 /*
  *
   isl_ast_node_for = 1,

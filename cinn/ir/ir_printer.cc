@@ -6,6 +6,13 @@
 namespace cinn {
 namespace ir {
 
+std::string Dump(const ir::Expr &expr) {
+  std::stringstream os;
+  IRPrinter printer(os);
+  printer.Print(expr);
+  return os.str();
+}
+
 void IRPrinter::Visit(const Add *op) {
   os_ << "(";
   Print(op->a);
@@ -54,9 +61,7 @@ void IRPrinter::Visit(const Expr *op) {
       Visit(op->As<FloatImm>());
       break;
     case NodeTy::Block: {
-      indent_size_++;
       Visit(op->As<Block>());
-      indent_size_--;
       break;
     }
     case NodeTy::For:
@@ -64,6 +69,12 @@ void IRPrinter::Visit(const Expr *op) {
       break;
     case NodeTy::IfThenElse:
       Visit(op->As<IfThenElse>());
+      break;
+    case NodeTy::Var:
+      Visit(op->As<Var>());
+      break;
+    case NodeTy::Call:
+      Visit(op->As<Call>());
       break;
     default:
       LOG(FATAL) << "Unsupported NodeTy " << static_cast<int>(op->type());
@@ -196,17 +207,32 @@ void IRPrinter::Visit(const IfThenElse *op) {
 }
 
 void IRPrinter::Visit(const Block *op) {
-  os_ << "{\n";
+  int current_indent = indent_size_;
+  indent_size_++;
+  os_ << "\n" << std::string(indent_block_ * current_indent, ' ') << "{\n";
   for (auto expr : op->list) {
-    os_ << std::string(indent_block_ * indent_size_, ' ');
+    os_ << std::string(indent_block_ * (current_indent + 1), ' ');
     Print(expr);
     os_ << ";\n";
   }
-  os_ << "}\n";
+  os_ << std::string(indent_block_ * current_indent, ' ') << "}\n";
+  indent_size_--;
 }
 void IRPrinter::Visit(const Parameter *op) { IRVisitor::Visit(op); }
-void IRPrinter::Visit(const Var *op) { IRVisitor::Visit(op); }
+void IRPrinter::Visit(const Var *op) { Print(*op); }
 void IRPrinter::Visit(const Reference *op) { IRVisitor::Visit(op); }
+void IRPrinter::Visit(const Call *op) {
+  os_ << op->caller;
+  os_ << "(";
+  for (int i = 0; i < op->arguments.size() - 1; i++) {
+    Print(op->arguments[i]);
+    os_ << ",";
+  }
+  if (op->arguments.size() > 1) {
+    Print(op->arguments.back());
+  }
+  os_ << ")";
+}
 
 }  // namespace ir
 }  // namespace cinn

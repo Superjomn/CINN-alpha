@@ -7,6 +7,7 @@
 #include <isl/map.h>
 #include <isl/set.h>
 #include <isl/union_set.h>
+#include "cinn/ir/ir_printer.h"
 
 namespace cinn {
 
@@ -22,10 +23,25 @@ TEST(code_gen, CinnExprFromIslAstExpr) {
 
   isl_ast_expr *iter = isl_ast_node_for_get_iterator(ast);
 
+  // ISL print C code
+  isl_printer *p = isl_printer_to_str(ctx);
+  isl_printer_set_output_format(p, 0);
+  isl_printer_print_ast_node(p, ast);
+  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
+
   ir::Expr expr;
   CinnExprFromIslAstExpr(iter, &expr);
 
   LOG(INFO) << "Get node type " << static_cast<int>(expr.type());
+
+  std::stringstream os;
+  ir::IRPrinter printer(os);
+
+  ir::Expr for_expr;
+  WalkIslAst(ast, &for_expr);
+
+  printer.Print(for_expr);
+  LOG(INFO) << "\n" << os.str();
 }
 
 }  // namespace cinn
