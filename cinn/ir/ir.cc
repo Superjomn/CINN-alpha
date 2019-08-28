@@ -38,13 +38,15 @@ Expr NE::make(Expr a, Expr b) {
   return Expr(node);
 }
 
-Expr For::make(Expr min, Expr extent, Expr body, Var iterator) {
-  CHECK(min.valid());
-  CHECK(extent.valid());
+Expr For::make(Expr iter_init, Expr iter_cond, Expr iter_inc, Expr body, Var iterator) {
+  CHECK(iter_inc.valid());
+  CHECK(iter_cond.valid());
+  CHECK(iter_inc.valid());
   CHECK(body.valid());
   auto node = std::make_shared<For>();
-  node->min = std::move(min);
-  node->extent = std::move(extent);
+  node->iter_init = std::move(iter_init);
+  node->iter_cond = std::move(iter_cond);
+  node->iter_inc = std::move(iter_inc);
   node->body = std::move(body);
   node->iterator = std::move(iterator);
   return Expr(node);

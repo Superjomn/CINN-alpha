@@ -377,11 +377,11 @@ struct IfThenElse : public ExprNode<IfThenElse> {
 };
 
 struct For : public ExprNode<For> {
-  Expr min, extent;
+  Expr iter_init, iter_cond, iter_inc;
   Expr body;
   Var iterator;
 
-  static Expr make(Expr min, Expr extent, Expr body, Var iterator);
+  static Expr make(Expr iter_init, Expr iter_cond, Expr iter_inc, Expr body, Var iterator);
 
   void Accept(IRVisitor* x) const override;
 

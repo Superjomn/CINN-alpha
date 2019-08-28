@@ -177,9 +177,11 @@ void IRPrinter::Visit(const For *op) {
   os_ << "for(";
   Print(op->iterator);
   os_ << ", ";
-  Print(op->min);
+  Print(op->iter_init);
   Print(", ");
-  Print(op->extent);
+  Print(op->iter_cond);
+  Print(", ");
+  Print(op->iter_inc);
   os_ << ")";
   Print(op->body);
 }

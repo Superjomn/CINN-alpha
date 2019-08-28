@@ -87,7 +87,7 @@ TEST(IRPrinter, For) {
 
   Var i("i");
 
-  Expr for_ = For::make(min, extent, body, i);
+  Expr for_ = For::make(min, extent, extent, body, i);
 
   std::stringstream os;
   IRPrinter printer(os);
