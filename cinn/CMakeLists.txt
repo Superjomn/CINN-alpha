@@ -45,7 +45,7 @@ cc_library(type SRCS type.cc)
 cc_library(target SRCS target.cc)
 cc_library(module SRCS module.cc)
 
+add_subdirectory(backends)
 add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(core)
-add_subdirectory(backends)

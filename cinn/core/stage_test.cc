@@ -1,11 +1,11 @@
-#include "cinn/core/computation.h"
+#include "cinn/core/stage.h"
 #include <gtest/gtest.h>
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
 
 TEST(computation, Construct) {
-  Computation comp("comp1", "[T,N]->{S[t,i]: 0 <= t < T and 1 <=i < N}");
+  Stage comp("comp1", "[T,N]->{S[t,i]: 0 <= t < T and 1 <=i < N}");
   comp.ApplyTransformationOnScheduleRange("[T,N] -> {S[o0,t', o2,i'] -> S[o0,t'+10,o2,i'] }");
   LOG(INFO) << comp.Dump();
 

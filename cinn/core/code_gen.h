@@ -5,10 +5,12 @@
 
 namespace cinn {
 
-void ExprFromIslAstExpr(isl_ast_expr* node, ir::Expr* expr);
+// Transform ISL AST expr to CINN expression.
+void IslAstExprToCinnExpr(isl_ast_expr *node, ir::Expr *expr);
 
-void WalkIslAst(isl_ast_node* node, cinn::ir::Expr* expr);
+// Transform ISL AST node to CINN expression.
+void IslAstNodeToCinnExpr(isl_ast_node *node, cinn::ir::Expr *expr);
 
-void GenCodeFromIslAst(isl_ast_node* node) {}
+void GenCodeFromIslAst(isl_ast_node *node);
 
 }  // namespace cinn

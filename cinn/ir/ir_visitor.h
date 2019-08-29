@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iosfwd>
 namespace cinn {
 namespace ir {
 
@@ -21,6 +22,7 @@ struct LT;
 struct GT;
 struct GE;
 struct For;
+struct IfThenElse;
 
 struct IntImm;
 struct FloatImm;
@@ -35,6 +37,8 @@ struct Or;
 
 struct Min;
 struct Max;
+struct Call;
+struct Assign;
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
@@ -57,6 +61,7 @@ class IRVisitor {
   virtual void Visit(const NE* op);
   virtual void Visit(const EQ* op);
   virtual void Visit(const For* op);
+  virtual void Visit(const IfThenElse* op);
   virtual void Visit(const GT* op);
   virtual void Visit(const GE* op);
   virtual void Visit(const LT* op);
@@ -72,6 +77,8 @@ class IRVisitor {
   virtual void Visit(const Parameter* op);
   virtual void Visit(const Var* op);
   virtual void Visit(const Reference* op) {}
+  virtual void Visit(const Call* op) {}
+  virtual void Visit(const Assign* op) {}
 };
 
 }  // namespace ir

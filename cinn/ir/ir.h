@@ -1,5 +1,7 @@
 #pragma once
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "cinn/ir/expr.h"
 #include "cinn/type.h"
@@ -104,8 +106,13 @@ class Var : public ExprNode<Var> {
 
   void Accept(IRVisitor* x) const override {}
 
+  const std::string& name() const { return name_; }
+
+  static const NodeTy node_type = NodeTy::Var;
+
+ private:
   static bool check_set_name(const std::string& name) {
-    if (name_set_.count(name)) {
+    if (!name_set_.count(name)) {
       name_set_.insert(name);
       return true;
     }
@@ -117,11 +124,12 @@ class Var : public ExprNode<Var> {
     CHECK(check_set_name(name_));
   }
 
-  static const NodeTy node_type = NodeTy::Var;
-
   static size_t inc_counter() { return counter_++; }
 };
 
+/**
+ * Expr is a basic concept of CINN, everything in the IR is an Expr.
+ */
 class Expr : public IRHandle {
   std::vector<Var> iterators_;
 
@@ -134,35 +142,75 @@ class Expr : public IRHandle {
   // reference
   Expr(const std::vector<Var>& its) : iterators_(its) {}
 
+  //! Create an int32 Expr.
   explicit Expr(int32_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 32), x); }
+  //! Create an int64 Expr.
   explicit Expr(int64_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 64), x); }
+  //! Create an float Expr.
   explicit Expr(float x) { ptr_ = FloatImm::make(Type(type_code_t::Float, 32), x); }
+
+  /**
+   * Element assignment.
+   *
+   * Usage:
+   *
+   *     Expr A, B, C;
+   *     Var i("i", {0, M}), j("j", {0, N});
+   *     A(i,j) = B(i,j) + C(i,j) * 2;
+   *
+   * Will get ISL map:
+   *
+   * - domain: `[M, N] -> { 0 <= i < M and j : 0 <= j < N }`
+   * - statement: `A[i,j] = B[i,j] + C[i,j] * 2`
+   *
+   * @param iters list of iterators.
+   * @return Expr.
+   */
+  Expr operator()(std::vector<Expr> iters);
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
 
-  void operator=(const Expr& other) { ptr_ = other.ptr_; }
+  /**
+   * Assign an Expr from other or create an ir::Assign node representing the assignment of an ir::Reference node.
+   *
+   * It has two cases:
+   *
+   * 1. Expr assign, e.g. `Expr C = A`.
+   * 2. Reference assignment, e.g. `C(i,j) = A(i,j) + 1`.
+   */
+  Expr operator=(const Expr& other);
 
-  // Check whether this Expr is valid for use.
+  //! Check whether this Expr is valid for use.
   bool valid() const { return ptr_.get(); }
 };
 
-class Reference : public ExprNodeBase<Reference> {
-  std::vector<Var> iters_;
+/**
+ * Reference is the reference of an element of an Expr.
+ *
+ * For example:
+ *
+ *     Expr A;
+ *     Var i("i", {0, N});
+ *     Var j("i", {0, N});
+ *     // Get a reference of A[i,j]
+ *     Expr C = A(i, j); // Now C is a Reference.
+ */
+struct Reference : public ExprNode<Reference> {
+  //! the reference target.
+  Expr target;
+  //! the iterators of the element.
+  std::vector<Var> iterators;
 
- public:
   Reference() = default;
 
   void Accept(IRVisitor* x) const override { x->Visit(this); }
   static const NodeTy node_type = NodeTy::Reference;
 
-  static std::shared_ptr<IRNode> make(const std::vector<Var>& iters) {
-    auto x = std::make_shared<Reference>();
-    x->iters_ = iters;
-    return x;
-  }
+  //! Create a Reference Expr.
+  Expr make(Expr expr, const std::vector<Var>& iters);
 };
 
-/*
+/**
  * Tensor is a placeholder for the inputs of the whole program.
  */
 class Tensor : public ExprNode<Tensor> {
@@ -174,10 +222,12 @@ class Tensor : public ExprNode<Tensor> {
   Tensor(const std::string& name, primitive_t type, const std::vector<Parameter>& dims)
       : name_(name), type_(type), dims_(dims) {}
 
-  Expr operator()(Var i) { return Reference::make({i}); }
-  Expr operator()(Var i, Var j) { return Reference::make({i, j}); }
-  Expr operator()(Var i, Var j, Var z) { return Reference::make({i, j, z}); }
-  Expr operator()(Var i, Var j, Var z, Var k) { return Reference::make({i, j, z, k}); }
+  /*
+Expr operator()(Var i) { return Reference::make(Expr(), {i}); }
+Expr operator()(Var i, Var j) { return Reference::make(Expr(), {i, j}); }
+Expr operator()(Var i, Var j, Var z) { return Reference::make(Expr(), {i, j, z}); }
+Expr operator()(Var i, Var j, Var z, Var k) { return Reference::make(Expr(), {i, j, z, k}); }
+   */
 
   void Accept(IRVisitor* x) const override {}
 
@@ -190,6 +240,8 @@ struct Add : public ExprNode<Add> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Add;
 };
 
@@ -199,10 +251,7 @@ struct Sub : public ExprNode<Sub> {
 
   static Expr make(Expr a, Expr b);
 
-  void Accept(IRVisitor* x) const override {
-    a.Accept(x);
-    b.Accept(x);
-  }
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Sub;
 };
@@ -212,6 +261,8 @@ struct Mul : public ExprNode<Mul> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Mul;
 };
 
@@ -219,6 +270,8 @@ struct Div : public ExprNode<Div> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Div;
 };
@@ -228,6 +281,8 @@ struct Mod : public ExprNode<Mod> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Mod;
 };
 
@@ -235,6 +290,8 @@ struct Min : public ExprNode<Mod> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Min;
 };
@@ -244,6 +301,8 @@ struct Max : public ExprNode<Mod> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Max;
 };
 
@@ -251,6 +310,8 @@ struct Minus : public ExprNode<Minus> {
   Expr a;
 
   static Expr make(Expr a);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Minus;
 };
@@ -261,6 +322,8 @@ struct EQ : public ExprNode<EQ> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::EQ;
 };
 
@@ -270,6 +333,8 @@ struct NE : public ExprNode<NE> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::NE;
 };
 
@@ -277,6 +342,8 @@ struct LE : public ExprNode<LE> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::LE;
 };
@@ -286,6 +353,8 @@ struct LT : public ExprNode<LT> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::LT;
 };
 
@@ -293,6 +362,8 @@ struct GT : public ExprNode<GT> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::GT;
 };
@@ -302,6 +373,8 @@ struct GE : public ExprNode<GE> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::GE;
 };
 
@@ -309,6 +382,8 @@ struct And : public ExprNode<And> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::And;
 };
@@ -318,16 +393,9 @@ struct Or : public ExprNode<Or> {
 
   static Expr make(Expr a, Expr b);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Or;
-};
-
-struct For : public ExprNode<For> {
-  Expr min, extent;
-  Expr body;
-
-  static Expr make(Expr min, Expr extent, Expr body);
-
-  static const NodeTy node_type = NodeTy::For;
 };
 
 // Block of code.
@@ -336,7 +404,54 @@ struct Block : public ExprNode<Block> {
 
   static Expr make(std::vector<Expr>&& list);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Block;
+};
+
+struct IfThenElse : public ExprNode<IfThenElse> {
+  Expr condition;
+  Expr true_block;
+  Expr false_block;
+
+  // Only has the true condition.
+  static Expr make(Expr condition, Expr true_block);
+  // Has both the true and false condition.
+  static Expr make(Expr condition, Expr true_block, Expr false_block);
+
+  void Accept(IRVisitor* x) const override;
+
+  static const NodeTy node_type = NodeTy::IfThenElse;
+};
+
+struct For : public ExprNode<For> {
+  Expr iter_init, iter_cond, iter_inc;
+  Expr body;
+  Var iterator;
+
+  static Expr make(Expr iter_init, Expr iter_cond, Expr iter_inc, Expr body, Var iterator);
+
+  void Accept(IRVisitor* x) const override;
+
+  static const NodeTy node_type = NodeTy::For;
+};
+
+struct Call : public ExprNode<Call> {
+  std::vector<Expr> arguments;
+  std::string caller;
+
+  static Expr make(const std::string& caller, std::vector<Expr> arguments);
+
+  static const NodeTy node_type = NodeTy::Call;
+};
+
+struct Assign : public ExprNode<Assign> {
+  Expr a;
+  Expr b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::Assign;
 };
 
 }  // namespace ir

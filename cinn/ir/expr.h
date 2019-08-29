@@ -17,40 +17,43 @@ namespace ir {
 
 /// All the node types supported by cinn.
 enum class NodeTy {
-  Int,
-  UInt,
-  Float,
-  String,
+  Int = 0,
+  UInt = 1,
+  Float = 2,
+  String = 3,
 
   // Mathematical ones Add,
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Mod,
-  Min,
-  Max,
+  Add = 4,
+  Sub = 5,
+  Mul = 6,
+  Div = 7,
+  Mod = 8,
+  Min = 9,
+  Max = 10,
 
-  Minus,
+  Minus = 11,
 
   // Conditional ones
-  EQ,
-  NE,
-  LT,
-  LE,
-  GT,
-  GE,
-  And,
-  Or,
-  Not,
-  For,
+  EQ = 12,
+  NE = 13,
+  LT = 14,
+  LE = 15,
+  GT = 16,
+  GE = 17,
+  And = 18,
+  Or = 19,
+  Not = 20,
+  For = 21,
+  IfThenElse = 22,
 
-  Block,
+  Block = 23,
 
-  Var,
-  Parameter,
-  Tensor,
-  Reference,
+  Var = 24,
+  Parameter = 25,
+  Tensor = 26,
+  Reference = 27,
+  Call = 28,
+  Assign = 29,
   // Computation,
 };
 
@@ -95,7 +98,10 @@ class IRHandle {
   explicit IRHandle(IRNode* x) { ptr_.reset(x); }
   explicit IRHandle(const std::shared_ptr<IRNode>& x) { ptr_ = x; }
 
-  NodeTy type() const { return ptr_->type(); }
+  NodeTy type() const {
+    CHECK(ptr_);
+    return ptr_->type();
+  }
 
   template <typename T>
   const T* As() const {

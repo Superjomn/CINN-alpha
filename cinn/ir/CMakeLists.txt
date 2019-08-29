@@ -7,3 +7,4 @@ cc_library(ops_overload SRCS ops_overload.cc DEPS ir)
 
 cc_test(test_ir SRCS ir_test.cc DEPS ir ops_overload)
 cc_test(test_ir_printer SRCS ir_printer_test.cc DEPS ir_printer ir)
+cc_test(test_ir_visitor SRCS ir_visitor_test.cc DEPS ir_visitor)
