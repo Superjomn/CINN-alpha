@@ -1,0 +1,40 @@
+language: cpp
+cache: ccache
+sudo: required
+dist: trusty
+
+os:
+  - linux
+
+addons:
+  apt:
+    packages:
+      - git
+      - python
+      - llvm-dev
+      - libclang-dev
+      - libgmp3-dev
+      - g++-4.8
+      - gcc-4.8
+#      - python-pip
+#      - python2.7-dev
+#      - libc6-i386
+#      - curl
+#- clang-format-3.8
+        
+before_install:
+  - sudo pip install cpplint pre-commit
+  - sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format
+  # Download and install recent cmake
+
+script:
+  - | 
+    function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+  - |
+    timeout 600 bash tools/ci_build.sh # 10min timeout
+    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else exit 1; fi;
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always

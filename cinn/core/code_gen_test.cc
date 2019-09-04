@@ -56,33 +56,6 @@ TEST(code_gen, IslAstExprToCinnExpr) {
   LOG(INFO) << "\n" << os.str();
 }
 
-TEST(code_gen, CreateIslAstIndexExpression) {
-  isl::ctx ctx(isl_ctx_alloc());
-  isl::set domain(ctx, "{ A[i,j]: 0 < i < j < 100 }");
-  isl::map T = isl::manage(isl_set_identity(domain.copy()));
-
-  isl::set context(ctx, "{:}");
-
-  auto *build = isl_ast_build_from_context(context.copy());
-
-  isl::map map(ctx, "{ A[i,j] -> [i,j] }");
-  auto *ast = isl_ast_build_node_from_schedule_map(build, isl_union_map_from_map(T.copy()));
-
-  isl_options_set_ast_build_atomic_upper_bound(ctx.get(), 1);
-  isl_options_get_ast_build_exploit_nested_bounds(ctx.get());
-  isl_options_set_ast_build_group_coscheduled(ctx.get(), 1);
-
-  isl_printer *p = isl_printer_to_str(ctx.get());
-  isl_printer_set_output_format(p, 0);
-  isl_printer_print_ast_node(p, ast);
-  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
-
-  // auto *schedule = isl_ast_build_get_schedule(build);
-  // LOG(INFO) << "schedule: " << isl_union_map_to_str(schedule);
-
-  CreateIslAstIndexExpression(build, map);
-}
-
 TEST(code_gen, ExtractIslTransformedIndiceMap) {
   Var i("i", 0, 100);
   Var j("j", 0, 200);
@@ -94,10 +67,10 @@ TEST(code_gen, ExtractIslTransformedIndiceMap) {
   isl::set context(s0.ctx(), "{:}");
   auto *build = isl_ast_build_from_context(context.copy());
 
-  LOG(INFO) << "iterator_domain: " << isl_set_to_str(s0.iterator_domain());
+  LOG(INFO) << "iterator_domain: " << s0.iterator_domain();
   isl::map transform(s0.ctx(), "[T,N] -> {S0[i,j] -> [i-1,j+1]}");
-  isl::union_map T = isl::manage(
-      isl_union_map_from_map(isl_map_intersect_domain(transform.copy(), isl_set_copy(s0.iterator_domain()))));
+  isl::union_map T =
+      isl::manage(isl_union_map_from_map(isl_map_intersect_domain(transform.copy(), s0.iterator_domain().copy())));
   LOG(INFO) << "T: " << T;
 
   isl_ast_build_set_at_each_domain(build, node_info_collector, nullptr);

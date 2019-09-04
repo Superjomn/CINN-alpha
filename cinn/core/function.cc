@@ -1,4 +1,3 @@
-
 #include "cinn/core/function.h"
 #include "cinn/core/stage.h"
 
