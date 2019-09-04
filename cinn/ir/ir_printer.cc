@@ -1,7 +1,6 @@
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
-#include "ir_printer.h"
 
 namespace cinn {
 namespace ir {
@@ -75,6 +74,9 @@ void IRPrinter::Visit(const Expr *op) {
       break;
     case NodeTy::Call:
       Visit(op->As<Call>());
+      break;
+    case NodeTy::Reference:
+      Visit(op->As<Reference>());
       break;
     default:
       LOG(FATAL) << "Unsupported NodeTy " << static_cast<int>(op->type());
@@ -246,7 +248,12 @@ void IRPrinter::Visit(const Call *op) {
   os_ << ")";
 }
 
-void IRPrinter::Visit(const Assign *op) {}
+void IRPrinter::Visit(const Assign *op) {
+  Print(op->a);
+  os_ << " = ";
+  Print(op->b);
+  os_ << ";";
+}
 
 }  // namespace ir
 }  // namespace cinn

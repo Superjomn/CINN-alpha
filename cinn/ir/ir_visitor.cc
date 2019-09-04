@@ -13,7 +13,7 @@ namespace ir {
     CHECK(op->b.valid());                 \
     op->a.Accept(this);                   \
     op->b.Accept(this);                   \
-  }
+  };
 
 OP_2_ARGS_FOR_EACH(OP_2_ARGS_VISIT);
 
@@ -28,6 +28,12 @@ void IRVisitor::Visit(const Expr *op) {
   }
 }
 void IRVisitor::Visit(const Stmt *op) {}
+
+void IRVisitor::Visit(const Call *op) {
+  for (auto &node : op->arguments) {
+    node.Accept(this);
+  }
+}
 
 void IRVisitor::Visit(const Minus *op) { op->a.Accept(this); }
 

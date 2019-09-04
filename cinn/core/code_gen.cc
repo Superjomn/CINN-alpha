@@ -129,7 +129,7 @@ void IslAstExprToCinnExpr(isl_ast_expr* node, ir::Expr* expr) {
   switch (isl_ast_expr_get_type(node)) {
     case isl_ast_expr_int: {
       isl_val* val = isl_ast_expr_get_val(node);
-      *expr = ir::Expr(isl_val_get_num_si(val));
+      *expr = ir::Expr((int)isl_val_get_num_si(val));
     } break;
     case isl_ast_expr_id: {
       isl_id* id = isl_ast_expr_get_id(node);
@@ -204,5 +204,7 @@ void IslAstExprToCinnExpr(isl_ast_expr* node, ir::Expr* expr) {
       break;
   }
 }
+
+void ReplaceUseridWithExpr(ir::Expr root, const std::string& userid, ir::Expr e) {}
 
 }  // namespace cinn

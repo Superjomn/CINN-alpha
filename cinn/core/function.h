@@ -1,3 +1,5 @@
+#pragma once
+#include <isl/cpp.h>
 #include <string>
 #include "cinn/core/buffer.h"
 #include "cinn/ir/ir.h"
@@ -23,16 +25,16 @@ struct Stage;
  *
  * Usage:
  *
- *     Var i("i"),j("j");
+ *     Var i("i", 0, 100),j("j", 0, 150);
  *     Expr A, B, C;
- *     A(i,j) = B(i,j) + C(i,j);
+ *     Stage s0 = A(i,j).Assign( B(i,j) + C(i,j) );
  *
- *     Function func0({B,C}, {A});
+ *     Function func0({B,C}, {A}, {s0});
  *     func0.set_inline();
  *     // func0.dims(), get dimension of the cumputation.
  *
  *     Expr B0, C0;
- *     Expr A0 = func0(B0,C0);
+ *     Expr A0 = func0(B0,C0)[0];
  *     // will expand to
  *     Expr A0;
  *     A0(i,j) = B(i,j) + C(i,j)
@@ -42,17 +44,46 @@ struct Function : public ir::ExprNode<Function> {
   std::string name;
 
   //! Pass argument by value.
-  std::vector<Buffer *> arguments;
+  std::vector<Buffer*> arguments;
 
   //! For inline function to expand the definition inplace.
   std::vector<ir::Expr> argument_exprs;
 
   //! Body of the function.
-  std::vector<Expr> body;
+  std::vector<Stage> body;
   // std::vector<Computation*> body;
 
   //! Define a function.
-  static Expr make(const std::string &name, std::vector<Expr> inputs, std::vector<Expr> outputs);
+  static Expr make(const std::string& name,
+                   std::vector<Expr> inputs,
+                   std::vector<Expr> outputs,
+                   std::vector<Stage> stages);
+
+  //! Mark the function inline.
+  void set_inline() { is_inline_ = true; }
+  //! Tell whether this function is an inline one.
+  bool is_inline() const { return is_inline_; }
+
+  void GenerateIslAst();
+
+  //! Dump C like codes.
+  std::string DumpIslC() const;
+
+  std::string Dump() const;
+
+  void Accept(ir::IRVisitor* visitor) const override;
+
+  static const ir::NodeTy node_type = ir::NodeTy::Function;
+
+ private:
+  //! Schedule the stages by their original order.
+  void ScheduleByStageOrder();
+
+ private:
+  bool is_inline_{false};
+  isl_ctx* ctx_;
+  isl::union_set iterator_domain_;
+  isl::union_map schedule_;
 };
 
 }  // namespace cinn

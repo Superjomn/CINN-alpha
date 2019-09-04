@@ -12,7 +12,7 @@ enum class type_code_t {
 };
 
 enum class primitive_t {
-  unknown = -1,
+  unk = -1,
   uint8,
   uint16,
   uint32,

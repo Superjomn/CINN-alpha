@@ -1,8 +1,9 @@
 #=================================== ISL =======================================
-set(ISL_LIB_DIRECTORY "/home/chunwei/project2/tiramisu/3rdParty/isl/build")
+set(ISL_LIB_DIRECTORY "/usr/local")
+#set(ISL_LIB_DIRECTORY "/Users/yanchunwei/project/tiramisu/3rdParty/isl/build")
 find_library(isl_lib isl PATHS "${ISL_LIB_DIRECTORY}/lib" NO_DEFAULT_PATH)
 include_directories(${ISL_LIB_DIRECTORY}/include)
-include_directories(${CMAKE_SOURCE_DIR}/3rdparty/isl_interface/include)
+#include_directories(${CMAKE_SOURCE_DIR}/3rdparty/isl_interface/include)
 
 link_directories(${ISL_LIB_DIRECTORY}/lib)
 message(STATUS "isl path: ${ISL_LIB_DIRECTORY}")

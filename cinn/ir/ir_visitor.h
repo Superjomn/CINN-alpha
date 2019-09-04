@@ -2,6 +2,9 @@
 
 #include <iosfwd>
 namespace cinn {
+
+struct Function;
+
 namespace ir {
 
 struct Var;
@@ -77,8 +80,10 @@ class IRVisitor {
   virtual void Visit(const Parameter* op);
   virtual void Visit(const Var* op);
   virtual void Visit(const Reference* op) {}
-  virtual void Visit(const Call* op) {}
-  virtual void Visit(const Assign* op) {}
+  virtual void Visit(const Call* op);
+  virtual void Visit(const Assign* op);
+
+  virtual void Visit(const Function* op) {}
 };
 
 }  // namespace ir

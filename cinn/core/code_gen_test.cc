@@ -8,8 +8,11 @@
 #include <isl/set.h>
 #include <isl/union_set.h>
 #include "cinn/ir/ir_printer.h"
+#include "cinn/ir/ops_overload.h"
 
 namespace cinn {
+
+using namespace ir;
 
 TEST(code_gen, IslAstExprToCinnExpr) {
   auto *ctx = isl_ctx_alloc();
@@ -19,6 +22,15 @@ TEST(code_gen, IslAstExprToCinnExpr) {
   auto *T = isl_union_map_from_map(isl_map_intersect_domain(transform, domain));
 
   auto *builder = isl_ast_build_from_context(context);
+
+  // set iterators
+  isl_id_list *iterators = isl_id_list_alloc(ctx, 2);
+  isl_id *id = isl_id_alloc(ctx, "t", nullptr);
+  iterators = isl_id_list_add(iterators, id);
+  id = isl_id_alloc(ctx, "i", nullptr);
+  iterators = isl_id_list_add(iterators, id);
+  builder = isl_ast_build_set_iterators(builder, iterators);
+
   auto *ast = isl_ast_build_node_from_schedule_map(builder, T);
 
   isl_ast_expr *iter = isl_ast_node_for_get_iterator(ast);
@@ -42,6 +54,57 @@ TEST(code_gen, IslAstExprToCinnExpr) {
 
   printer.Print(for_expr);
   LOG(INFO) << "\n" << os.str();
+}
+
+TEST(code_gen, CreateIslAstIndexExpression) {
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::set domain(ctx, "{ A[i,j]: 0 < i < j < 100 }");
+  isl::map T = isl::manage(isl_set_identity(domain.copy()));
+
+  isl::set context(ctx, "{:}");
+
+  auto *build = isl_ast_build_from_context(context.copy());
+
+  isl::map map(ctx, "{ A[i,j] -> [i,j] }");
+  auto *ast = isl_ast_build_node_from_schedule_map(build, isl_union_map_from_map(T.copy()));
+
+  isl_options_set_ast_build_atomic_upper_bound(ctx.get(), 1);
+  isl_options_get_ast_build_exploit_nested_bounds(ctx.get());
+  isl_options_set_ast_build_group_coscheduled(ctx.get(), 1);
+
+  isl_printer *p = isl_printer_to_str(ctx.get());
+  isl_printer_set_output_format(p, 0);
+  isl_printer_print_ast_node(p, ast);
+  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
+
+  // auto *schedule = isl_ast_build_get_schedule(build);
+  // LOG(INFO) << "schedule: " << isl_union_map_to_str(schedule);
+
+  CreateIslAstIndexExpression(build, map);
+}
+
+TEST(code_gen, ExtractIslTransformedIndiceMap) {
+  Var i("i", 0, 100);
+  Var j("j", 0, 200);
+
+  Expr A("A"), B("B");
+
+  Stage s0 = B(i, j).Assign(A(i, j) + 1);
+
+  isl::set context(s0.ctx(), "{:}");
+  auto *build = isl_ast_build_from_context(context.copy());
+
+  LOG(INFO) << "iterator_domain: " << isl_set_to_str(s0.iterator_domain());
+  isl::map transform(s0.ctx(), "[T,N] -> {S0[i,j] -> [i-1,j+1]}");
+  isl::union_map T = isl::manage(
+      isl_union_map_from_map(isl_map_intersect_domain(transform.copy(), isl_set_copy(s0.iterator_domain()))));
+  LOG(INFO) << "T: " << T;
+
+  isl_ast_build_set_at_each_domain(build, node_info_collector, nullptr);
+
+  auto *ast = isl_ast_build_node_from_schedule_map(build, T.copy());
+
+  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
 }
 
 }  // namespace cinn

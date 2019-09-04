@@ -101,27 +101,61 @@ template <>
 Parameter::Parameter(const std::string &name, int32_t val) : name_(name) {
   type_ = primitive_t::int32;
   int32_val_ = val;
+  name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Parameter::Parameter(const std::string &name, float val) : name_(name) {
   type_ = primitive_t::float32;
   fp32_val_ = val;
+  name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Parameter::Parameter(int32_t val) : name_(DefaultUniqueName()) {
   type_ = primitive_t::int32;
   int32_val_ = val;
+  name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Parameter::Parameter(float val) : name_(DefaultUniqueName()) {
   type_ = primitive_t::float32;
   fp32_val_ = val;
+  name_ = NameGenerator::Global().NewParameterName();
+}
+
+template <>
+int32_t Parameter::As<int32_t>() const {
+  CHECK(primitive_type() == primitive_t::int32);
+  return int32_val_;
+}
+template <>
+float Parameter::As<float>() const {
+  CHECK(primitive_type() == primitive_t::float32);
+  return fp32_val_;
+}
+template <>
+int64_t Parameter::As<int64_t>() const {
+  CHECK(primitive_type() == primitive_t::int64);
+  return int64_val_;
 }
 
 unsigned int Parameter::counter = 0;
+
+std::string Parameter::__str__() const {
+  switch (primitive_type()) {
+    case primitive_t::float32:
+      return std::to_string(As<float>()) + "fp32";
+    case primitive_t::int32:
+      return std::to_string(As<int32_t>()) + "i32";
+    case primitive_t::int64:
+      return std::to_string(As<int64_t>()) + "i64";
+    default:
+      LOG(FATAL) << "not supported type " << static_cast<int>(primitive_type());
+  }
+  return "Parameter-UNK";
+}
 
 Expr Mul::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Mul a not defined";
@@ -233,7 +267,7 @@ void IfThenElse::Accept(IRVisitor *x) const {
   void op__::Accept(IRVisitor *x) const { \
     a.Accept(x);                          \
     b.Accept(x);                          \
-  }
+  };
 
 OP_2_ARGS_FOR_EACH(OP_2_ARG_ACCEPT);
 
@@ -246,6 +280,19 @@ void Block::Accept(IRVisitor *x) const { LOG(ERROR) << "get a block"; }
 Var::operator Expr() {
   auto node = std::make_shared<Var>(name_, primitive_type_, interval_.lower_bound(), interval_.upper_bound());
   return Expr(node);
+}
+
+bool Var::CheckNameValid(const std::string &name) {
+  if (!name_set_.count(name)) {
+    name_set_.insert(name);
+    return true;
+  }
+  return false;
+}
+
+Var::Var(const std::string &name, int32_t lower_bound, int32_t upper_bound)
+    : name_(name), interval_(lower_bound, upper_bound) {
+  CheckNameValid(name);
 }
 
 Expr Call::make(const std::string &caller, std::vector<Expr> arguments) {
@@ -270,7 +317,10 @@ Expr Expr::operator=(const Expr &other) {
   if (!valid() || type() != NodeTy::Reference) {
     ptr_ = other.ptr_;
   } else {
-    *this = Assign::make(*this, other);
+    CHECK(other.valid());
+    auto assign = Assign::make(*this, other);
+    // reset the pointer
+    this->ptr_ = assign.ptr_;
   }
   return *this;
 }
@@ -282,6 +332,28 @@ Expr Assign::make(Expr a, Expr b) {
   node->a = a;
   node->b = b;
   return Expr(node);
+}
+
+Expr Expr::operator()(std::vector<Var> iters) {
+  this->ptr_ = Reference::make(*this, iters).ptr_;
+  return *this;
+}
+
+Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
+
+void Call::Accept(IRVisitor *x) const {}
+
+std::vector<Interval> Reference::ExtractIntervals() {
+  CHECK(!iterators.empty()) << "At least one iterator is required";
+  std::vector<Interval> intervals;
+  for (auto &o : iterators) {
+    CHECK(o.interval().lower_bound().primitive_type() == primitive_t::int32)
+        << " type is " << static_cast<int>(o.interval().lower_bound().primitive_type());
+    CHECK(o.interval().upper_bound().primitive_type() == primitive_t::int32)
+        << " type is " << static_cast<int>(o.interval().upper_bound().primitive_type());
+    intervals.push_back(o.interval());
+  }
+  return intervals;
 }
 
 }  // namespace ir

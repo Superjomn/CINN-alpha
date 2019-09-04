@@ -1,10 +1,14 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <isl/aff.h>
 #include <isl/ast.h>
 #include <isl/ast_build.h>
 #include <isl/constraint.h>
+#include <isl/cpp.h>
+#include <isl/id.h>
 #include <isl/map.h>
 #include <isl/set.h>
+#include <isl/space.h>
 #include <isl/union_set.h>
 
 std::string isl_to_str(isl_set *x) { return isl_set_to_str(x); }
@@ -251,7 +255,7 @@ TEST(isl, basic3) {
   isl_ctx *ctx = isl_ctx_alloc();
   isl_union_set *domain =
       isl_union_set_read_from_str(ctx, "{ S1[i,j]: 0 <= i,j <= 10 and i < j-1; S2[i,j]: 0 <=i,j<=10 and i >j+1}");
-  auto *domain1 = isl_union_set_read_from_str(ctx, "{S[i] : 0 < i,j<10}");
+  auto *domain1 = isl_union_set_read_from_str(ctx, "{S[i,j ] : 0 < i,j<10}");
   LOG(INFO) << "domain: " << isl_union_set_to_str(domain);
   auto *domain2 = isl_union_set_intersect(domain, domain1);
   LOG(INFO) << "domain2: " << isl_union_set_to_str(domain2);
@@ -309,8 +313,7 @@ TEST(isl, apply_range) {
 
   auto *t0_ = isl_map_apply_range(isl_map_copy(t0), isl_map_copy(t2));
 
-  LOG(INFO) << "left " << isl_space_get_tuple_name(isl_map_get_space(t0), isl_dim_out);
-  LOG(INFO) << "right " << isl_space_get_tuple_name(isl_map_get_space(t2), isl_dim_in);
+  LOG(INFO) << "left " << isl_space_get_tuple_name(isl_map_get_space(t0), isl_dim_in);
   LOG(INFO) << "t0_ " << isl_map_to_str(t0_);
 }
 
@@ -435,4 +438,132 @@ TEST(isl, walk_nodes) {
 
   auto *body = isl_ast_node_for_get_body(ast);
   walk(body);
+}
+
+TEST(union_map, test) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  auto *set = isl_union_set_read_from_str(ctx, "{ A[i]: 0 < i < 100; B[i]: 0 < i < 100 }");
+  auto *map = isl_union_map_read_from_str(ctx, "{ A[i] -> [i]; B[i] -> [i] }");
+
+  auto *map1 = isl_union_map_intersect_domain(map, set);
+  LOG(INFO) << "map1 " << isl_union_map_to_str(map1);
+}
+
+TEST(pw_multi_aff, test) {
+  auto *ctx = isl_ctx_alloc();
+  auto *map = isl_map_read_from_str(ctx, "{ A[i,j] -> [i,j] }");
+  auto *pw_multi_aff = isl_pw_multi_aff_from_map(map);
+  LOG(INFO) << "pw_multi_aff: " << isl_pw_multi_aff_to_str(pw_multi_aff);
+
+  auto *aff = isl_aff_read_from_str(ctx, "{ [i] -> [i+1] }");
+  LOG(INFO) << "aff: " << isl_aff_to_str(aff);
+
+  auto *multi_aff_ = isl_multi_aff_from_aff(aff);
+  LOG(INFO) << "multi_aff: " << isl_multi_aff_to_str(multi_aff_);
+  multi_aff_ = isl_multi_aff_add(multi_aff_, isl_multi_aff_from_aff(isl_aff_read_from_str(ctx, "{ [j] -> [j*10] }")));
+  LOG(INFO) << "multi_aff: " << isl_multi_aff_to_str(multi_aff_);
+}
+
+TEST(isl, create_indices) {
+  auto *ctx = isl_ctx_alloc();
+  isl_union_set *_set = isl_union_set_read_from_str(ctx, "{A[i,j]: 0<i,j<10 }");
+  LOG(INFO) << "space: " << isl_space_to_str(isl_union_set_get_space(_set));
+  isl_union_map *_schedule = isl_union_map_read_from_str(ctx, "{ S[i, j] -> [0, j, i] }");
+  LOG(INFO) << "_schedule " << isl_union_map_to_str(_schedule);
+  isl_map *schedule = isl_map_from_union_map(_schedule);
+  LOG(INFO) << "schedule " << isl_map_to_str(schedule);
+
+  auto *map = isl_map_reverse(schedule);
+  LOG(INFO) << "reversed " << isl_map_to_str(map);
+
+  auto *iterator_map = isl_pw_multi_aff_from_map(map);
+  LOG(INFO) << "iter_map " << isl_pw_multi_aff_to_str(iterator_map);
+
+  auto *access = isl_map_read_from_str(ctx, "{ S[i,j] -> Buffer[i, j] }");
+
+  auto *index_aff = isl_pw_multi_aff_from_map(isl_map_copy(access));
+  LOG(INFO) << "index_aff " << isl_pw_multi_aff_to_str(index_aff);
+
+  isl_space *model2 = isl_pw_multi_aff_get_space(isl_pw_multi_aff_copy(index_aff));
+  LOG(INFO) << "model2 " << isl_space_to_str(model2);
+
+  index_aff = isl_pw_multi_aff_align_params(index_aff, model2);
+  LOG(INFO) << "index_aff align_param: " << isl_pw_multi_aff_to_str(index_aff);
+
+  isl_space *model = isl_pw_multi_aff_get_space(isl_pw_multi_aff_copy(index_aff));
+  LOG(INFO) << "model: " << isl_space_to_str(model);
+
+  iterator_map = isl_pw_multi_aff_align_params(iterator_map, model);
+  LOG(INFO) << "iterator_map align params: " << isl_pw_multi_aff_to_str(iterator_map);
+
+  iterator_map = isl_pw_multi_aff_pullback_pw_multi_aff(index_aff, iterator_map);
+  LOG(INFO) << "iterator_map pullback_pw_multi_aff: " << isl_pw_multi_aff_to_str(iterator_map);
+}
+
+TEST(isl, cpp) {
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::set set(ctx, "{ A[i] : 0 < i < 100 }");
+  LOG(INFO) << set;
+}
+
+TEST(isl, project_out) {
+  auto *ctx = isl_ctx_alloc();
+
+  auto *map = isl_map_read_from_str(ctx, "{ A[i,j, t0, t1] -> B[i+1, j+2, 0, 0] }");
+  LOG(INFO) << "map: " << isl_map_to_str(map);
+  auto *tuple_name = isl_map_get_tuple_name(map, isl_dim_out);
+  LOG(INFO) << "tuple name: " << tuple_name;
+  auto *map2 = isl_map_project_out(isl_map_copy(map), isl_dim_out, 0, 1);
+  map2 = isl_map_set_tuple_name(map2, isl_dim_out, tuple_name);
+  LOG(INFO) << "project out, map2: " << isl_map_to_str(map2);
+}
+
+TEST(isl, pw_aff) {
+  auto *ctx = isl_ctx_alloc();
+  isl_pw_aff *aff = isl_pw_aff_read_from_str(ctx, "{ [i] -> [i+1] } ");
+
+  isl_map *map = isl_map_read_from_str(ctx, "{ A[i] -> [i] } ");
+  LOG(INFO) << "original map: " << isl_map_to_str(map);
+
+  map = isl_map_apply_range(map, isl_map_from_pw_aff(aff));
+  LOG(INFO) << "transformed map: " << isl_map_to_str(map);
+}
+
+isl_ast_node *gen(isl_ast_node *node, isl_ast_build *build, void *x) {
+  isl::union_map schedule = isl::manage(isl_ast_build_get_schedule(build));
+  LOG(INFO) << "schedule " << schedule;
+  // LOG(INFO) << "current node: " << isl_ast_node_to_C_str(node);
+  LOG(INFO) << "type: " << isl_ast_node_get_type(node);
+  if (isl_ast_node_get_type(node) == isl_ast_node_user) {
+    auto *expr = isl_ast_node_user_get_expr(node);
+    auto *stmt_id = isl_ast_expr_get_id(isl_ast_expr_get_op_arg(expr, 0));
+    LOG(INFO) << "stmt_id: " << isl_id_to_str(stmt_id);
+    isl::map schedule_map = isl::manage(isl_map_from_union_map(schedule.copy()));
+    LOG(INFO) << "schedule_map: " << schedule_map;
+    isl::map schedule_map_reverse = isl::manage(schedule_map.copy()).reverse();
+    isl::pw_multi_aff iterator_map = isl::manage(isl_pw_multi_aff_from_map(schedule_map_reverse.copy()));
+    LOG(INFO) << "iterator_map: " << iterator_map;
+
+    isl::map map = isl::manage(isl_map_from_union_map(schedule.copy()));
+    LOG(INFO) << "map: " << map;
+    isl::pw_multi_aff iterator_map1 = isl::manage(isl_pw_multi_aff_from_map(map.copy()));
+    LOG(INFO) << "iterator_map1 " << iterator_map1;
+  }
+  return node;
+}
+
+TEST(isl, build_get_node_info) {
+  auto *ctx = isl_ctx_alloc();
+  auto *context = isl_set_read_from_str(ctx, "{:}");
+  auto *domain = isl_set_read_from_str(ctx, "[T,N]->{S[t0,t1]: 0 <= t0 < T and 1 <=t1 < N}");
+  auto *transform = isl_map_read_from_str(ctx, "[T,N] -> {S[t,i] -> [t-1,i+1]}");
+  auto *T = isl_union_map_from_map(isl_map_intersect_domain(transform, domain));
+  LOG(INFO) << "T: " << isl_union_map_to_str(T);
+
+  auto *build = isl_ast_build_from_context(context);
+  isl_ast_build_set_at_each_domain(build, gen, nullptr);
+
+  auto *ast = isl_ast_build_node_from_schedule_map(build, T);
+
+  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
 }

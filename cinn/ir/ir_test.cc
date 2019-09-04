@@ -57,13 +57,64 @@ TEST(ir, basic1) {
   Var i("c", primitive_t::int32, zero, C);
   Var j("j", primitive_t::int32, zero, H);
   Var k("k", primitive_t::int32, zero, W);
+  /*
   Expr expr0 = input(i, j, k);
   expr0 = (expr0 + 0.5f) / 2.f;
 
   ASSERT_TRUE(expr0.valid());
   LOG(INFO) << static_cast<int>(expr0.type());
+   */
 
   // Expr expr0 = input(i, j, k) + 0.5f;
+}
+
+TEST(Parameter, basic) {
+  Parameter x(100);
+  ASSERT_EQ(x.primitive_type(), primitive_t::int32);
+
+  Parameter y = x;
+  ASSERT_EQ(x.As<int32_t>(), 100);
+}
+
+TEST(Interval, basic) {
+  Interval interval(0, 100);
+  LOG(INFO) << interval.lower_bound().As<int32_t>() << " " << interval.upper_bound().As<int32_t>();
+  ASSERT_EQ(interval.lower_bound().As<int32_t>(), 0);
+  ASSERT_EQ(interval.upper_bound().As<int32_t>(), 100);
+}
+
+TEST(Interval, basic1) {
+  Interval interval(Parameter(0), Parameter(100));
+  ASSERT_EQ(interval.lower_bound().As<int32_t>(), 0);
+  ASSERT_EQ(interval.upper_bound().As<int32_t>(), 100);
+  LOG(INFO) << interval.lower_bound().As<int32_t>() << " " << interval.upper_bound().As<int32_t>();
+}
+
+TEST(Reference, basic1) {
+  Expr A("A");
+  Var i("i", 0, 100);
+  Var j("j", 0, 100);
+  Expr r = A(i, j);
+  ASSERT_TRUE(r.valid());
+  ASSERT_TRUE(r.type() == NodeTy::Reference);
+  auto* ref = r.As<Reference>();
+  ASSERT_EQ(ref->iterators.size(), 2UL);
+
+  auto& it0 = ref->iterators[0];
+  ASSERT_EQ(it0.name(), "i");
+  ASSERT_EQ(it0.interval().lower_bound().As<int32_t>(), 0);
+  ASSERT_EQ(it0.interval().upper_bound().As<int32_t>(), 100);
+
+  auto& it1 = ref->iterators[1];
+  ASSERT_EQ(it1.name(), "j");
+  ASSERT_EQ(it1.interval().lower_bound().As<int32_t>(), 0);
+  ASSERT_EQ(it1.interval().upper_bound().As<int32_t>(), 100);
+
+  auto interval0 = it0.interval();
+  auto interval1 = it1.interval();
+
+  ASSERT_EQ(interval0.lower_bound().As<int32_t>(), 0);
+  ASSERT_EQ(interval0.upper_bound().As<int32_t>(), 100);
 }
 
 }  // namespace ir

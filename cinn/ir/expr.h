@@ -54,6 +54,8 @@ enum class NodeTy {
   Reference = 27,
   Call = 28,
   Assign = 29,
+
+  Function = 30,
   // Computation,
 };
 
@@ -107,6 +109,13 @@ class IRHandle {
   const T* As() const {
     // TODO(Superjomn) check the type
     if (ptr_) return static_cast<const T*>(ptr_.get());
+    return nullptr;
+  }
+
+  template <typename T>
+  T* As() {
+    // TODO(Superjomn) check the type
+    if (ptr_) return static_cast<T*>(ptr_.get());
     return nullptr;
   }
 };

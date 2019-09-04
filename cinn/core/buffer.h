@@ -17,7 +17,7 @@ class Buffer : public ir::Expr {
   // Name of this buffer, should be unique.
   std::string name_;
 
-  primitive_t ptype_{primitive_t::unknown};
+  primitive_t ptype_{primitive_t::unk};
 
   memory_location_t memory_location_;
 

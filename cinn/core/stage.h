@@ -1,7 +1,9 @@
+#pragma once
 #include <cinn/ir/ir.h>
 #include <isl/aff.h>
 #include <isl/ast_build.h>
 #include <isl/constraint.h>
+#include <isl/cpp.h>
 #include <isl/ctx.h>
 #include <isl/id.h>
 #include <isl/map.h>
@@ -13,8 +15,7 @@
 #include "cinn/core/buffer.h"
 
 namespace cinn {
-
-isl_map* isl_map_add_dim_and_eq_constraint(isl_map* map, int dim_pos, int constant);
+using ir::Expr;
 
 /**
  * Stage is an statement.
@@ -24,12 +25,12 @@ class Stage {
   isl_ctx* ctx_{};
 
   // Iteration domain.
-  isl_set* iter_domain_{};
+  isl::set iter_domain_;
 
   ir::Expr expr_;
 
   // The schedules of this computation.
-  isl_map* schedule_{};
+  isl::map schedule_;
 
   // Name of this computation.
   std::string name_;
@@ -37,12 +38,26 @@ class Stage {
   static std::set<std::string> names_;
 
  public:
-  isl_ctx* ctx() { return ctx_; }
-
   Stage() : ctx_(isl_ctx_alloc()) {}
   Stage(const std::string& name, const std::string& iter_domain);
 
-  void SetName(const std::string& name);
+  /**
+   * Create a Stage using an Expr (should be an Reference node).
+   *
+   * For example
+   *
+   *     Var i("i", 0, 100);
+   *     Expr A, B;
+   *     B(i) = A(i) + 1;
+   *
+   *     Stage s0(B);
+   */
+  Stage(Expr expr);
+
+  isl_ctx* ctx() { return ctx_; }
+  const isl::set& iterator_domain() { return iter_domain_; }
+
+  void set_name(const std::string& name);
 
   void ApplyTransformationOnScheduleRange(const std::string& map_str);
 
@@ -55,17 +70,22 @@ class Stage {
 
   void AssertNamesNotAssigned(const std::vector<std::string>& dimensions);
 
-  // Dump the schedule to human-readable code.
-  std::string Dump() const;
+  Stage& operator=(Expr x) {
+    InitFromExpr(x);
+    return *this;
+  }
 
-  /*
-   * Set the computation's schedule.
-   */
-  void SetSchedule(isl_map* x);
+  // Dump the schedule to ISL C code.
+  std::string DumpIslC() const;
+
+  // Dump to C-like code.
+  std::string DumpAsC() const;
 
  private:
   // Init schedule with identity schedule.
   void InitSchedule();
+
+  void InitFromExpr(Expr x);
 };
 
 }  // namespace cinn

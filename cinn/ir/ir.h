@@ -6,16 +6,19 @@
 #include "cinn/ir/expr.h"
 #include "cinn/type.h"
 #include "cinn/utils/any.h"
+#include "cinn/utils/macros.h"
+#include "cinn/utils/name_generator.h"
 
 namespace cinn {
 namespace ir {
 
 class Parameter : public ExprNode<Parameter> {
   std::string name_;
-  primitive_t type_;
+  primitive_t type_{primitive_t::unk};
   union {
     int8_t int8_val_;
     int32_t int32_val_;
+    int64_t int64_val_;
     float fp32_val_;
     double fp64_val_;
   };
@@ -29,6 +32,18 @@ class Parameter : public ExprNode<Parameter> {
   Parameter(const std::string& name, T val);
   template <typename T>
   Parameter(T val);
+
+  primitive_t primitive_type() const { return type_; }
+
+  bool is_integer() const {
+    return primitive_type() == primitive_t::int32 || primitive_type() == primitive_t::int8 ||
+           primitive_type() == primitive_t::int16 || primitive_type() == primitive_t::int64;
+  }
+
+  std::string __str__() const;
+
+  template <typename T>
+  T As() const;
 
   static const NodeTy node_type = NodeTy::Parameter;
 
@@ -86,19 +101,22 @@ class Var : public ExprNode<Var> {
   static std::set<std::string> name_set_;  // All registerred var's name here.
 
  public:
-  Var() { SetDefaultName(); }
+  Var() { name_ = NameGenerator::Global().NewVarName(); }
 
-  Var(const std::string& name) : name_(name) {}
+  Var(const std::string& name) : name_(name) { CheckNameValid(name); }
 
   // make a variable with name and interval set.
   Var(const std::string& name, primitive_t type, const Interval& interval)
       : name_(name), data_type_(type), interval_(interval) {
-    inc_counter();
-    check_set_name(name_);
+    CheckNameValid(name_);
   }
 
+  Var(const std::string& name, int32_t lower_bound, int32_t upper_bound);
+
   Var(const std::string& name, primitive_t type, Parameter lower_bound, Parameter upper_bound)
-      : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {}
+      : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {
+    CheckNameValid(name);
+  }
 
   operator Expr();
 
@@ -110,21 +128,12 @@ class Var : public ExprNode<Var> {
 
   static const NodeTy node_type = NodeTy::Var;
 
+  const Interval& interval() const { return interval_; }
+
+  std::string __repr__() const;
+
  private:
-  static bool check_set_name(const std::string& name) {
-    if (!name_set_.count(name)) {
-      name_set_.insert(name);
-      return true;
-    }
-    return false;
-  }
-
-  void SetDefaultName() {
-    name_ = "var" + std::to_string(inc_counter());
-    CHECK(check_set_name(name_));
-  }
-
-  static size_t inc_counter() { return counter_++; }
+  static bool CheckNameValid(const std::string& name);
 };
 
 /**
@@ -138,9 +147,12 @@ class Expr : public IRHandle {
   Expr(const std::shared_ptr<IRNode>& x) : IRHandle(x) {}
   Expr(const Expr& n) : IRHandle(n.ptr_) {}
   Expr(Expr&& other) { ptr_ = std::move(other.ptr_); }
+  Expr(const std::string& name) { *this = Var(name); }
 
   // reference
   Expr(const std::vector<Var>& its) : iterators_(its) {}
+
+  Expr Assign(Expr other);
 
   //! Create an int32 Expr.
   explicit Expr(int32_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 32), x); }
@@ -166,7 +178,10 @@ class Expr : public IRHandle {
    * @param iters list of iterators.
    * @return Expr.
    */
-  Expr operator()(std::vector<Expr> iters);
+  Expr operator()(std::vector<Var> iters);
+  Expr operator()(Var i, Var j) { return (*this)({i, j}); }
+  Expr operator()(Var i, Var j, Var k) { return (*this)({i, j, k}); }
+  Expr operator()(Var i, Var j, Var k, Var l) { return (*this)({i, j, k, l}); }
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
 
@@ -182,6 +197,12 @@ class Expr : public IRHandle {
 
   //! Check whether this Expr is valid for use.
   bool valid() const { return ptr_.get(); }
+
+  bool IsOp() const {
+#define OP_COND(T) type() == NodeTy::T ||
+    return valid() && (OP_2_ARGS_FOR_EACH(OP_COND)  //
+                       false);
+  }
 };
 
 /**
@@ -204,10 +225,14 @@ struct Reference : public ExprNode<Reference> {
   Reference() = default;
 
   void Accept(IRVisitor* x) const override { x->Visit(this); }
-  static const NodeTy node_type = NodeTy::Reference;
+
+  //! Extract intervals from the reference of all the dimention iterators.
+  std::vector<Interval> ExtractIntervals();
 
   //! Create a Reference Expr.
-  Expr make(Expr expr, const std::vector<Var>& iters);
+  static Expr make(Expr expr, const std::vector<Var>& iters);
+
+  static const NodeTy node_type = NodeTy::Reference;
 };
 
 /**
@@ -442,6 +467,8 @@ struct Call : public ExprNode<Call> {
 
   static Expr make(const std::string& caller, std::vector<Expr> arguments);
 
+  void Accept(IRVisitor* x) const override;
+
   static const NodeTy node_type = NodeTy::Call;
 };
 
@@ -450,6 +477,8 @@ struct Assign : public ExprNode<Assign> {
   Expr b;
 
   static Expr make(Expr a, Expr b);
+
+  void Accept(IRVisitor* x) const override;
 
   static const NodeTy node_type = NodeTy::Assign;
 };
