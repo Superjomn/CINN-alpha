@@ -229,7 +229,7 @@ void IRPrinter::Visit(const Reference *op) {
     Print(op->iterators[i]);
     os_ << ",";
   }
-  if (op->iterators.size() > 1) {
+  if (op->iterators.size() >= 1) {
     Print(op->iterators.back());
   }
   os_ << ")";

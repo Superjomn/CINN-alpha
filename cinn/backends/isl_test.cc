@@ -10,6 +10,7 @@
 #include <isl/set.h>
 #include <isl/space.h>
 #include <isl/union_set.h>
+#include "cinn/utils/isl_utils.h"
 
 std::string isl_to_str(isl_set *x) { return isl_set_to_str(x); }
 
@@ -567,3 +568,241 @@ TEST(isl, build_get_node_info) {
 
   LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
 }
+
+// some basic knowledge.
+TEST(isl, space) {
+  auto *ctx = isl_ctx_alloc();
+  // The parameters and dimentions within the same space are only determined by position.
+  isl::space space = isl::manage(isl_space_alloc(ctx, 2, 3, 3));
+  LOG(INFO) << "space: " << space;
+  // { [p0, p1] -> { [i0, i1, i2] -> [o0, o1, o2] }
+
+  LOG(INFO) << "params: " << space.params();
+  // [p0, p1] -> {  :  }
+
+  LOG(INFO) << "domain: " << space.domain();
+  // [p0, p1] -> { [i0, i1, i2] }
+
+  isl::set set(ctx, "[N] -> { A[i,j,k] : 0 <= i < j < k < N }");
+  LOG(INFO) << set;
+  LOG(INFO) << set.space();
+  // [N] -> { A[i, j, k] }
+  // has only one set.
+
+  isl::map map(ctx, "[N] -> { A[i,j] -> B[i,j] : 0 < i < j < N }");
+  LOG(INFO) << map;
+  LOG(INFO) << map.space();
+  // [N] -> { A[i, j] -> B[o0, o1] }
+  // has both in and out set.
+
+  for (int i = 0; i < isl_space_dim(map.space().get(), isl_dim_in); i++)
+    LOG(INFO) << "dim " << i << " " << isl_space_get_dim_name(map.space().get(), isl_dim_in, i);
+
+  for (int i = 0; i < isl_space_dim(map.space().get(), isl_dim_param); i++)
+    LOG(INFO) << "param " << i << " " << isl_space_get_dim_name(map.space().get(), isl_dim_param, i);
+
+  if (isl_space_has_dim_name(map.space().get(), isl_dim_in, 0)) LOG(INFO) << "space in 0 has dim name";
+
+  ASSERT_EQ(isl_space_find_dim_by_name(map.space().get(), isl_dim_in, "i"), 0);
+
+  map = isl::manage(isl_map_set_tuple_name(map.release(), isl_dim_in, "A'"));
+  LOG(INFO) << "rename A to A': " << map;
+
+  // local space
+  // ...
+}
+
+TEST(isl, set) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  isl::set set(ctx, "{ A[i,j] : 0 < i < j < 100 }");
+  // isl::map map = isl::manage(isl_map_lex_le(set.space().get()));
+  // LOG(INFO) << "lex_le: " << map;
+
+  LOG(INFO) << "set: " << set;
+  isl::set set1 = isl::manage(isl_set_compute_divs(set.copy()));
+  LOG(INFO) << "set1 " << set1;
+
+  isl::map map1(ctx, "{ A[i,j,k] -> B[i',j']: i'=i and j'=j}");
+  LOG(INFO) << "map1: " << map1;
+  LOG(INFO) << "map1: " << isl_map_to_str(isl_map_compute_divs(map1.copy()));
+
+  // isl_basic_set_list *set_list = isl_set_get_basic_set_list(set.copy());
+  // ASSERT_EQ(isl_basic_set_list_n_basic_set(set_list), 1);
+  // isl::basic_set set0 = isl::manage(isl_basic_set_list_get_at(set_list, 0));
+  // LOG(INFO) << "get 0th basic set: " << set0;
+
+  // constraint
+  // LOG(INFO) << "num of constraint: " << isl_basic_set_n_constraint(set0.get());
+  // auto *constraint_list = isl_basic_set_get_constraint_list(set0.copy());
+  // LOG(INFO) << "constraints: " << isl_constraint_list_to_str(constraint_list);
+  // constraints: ({ A[i, j] : -1 + i >= 0 },{ A[i, j] : -1 - i + j >= 0 },{ A[i, j] : 99 - j >= 0 })
+  // auto *constraint0 = isl_constraint_list_get_at(constraint_list, 0);
+  // if (isl_constraint_is_equality(constraint0)) LOG(INFO) << "constraint 0 is equality";
+}
+
+TEST(isl, param) {
+  isl_ctx *ctx = isl_ctx_alloc();
+
+  isl::set set(ctx, "{ A[i,j]: 0 < i < j < 100 }");
+  LOG(INFO) << "params: " << set.params();
+  // params: {  :  }
+
+  isl::set set1(ctx, "[n,m] -> { A[i,j]: n < i < j < m }");
+  LOG(INFO) << "set1: " << set1;
+  // set1: [n, m] -> { A[i, j] : i > n and i < j < m }
+  LOG(INFO) << "params1: " << set1.params();
+  // params: [n, m] -> {  : m >= 3 + n }
+
+  auto set1_project_set = isl::manage(isl_set_project_out(set1.copy(), isl_dim_set, 0, 1));
+  LOG(INFO) << "set1_project: " << set1_project_set;
+  set1_project_set = isl::manage(isl_set_set_tuple_name(set1_project_set.release(), "A1"));
+  LOG(INFO) << "set1_project_set add tuple name A1: " << set1_project_set;
+
+  // with more dimensions
+  isl::set set2(ctx, "[n,m] -> { A[i,j,k,l,g]: 0 < i < j < n and 0 < k < l < g < m }");
+  LOG(INFO) << "set2: " << set2;
+  LOG(INFO) << "set2.param: " << set2.params();
+  LOG(INFO) << "project(1,2): " << isl::manage(isl_set_project_out(set2.copy(), isl_dim_set, 1, 2));
+  // project: [n, m] -> { [i, l, g] : 0 < i <= -2 + n and l >= 2 and l < g < m }
+  // project will remove some indices.
+
+  // same is map
+
+  cinn::isl_utils::map map(ctx, "[n,m] -> { A[i,j,k,l,g] -> [i+1,j-1,k*2,l,g] }");
+  LOG(INFO) << "map: " << map;
+  LOG(INFO) << "map.space: " << map.space();
+  // the iterator inside a single map instance is only distiuished by position.
+  // map.space: [n, m] -> { A[i, j, k, l, g] -> [o0, o1, o2, o3, o4] }
+  LOG(INFO) << "map.project(in, 0, 2): " << map.project_out(isl_dim_in, 0, 2);
+  // map.project(in, 0, 2): [n, m] -> { [k, l, g] -> [o0, o1, 2k, l, g] }
+  LOG(INFO) << "map.project(out, 0, 2): " << map.project_out(isl_dim_out, 0, 2);
+  // map.project(out, 0, 2): [n, m] -> { A[i, j, k, l, g] -> [2k, l, g] }
+}
+
+TEST(isl, align_param) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  isl::set set(ctx, "[n] -> { A[i,j,k]: 0 < i < j < k < n }");
+  LOG(INFO) << "set: " << set;
+  // set: [n] -> { A[i, j, k] : i > 0 and j > i and j < k < n }
+
+  isl::set set2(ctx, "[n, m, z, N, M] -> { A[k,j] : }");
+  isl_space *set2_space = isl_space_copy(set2.space().get());
+  isl::set set_aligned_param = isl::manage(isl_set_align_params(set.copy(), set2_space));
+  LOG(INFO) << "set aligned param: " << set_aligned_param;
+  // [n, m, z, N, M] -> { A[i, j, k] : i > 0 and j > i and j < k < n }
+
+  isl::set set3(ctx, "[] -> { A[k,j] : }");
+  isl_space *set3_space = isl_space_copy(set3.space().get());
+  set_aligned_param = isl::manage(isl_set_align_params(set.copy(), set3_space));
+  LOG(INFO) << "set aligned param: " << set_aligned_param;
+  // [n] -> { A[i, j, k] : i > 0 and j > i and j < k < n }
+}
+
+TEST(isl, aff) {
+  isl_ctx *ctx = isl_ctx_alloc();
+
+  // a quasi-affine expression
+  isl::aff aff(ctx, "{ [x,y] -> [floor(2*x + floor(y/4))] }");
+  isl::aff aff1(ctx, "{ [x,y] -> [1] }");
+  // the -> are omitted if the quasi-affine expression does not have a domain space.
+  isl::aff aff2(ctx, "{ [1+2] }");
+
+  LOG(INFO) << "aff: " << aff;
+  LOG(INFO) << "aff1: " << aff1;
+  LOG(INFO) << "aff2: " << aff2;
+
+  isl::pw_aff pw_aff(ctx, "[N] -> {[x]->[x+1] : 0 <= x <= N; [x]->[0]: x=N}");
+  LOG(INFO) << "pw_aff: " << pw_aff;
+
+  isl::pw_aff pw_aff1(ctx, "[N] -> {A[i]->[i] : 0 <= i < N; A[i]->[0]: i=N}");
+  LOG(INFO) << "pw_aff: " << pw_aff1;
+
+  // a function
+  isl::pw_aff pw_aff2(ctx, "[N] -> {A[i]->[i] : 0 <= i < 2; A[i]->[0]: i=2; A[i]->[2*i]: i<N}");
+  LOG(INFO) << "pw_aff: " << pw_aff2;
+
+  // picewise tuple
+
+  isl::pw_multi_aff maff(ctx, "{ [i]->[i,i-1]: i-1>=0 }");
+  LOG(INFO) << "multi_aff: " << maff;
+  isl::multi_pw_aff maff1 = isl::manage(isl_multi_pw_aff_from_pw_multi_aff(maff.copy()));
+  LOG(INFO) << "multi pw aff: " << maff1;
+}
+
+// This is a demo from playground.pollylabs.org
+TEST(isl, dependence_analysis) {
+  // double X[10], Y[10], Z[20];
+  // for (int i = 0; i <= 20; ++i)
+  // S: Z[i] = 0.;
+  // for (int i = 0; i <= 10; ++i)
+  //   for (int j = 0; j <= 10; ++j)
+  //       T: Z[i + j] += A[i] * B[j];
+  //
+
+  isl_ctx *ctx = isl_ctx_alloc();
+  isl::union_set domain(ctx, "{A[i] : 0 <= i <= 20; T[i,j]: 0 <= i,j <= 10}");
+  isl::union_map schedule(
+      ctx, "{S[i] -> [t0, t1, t2]: t0=0 and t1=i and t2=0; T[i,j] -> [t0, t1, t2]: t0=1 and t1=i and t2=j}");
+  // access relations
+  isl::map A_S_Z(ctx, "{ S[i]->Z[i] : 0 <=i <= 20 }");                     // write
+  isl::map A_T_Z(ctx, "{ T[i,j] -> Z[a] : a = i+j and 0 <= i,j <= 10 }");  // write
+  isl::map A_T_A(ctx, "{ T[i,j] -> A[i] : 0 <= i,j <= 10 }");              // read
+  isl::map A_T_B(ctx, "{ T[i,j] -> B[j] : 0 <= i,j <= 10 }");              // read
+
+  ASSERT_FALSE(A_S_Z.is_null());
+  ASSERT_FALSE(A_T_Z.is_null());
+  ASSERT_FALSE(A_T_A.is_null());
+  ASSERT_FALSE(A_T_B.is_null());
+
+  isl::union_map writes = isl::manage(isl_union_map_add_map(isl_union_map_from_map(A_S_Z.copy()), A_T_Z.copy()));
+  isl::union_map reads = isl::manage(isl_union_map_add_map(isl_union_map_from_map(A_T_A.copy()), A_T_B.copy()));
+  reads = isl::manage(isl_union_map_add_map(reads.release(), A_T_Z.copy()));
+
+  LOG(INFO) << "reads: " << reads;
+  LOG(INFO) << "writes: " << writes;
+
+  // schedule  information
+  // lexicographic order.
+  isl::space schedule_space = isl::set(ctx, "{ [t0, t1, t2]: }").get_space();
+  LOG(INFO) << "schedule_space: " << schedule_space;
+  LOG(INFO) << "lex_lt: " << isl::manage(isl_map_lex_lt(schedule_space.copy()));
+
+  isl::union_set schedule_domain = domain.apply(schedule);
+  LOG(INFO) << "schedule_domain: " << schedule_domain;
+  // schedule_domain: { [0, i1, i2] : 0 <= i1 <= 10 and 0 <= i2 <= 10 }
+
+  // Check S(2) is executed before T(0,0)
+  // Solution1: define a map between the two instances in question.
+  // Solution2: once in schedule space, check if the relation is a subset of precedes.
+  isl::union_map rel = isl::union_map(ctx, "{ S[i] -> T[i,j] }");
+  rel = rel.apply_domain(schedule).apply_range(schedule);
+  LOG(INFO) << "rel: " << rel;
+  // rel: { [0, i1, 0] -> [0, i1, o2] }
+  auto precedes = isl::manage(isl_map_lex_lt(schedule_space.copy()));
+  LOG(INFO) << "precedes: " << precedes;
+  LOG(INFO) << "is precede: " << rel.is_subset(precedes);
+
+  // ...
+}
+
+/*
+TEST(isl, schedule_tree) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  isl::union_set domain(ctx, "[N] -> { A[i,j]: 0<=i,j<N; B[i]: 0 <=i < N }");
+  LOG(INFO) << "domain: " << domain;
+  isl::schedule schedule = isl::manage(isl_schedule_from_domain(domain.copy()));
+  LOG(INFO) << "schedule: " << schedule;
+  ASSERT_FALSE(schedule.is_null());
+
+  auto root = schedule.get_root();
+  LOG(INFO) << "root: " << root;
+  ASSERT_EQ(root.get_tree_depth(), 0);
+
+  isl::union_map schedule_map = isl::manage(isl_schedule_get_map(schedule.copy()));
+  LOG(INFO) << "schedule_map: " << schedule_map;
+
+  LOG(INFO) << "node type: " << isl_schedule_node_get_type(root.get());
+  isl::union_set p0(ctx, "[N] -> { B[i] }");
+  root.insert_filter(p0);
+}
+ */

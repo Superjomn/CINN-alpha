@@ -11,7 +11,7 @@ enum class type_code_t {
   UNK,
 };
 
-enum class primitive_t {
+enum class primitive_t : int {
   unk = -1,
   uint8,
   uint16,

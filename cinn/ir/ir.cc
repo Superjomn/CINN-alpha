@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
 
 namespace cinn {
@@ -99,28 +100,28 @@ size_t Var::counter_ = 0;
 
 template <>
 Parameter::Parameter(const std::string &name, int32_t val) : name_(name) {
-  type_ = primitive_t::int32;
+  primitive_type_ = primitive_t::int32;
   int32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Parameter::Parameter(const std::string &name, float val) : name_(name) {
-  type_ = primitive_t::float32;
+  primitive_type_ = primitive_t::float32;
   fp32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Parameter::Parameter(int32_t val) : name_(DefaultUniqueName()) {
-  type_ = primitive_t::int32;
+  primitive_type_ = primitive_t::int32;
   int32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Parameter::Parameter(float val) : name_(DefaultUniqueName()) {
-  type_ = primitive_t::float32;
+  primitive_type_ = primitive_t::float32;
   fp32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
@@ -147,6 +148,8 @@ std::string Parameter::__str__() const {
   switch (primitive_type()) {
     case primitive_t::float32:
       return std::to_string(As<float>()) + "fp32";
+    case primitive_t::int8:
+      return std::to_string(As<int32_t>()) + "i8";
     case primitive_t::int32:
       return std::to_string(As<int32_t>()) + "i32";
     case primitive_t::int64:
@@ -306,10 +309,12 @@ Expr Call::make(const std::string &caller, std::vector<Expr> arguments) {
   return Expr(node);
 }
 
-Expr Reference::make(Expr expr, const std::vector<Var> &iters) {
+Expr Reference::make(Expr expr, const std::vector<Expr> &iterators) {
   auto x = std::make_shared<Reference>();
   x->target = expr;
-  x->iterators = iters;
+  for (const Expr &iterator : iterators) {
+    x->iterators.push_back(iterator);
+  }
   return Expr(x);
 }
 
@@ -334,12 +339,38 @@ Expr Assign::make(Expr a, Expr b) {
   return Expr(node);
 }
 
-Expr Expr::operator()(std::vector<Var> iters) {
-  this->ptr_ = Reference::make(*this, iters).ptr_;
-  return *this;
+Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
+
+Expr Expr::operator[](std::vector<Var> iters) {
+  std::vector<Expr> iterators;
+  for (auto &iter : iters) {
+    iterators.emplace_back(Expr(iter));
+  }
+  auto node = Reference::make(*this, iterators);
+  return node;
 }
 
-Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
+Expr Expr::operator[](Var i) {
+  CINN_DEBUG(3) << "get i:" << i.name();
+  if (type() == ir::NodeTy::Reference) {
+    As<Reference>()->iterators.emplace_back(Expr(i));
+    return *this;
+  }
+  return Reference::make(*this, {Expr(i)});
+}
+
+Expr Expr::operator[](Expr i) {
+  if (type() == ir::NodeTy::Reference) {
+    As<Reference>()->iterators.push_back(i);
+    return *this;
+  }
+  return Reference::make(*this, {i});
+}
+
+Expr Expr::operator[](std::vector<Expr> iters) {
+  auto node = Reference::make(*this, iters);
+  return node;
+}
 
 void Call::Accept(IRVisitor *x) const {}
 
@@ -347,11 +378,11 @@ std::vector<Interval> Reference::ExtractIntervals() {
   CHECK(!iterators.empty()) << "At least one iterator is required";
   std::vector<Interval> intervals;
   for (auto &o : iterators) {
-    CHECK(o.interval().lower_bound().primitive_type() == primitive_t::int32)
-        << " type is " << static_cast<int>(o.interval().lower_bound().primitive_type());
-    CHECK(o.interval().upper_bound().primitive_type() == primitive_t::int32)
-        << " type is " << static_cast<int>(o.interval().upper_bound().primitive_type());
-    intervals.push_back(o.interval());
+    CHECK(o.As<Var>()->interval().lower_bound().primitive_type() == primitive_t::int32)
+        << " type is " << static_cast<int>(o.As<Var>()->interval().lower_bound().primitive_type());
+    CHECK(o.As<Var>()->interval().upper_bound().primitive_type() == primitive_t::int32)
+        << " type is " << static_cast<int>(o.As<Var>()->interval().upper_bound().primitive_type());
+    intervals.push_back(o.As<Var>()->interval());
   }
   return intervals;
 }

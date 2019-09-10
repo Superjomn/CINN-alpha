@@ -10,6 +10,7 @@
 #include <isl/set.h>
 #include <isl/union_map.h>
 #include <isl/union_set.h>
+#include <map>
 #include <sstream>
 
 #include "cinn/core/buffer.h"
@@ -54,12 +55,21 @@ class Stage {
    */
   Stage(Expr expr);
 
+  const Expr& expr() const { return expr_; }
+
   isl_ctx* ctx() { return ctx_; }
   const isl::set& iterator_domain() { return iter_domain_; }
 
-  void set_name(const std::string& name);
+  void SetName(const std::string& name);
+  const std::string& name() const { return name_; }
 
   void ApplyTransformationOnScheduleRange(const std::string& map_str);
+
+  isl::map GetTransformedSchedule() {
+    CHECK(!iter_domain_.is_null());
+    CHECK(!schedule_.is_null());
+    return schedule_.intersect_domain(iter_domain_);
+  }
 
   /*
    * Apply a transformation on the domain of the schedule.
@@ -81,11 +91,17 @@ class Stage {
   // Dump to C-like code.
   std::string DumpAsC() const;
 
+  void SetIndiceMap(std::map<std::string, Expr>&& indice_map) { indice_map_ = std::move(indice_map); }
+
+  Expr GetIndiceTransformedExpr();
+
  private:
   // Init schedule with identity schedule.
   void InitSchedule();
 
   void InitFromExpr(Expr x);
+
+  std::map<std::string, Expr> indice_map_;
 };
 
 }  // namespace cinn

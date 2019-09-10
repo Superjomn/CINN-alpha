@@ -3,6 +3,7 @@
 #include <isl/ast.h>
 #include <isl/ast_build.h>
 #include <isl/constraint.h>
+#include <isl/cpp.h>
 #include <isl/map.h>
 #include <isl/set.h>
 #include <isl/union_set.h>
@@ -29,5 +30,20 @@ std::string isl_to_str(__isl_keep isl_space *);
 std::string isl_to_str(__isl_keep isl_pw_aff *);
 //! helper function to generate string representation for isl_union_pw_aff.
 std::string isl_to_str(__isl_keep isl_union_pw_aff *);
+
+namespace isl_utils {
+
+class map : public isl::map {
+ public:
+  inline /* implicit */ map(const map &obj) : isl::map(obj) {}
+  inline /* implicit */ map(isl::basic_map bmap) : isl::map(bmap) {}
+  inline explicit map(isl::ctx ctx, const std::string &str) : isl::map(ctx, str) {}
+
+  isl::map project_out(isl_dim_type dim_type, int start, int n) {
+    return isl::manage(isl_map_project_out(copy(), dim_type, start, n));
+  }
+};
+
+}  // namespace isl_utils
 
 }  // namespace cinn

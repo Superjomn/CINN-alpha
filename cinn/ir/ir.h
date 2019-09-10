@@ -14,7 +14,7 @@ namespace ir {
 
 class Parameter : public ExprNode<Parameter> {
   std::string name_;
-  primitive_t type_{primitive_t::unk};
+  primitive_t primitive_type_{primitive_t::unk};
   union {
     int8_t int8_val_;
     int32_t int32_val_;
@@ -25,15 +25,42 @@ class Parameter : public ExprNode<Parameter> {
 
  public:
   Parameter() = default;
-  Parameter(const std::string& name, primitive_t type) : name_(name), type_(type) {}
-  Parameter(const std::string& name, int32_t val) : name_(name), type_(primitive_t::int32), int32_val_(val) {}
+  Parameter(const std::string& name, primitive_t type) : name_(name), primitive_type_(type) {}
+  Parameter(const std::string& name, int32_t val) : name_(name), primitive_type_(primitive_t::int32), int32_val_(val) {}
+  Parameter(const Parameter& other) {
+    name_ = other.name_;
+    primitive_type_ = other.primitive_type_;
+    switch (primitive_type()) {
+      case primitive_t::int8:
+        int8_val_ = other.int8_val_;
+        break;
+      case primitive_t::int32:
+        int32_val_ = other.int32_val_;
+        break;
+      case primitive_t::int64:
+        int64_val_ = other.int64_val_;
+        break;
+      case primitive_t::float32:
+        fp32_val_ = other.fp32_val_;
+        break;
+      case primitive_t::float64:
+        fp64_val_ = other.fp64_val_;
+        break;
+      case primitive_t::unk:
+        break;
+      default:
+        LOG(FATAL) << "unsupported type " << static_cast<int>(primitive_type());
+    }
+  }
 
   template <typename T>
   Parameter(const std::string& name, T val);
   template <typename T>
   Parameter(T val);
 
-  primitive_t primitive_type() const { return type_; }
+  primitive_t primitive_type() const { return primitive_type_; }
+
+  bool valid() const { return primitive_type_ != primitive_t::unk; }
 
   bool is_integer() const {
     return primitive_type() == primitive_t::int32 || primitive_type() == primitive_t::int8 ||
@@ -65,7 +92,13 @@ class Interval {
   const Parameter& lower_bound() const { return lower_bound_; }
   const Parameter& upper_bound() const { return upper_bound_; }
 
-  std::string __str__() const { return "Interval"; }
+  std::string __str__() const {
+    std::stringstream ss;
+    ss << "Interval";
+    if (lower_bound().valid()) ss << "(" << lower_bound().__str__();
+    if (upper_bound().valid()) ss << ", " << upper_bound().__str__() << ")";
+    return ss.str();
+  }
 
  private:
   Parameter lower_bound_;
@@ -95,7 +128,7 @@ class Var : public ExprNode<Var> {
   Interval interval_;
   std::string name_;
 
-  primitive_t primitive_type_;
+  primitive_t primitive_type_{primitive_t::unk};
 
   static size_t counter_;
   static std::set<std::string> name_set_;  // All registerred var's name here.
@@ -117,6 +150,8 @@ class Var : public ExprNode<Var> {
       : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {
     CheckNameValid(name);
   }
+
+  Var(const Var& other) : name_(other.name()), primitive_type_(other.primitive_type()), interval_(other.interval()) {}
 
   operator Expr();
 
@@ -178,10 +213,13 @@ class Expr : public IRHandle {
    * @param iters list of iterators.
    * @return Expr.
    */
-  Expr operator()(std::vector<Var> iters);
-  Expr operator()(Var i, Var j) { return (*this)({i, j}); }
-  Expr operator()(Var i, Var j, Var k) { return (*this)({i, j, k}); }
-  Expr operator()(Var i, Var j, Var k, Var l) { return (*this)({i, j, k, l}); }
+  Expr operator[](std::vector<Var> iters);
+  Expr operator[](Var i);
+  Expr operator[](Expr i);
+  Expr operator[](std::vector<Expr> iters);
+  // Expr operator[](Var i, Var j) { return (*this)({i, j}); }
+  // Expr operator[](Var i, Var j, Var k) { return (*this)({i, j, k}); }
+  // Expr operator()(Var i, Var j, Var k, Var l) { return (*this)({i, j, k, l}); }
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
 
@@ -220,7 +258,7 @@ struct Reference : public ExprNode<Reference> {
   //! the reference target.
   Expr target;
   //! the iterators of the element.
-  std::vector<Var> iterators;
+  std::vector<Expr> iterators;
 
   Reference() = default;
 
@@ -230,7 +268,7 @@ struct Reference : public ExprNode<Reference> {
   std::vector<Interval> ExtractIntervals();
 
   //! Create a Reference Expr.
-  static Expr make(Expr expr, const std::vector<Var>& iters);
+  static Expr make(Expr expr, const std::vector<Expr>& iterators);
 
   static const NodeTy node_type = NodeTy::Reference;
 };

@@ -1,7 +1,7 @@
-cc_library(schedule_tree SRCS schedule_tree.cc DEPS ir)
+#cc_library(schedule_tree SRCS schedule_tree.cc DEPS ir)
 cc_library(stage SRCS stage.cc DEPS ir ir_printer isl_utils code_gen)
 cc_library(buffer SRCS buffer.cc DEPS ir)
-cc_library(code_gen SRCS code_gen.cc DEPS ir ir_printer isl_utils)
+cc_library(code_gen SRCS code_gen.cc DEPS ir ir_printer ir_helper)
 cc_library(function SRCS function.cc DEPS ir stage code_gen)
 cc_test(test_function SRCS function_test.cc DEPS function)
 

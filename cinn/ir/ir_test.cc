@@ -94,18 +94,22 @@ TEST(Reference, basic1) {
   Expr A("A");
   Var i("i", 0, 100);
   Var j("j", 0, 100);
-  Expr r = A(i, j);
+  Expr r = A[i][j];
+
   ASSERT_TRUE(r.valid());
   ASSERT_TRUE(r.type() == NodeTy::Reference);
   auto* ref = r.As<Reference>();
   ASSERT_EQ(ref->iterators.size(), 2UL);
 
-  auto& it0 = ref->iterators[0];
+  ASSERT_EQ(ref->target.type(), ir::NodeTy::Var);
+  ASSERT_EQ(ref->target.As<ir::Var>()->name(), "A");
+
+  auto& it0 = *ref->iterators[0].As<Var>();
   ASSERT_EQ(it0.name(), "i");
   ASSERT_EQ(it0.interval().lower_bound().As<int32_t>(), 0);
   ASSERT_EQ(it0.interval().upper_bound().As<int32_t>(), 100);
 
-  auto& it1 = ref->iterators[1];
+  auto& it1 = *ref->iterators[1].As<Var>();
   ASSERT_EQ(it1.name(), "j");
   ASSERT_EQ(it1.interval().lower_bound().As<int32_t>(), 0);
   ASSERT_EQ(it1.interval().upper_bound().As<int32_t>(), 100);

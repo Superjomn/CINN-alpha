@@ -118,6 +118,8 @@ class IRHandle {
     if (ptr_) return static_cast<T*>(ptr_.get());
     return nullptr;
   }
+
+  const std::shared_ptr<IRNode>& ptr() const { return ptr_; }
 };
 
 /// Base class of all the Exprs. An Expr is an expression that can return a value, such as `a+1`.

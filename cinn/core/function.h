@@ -75,15 +75,19 @@ struct Function : public ir::ExprNode<Function> {
 
   static const ir::NodeTy node_type = ir::NodeTy::Function;
 
+  const isl::union_set& iterator_domain() const { return iterator_domain_; }
+
+  Function() : ctx_(isl_ctx_alloc()) {}
+
  private:
   //! Schedule the stages by their original order.
-  void ScheduleByStageOrder();
+  void CollectIteratorDomain();
 
  private:
   bool is_inline_{false};
-  isl_ctx* ctx_;
+  isl::ctx ctx_;
   isl::union_set iterator_domain_;
-  isl::union_map schedule_;
+  // isl::union_map schedule_;
 };
 
 }  // namespace cinn
