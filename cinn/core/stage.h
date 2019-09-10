@@ -92,8 +92,9 @@ class Stage {
   std::string DumpAsC() const;
 
   void SetIndiceMap(std::map<std::string, Expr>&& indice_map) { indice_map_ = std::move(indice_map); }
+  const std::map<std::string, Expr>& indice_map() const { return indice_map_; }
 
-  Expr GetIndiceTransformedExpr();
+  Expr GetIndiceTransformedExpr() const;
 
  private:
   // Init schedule with identity schedule.

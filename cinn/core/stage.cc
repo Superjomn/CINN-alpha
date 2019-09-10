@@ -214,7 +214,7 @@ void Stage::SetName(const std::string& name) {
   names_.insert(name_);
 }
 
-Expr Stage::GetIndiceTransformedExpr() {
+Expr Stage::GetIndiceTransformedExpr() const {
   LOG_INDENT("Stage::GetIndiceTransformedExpr");
   CHECK(expr_.valid());
   CHECK(!indice_map_.empty()) << "indice_map should be created first";

@@ -399,7 +399,9 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
     CINN_DEBUG(2) << "CINN indice expr: " << item.first << " -> " << ir::Dump(expr);
   }
 
+  CINN_DEBUG(3) << "stage " << stage->name() << " set indice map, size: " << cinn_expr_indices.size();
   stage->SetIndiceMap(std::move(cinn_expr_indices));
+  CINN_DEBUG(3) << "stage: " << stage->name() << " " << &stage << " " << stage->indice_map().size();
   return node;
 }
 
@@ -413,11 +415,6 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
 
 void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
   LOG_INDENT("ReplaceExprWithStage");
-  CINN_DEBUG(3) << "replace";
-  CINN_DEBUG(3) << "original code: \n" << ir::Dump(root);
-  CINN_DEBUG(3) << "to " << s;
-  CINN_DEBUG(3) << "expr:\n" << ir::Dump(expr);
-
   switch (root.type()) {
     OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);
 

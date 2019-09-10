@@ -52,14 +52,14 @@ struct Function : public ir::ExprNode<Function> {
   std::vector<ir::Expr> argument_exprs;
 
   //! Body of the function.
-  std::vector<Stage> stages;
+  std::vector<Stage*> stages;
   // std::vector<Computation*> body;
 
   //! Define a function.
   static std::shared_ptr<Function> make(const std::string& name,
                                         std::vector<Expr> inputs,
                                         std::vector<Expr> outputs,
-                                        std::vector<Stage> stages);
+                                        std::vector<Stage*> stages);
 
   //! Mark the function inline.
   void set_inline() { is_inline_ = true; }
