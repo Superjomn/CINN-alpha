@@ -19,7 +19,7 @@ namespace utils {
 extern int __cinn_log_level__;
 extern int __cinn_log_indent__;
 
-struct Log : std::ostream {
+struct Log {
   Log(const char* file, int lineno, int indent, int level)
       : file_(file), lineno_(lineno), indent_(indent), level_(level) {}
 
