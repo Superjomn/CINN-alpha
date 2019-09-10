@@ -8,76 +8,83 @@
 namespace cinn {
 
 // Eat an isl block node.
-void EatBlock(isl_ast_node* node, ir::Expr* expr);
+void EatBlock(const isl::ast_node& node, ir::Expr* expr);
 // Eat an isl user node.
-void EatUser(isl_ast_node* node, ir::Expr* expr);
+void EatUser(const isl::ast_node& node, ir::Expr* expr);
 // Eat an isl for node.
-void EatFor(isl_ast_node* node, ir::Expr* expr);
+void EatFor(const isl::ast_node& node, ir::Expr* expr);
 // Eat an isl `if` node.
-void EatIf(isl_ast_node* node, ir::Expr* expr);
+void EatIf(const isl::ast_node& node, ir::Expr* expr);
 
-void IslAstNodeToCinnExpr(isl_ast_node* node, ir::Expr* expr) {
-  CHECK(node);
+void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
+  LOG_INDENT("IslAstNodeToCinnExpr");
+  CHECK(!node.is_null());
   CHECK(expr);
 
-  switch (isl_ast_node_get_type(node)) {
-    case isl_ast_node_block:
+  switch (isl_ast_node_get_type(node.get())) {
+    case isl_ast_node_block: {
+      CINN_DEBUG(3) << "get isl block node";
       EatBlock(node, expr);
-      break;
-    case isl_ast_node_for:
+    } break;
+    case isl_ast_node_for: {
+      CINN_DEBUG(3) << "get isl for node";
       EatFor(node, expr);
-      break;
-    case isl_ast_node_if:
+    } break;
+    case isl_ast_node_if: {
+      CINN_DEBUG(3) << "get isl if node";
       EatIf(node, expr);
-      break;
-    case isl_ast_node_user:
+    } break;
+    case isl_ast_node_user: {
+      CINN_DEBUG(3) << "get isl user node";
       EatUser(node, expr);
-      break;
+    } break;
     default:
-      LOG(FATAL) << "Unexpected ISL node type " << isl_ast_node_get_type(node);
+      LOG(FATAL) << "Unexpected ISL node type " << isl_ast_node_get_type(node.get());
       break;
   }
 }
 
 // Eat an isl block node.
-void EatBlock(isl_ast_node* node, ir::Expr* expr) {
+void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   VLOG(2) << "get isl ast body node";
-  CHECK_EQ(isl_ast_node_get_type(node), isl_ast_node_block);
-  isl_ast_node_list* list = isl_ast_node_block_get_children(node);
+  CHECK(!node.is_null());
+  CHECK(expr);
+  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_block);
+  isl::ast_node_list list = isl::manage(isl_ast_node_block_get_children(node.get()));
   std::vector<ir::Expr> exprs;
-  for (int i = isl_ast_node_list_n_ast_node(list) - 1; i >= 0; i--) {
-    isl_ast_node* child = isl_ast_node_list_get_ast_node(list, i);
+  for (int i = isl_ast_node_list_n_ast_node(list.get()) - 1; i >= 0; i--) {
+    isl::ast_node child = isl::manage(isl_ast_node_list_get_ast_node(list.get(), i));
     // visit child
     ir::Expr child_expr;
-    IslAstNodeToCinnExpr(node, &child_expr);
+    IslAstNodeToCinnExpr(child, &child_expr);
     exprs.push_back(child_expr);
   }
   *expr = ir::Block::make(std::move(exprs));
 }
 // Eat an isl user node.
-void EatUser(isl_ast_node* node, ir::Expr* expr) {
-  CHECK_EQ(isl_ast_node_get_type(node), isl_ast_node_user);
+void EatUser(const isl::ast_node& node, ir::Expr* expr) {
+  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_user);
   VLOG(2) << "get isl ast user node";
-  isl_ast_expr* isl_expr = isl_ast_node_user_get_expr(node);
+  isl::ast_expr isl_expr = isl::manage(isl_ast_node_user_get_expr(node.get()));
   IslAstExprToCinnExpr(isl_expr, expr);
 }
 // Eat an isl `for` node.
-void EatFor(isl_ast_node* node, ir::Expr* expr) {
+void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   LOG_INDENT("EatFor");
-  CHECK_EQ(isl_ast_node_get_type(node), isl_ast_node_for);
+  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_for);
   CINN_DEBUG(3) << "get isl ast for node";
 
   // iter name
-  isl_ast_expr* iter = isl_ast_node_for_get_iterator(node);
-  isl_id* iter_id = isl_ast_expr_get_id(iter);
-  std::string iter_name = isl_id_get_name(iter_id);
+  isl::ast_expr iter = isl::manage(isl_ast_node_for_get_iterator(node.get()));
+  isl::id iter_id = isl::manage(isl_ast_expr_get_id(iter.get()));
+  std::string iter_name = iter_id.name();
   CINN_DEBUG(3) << "For iter: " << iter_name;
 
   // get condition
-  isl_ast_expr* condition = isl_ast_node_for_get_cond(node);
-  isl_ast_expr* incrementor = isl_ast_node_for_get_inc(node);
-  isl_ast_expr* initializer = isl_ast_node_for_get_init(node);
-  isl_ast_node* body = isl_ast_node_for_get_body(node);
+  isl::ast_expr condition = isl::manage(isl_ast_node_for_get_cond(node.get()));
+  isl::ast_expr incrementor = isl::manage(isl_ast_node_for_get_inc(node.get()));
+  isl::ast_expr initializer = isl::manage(isl_ast_node_for_get_init(node.get()));
+  isl::ast_node body = isl::manage(isl_ast_node_for_get_body(node.get()));
 
   ir::Expr ir_body;
   IslAstNodeToCinnExpr(body, &ir_body);
@@ -91,7 +98,9 @@ void EatFor(isl_ast_node* node, ir::Expr* expr) {
   ir::Expr ir_condition;
   IslAstExprToCinnExpr(condition, &ir_condition);
   ir::Expr tmp;
-  IslAstExprToCinnExpr(isl_ast_expr_get_op_arg(condition, 1), &tmp);
+
+  isl::ast_expr arg = isl::manage(isl_ast_expr_get_op_arg(condition.get(), 1));
+  IslAstExprToCinnExpr(arg, &tmp);
   CINN_DEBUG(3) << "for get condition " << ir::Dump(ir_condition);
 
   ir::Expr ir_inc;
@@ -104,18 +113,18 @@ void EatFor(isl_ast_node* node, ir::Expr* expr) {
   *expr = ir::For::make(ir_initializer, ir_condition, ir_inc, ir_body, ir_iter);
 }
 
-void EatIf(isl_ast_node* node, ir::Expr* expr) {
-  CHECK_EQ(isl_ast_node_get_type(node), isl_ast_node_if);
+void EatIf(const isl::ast_node& node, ir::Expr* expr) {
+  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_if);
   LOG(INFO) << "get isl ast if node";
-  isl_ast_node* then_body = isl_ast_node_if_get_then(node);
-  isl_ast_expr* condition = isl_ast_node_if_get_cond(node);
+  isl::ast_node then_body = isl::manage(isl_ast_node_if_get_then(node.get()));
+  isl::ast_expr condition = isl::manage(isl_ast_node_if_get_cond(node.get()));
 
   ir::Expr ir_then_body;
   IslAstNodeToCinnExpr(then_body, &ir_then_body);
 
   ir::Expr ir_else_body;
-  if (isl_ast_node_if_has_else(node)) {
-    isl_ast_node* else_body = isl_ast_node_if_get_else(node);
+  if (isl_bool_true == isl_ast_node_if_has_else(node.get())) {
+    isl::ast_node else_body = isl::manage(isl_ast_node_if_get_else(node.get()));
     IslAstNodeToCinnExpr(else_body, &ir_else_body);
   }
 
@@ -129,29 +138,27 @@ void EatIf(isl_ast_node* node, ir::Expr* expr) {
   }
 }
 
-void IslAstExprToCinnExpr(isl_ast_expr* node, ir::Expr* expr) {
-  switch (isl_ast_expr_get_type(node)) {
+void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
+  switch (isl_ast_expr_get_type(node.get())) {
     case isl_ast_expr_int: {
-      isl_val* val = isl_ast_expr_get_val(node);
-      *expr = ir::Expr((int)isl_val_get_num_si(val));
+      isl::val val = isl::manage(isl_ast_expr_get_val(node.get()));
+      *expr = ir::Expr((int)isl_val_get_num_si(val.get()));
     } break;
     case isl_ast_expr_id: {
-      isl_id* id = isl_ast_expr_get_id(node);
-      const char* name = isl_id_get_name(id);
-      *expr = ir::Var(name);
+      isl::id id = isl::manage(isl_ast_expr_get_id(node.get()));
+      *expr = ir::Var(id.name());
     } break;
     case isl_ast_expr_op: {
       std::vector<ir::Expr> ops;
-      const int n_args = isl_ast_expr_get_op_n_arg(node);
+      const int n_args = isl_ast_expr_get_op_n_arg(node.get());
 
       for (int i = 0; i < n_args; i++) {
         ir::Expr op;
-        isl_ast_expr* expr0 = isl_ast_expr_get_op_arg(node, i);
+        isl::ast_expr expr0 = isl::manage(isl_ast_expr_get_op_arg(node.get(), i));
         IslAstExprToCinnExpr(expr0, &op);
-        isl_ast_expr_free(expr0);
         ops.push_back(op);
       }
-      isl_ast_op_type op_type = isl_ast_expr_get_op_type(node);
+      isl_ast_op_type op_type = isl_ast_expr_get_op_type(node.get());
       switch (op_type) {
         case isl_ast_op_and:
           *expr = ir::And::make(ops[0], ops[1]);
@@ -365,7 +372,7 @@ Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl:
   std::map<std::string, Expr> cinn_expr_indices;
   for (auto& item : indice_map) {
     Expr expr;
-    IslAstExprToCinnExpr(item.second.get(), &expr);
+    IslAstExprToCinnExpr(item.second, &expr);
     cinn_expr_indices[item.first] = expr;
   }
 
@@ -387,7 +394,7 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
   CINN_DEBUG(2) << "collected isl_indice_map.size: " << isl_indice_map.size();
   for (auto& item : isl_indice_map) {
     Expr expr;
-    IslAstExprToCinnExpr(item.second.get(), &expr);
+    IslAstExprToCinnExpr(item.second, &expr);
     cinn_expr_indices[item.first] = expr;
     CINN_DEBUG(2) << "CINN indice expr: " << item.first << " -> " << ir::Dump(expr);
   }

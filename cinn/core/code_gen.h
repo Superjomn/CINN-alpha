@@ -12,10 +12,10 @@ namespace cinn {
 class Generator;
 
 // Transform ISL AST expr to CINN expression.
-void IslAstExprToCinnExpr(isl_ast_expr* node, ir::Expr* expr);
+void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr);
 
 // Transform ISL AST node to CINN expression.
-void IslAstNodeToCinnExpr(isl_ast_node* node, cinn::ir::Expr* expr);
+void IslAstNodeToCinnExpr(const isl::ast_node& node, cinn::ir::Expr* expr);
 
 void GenCodeFromIslAst(isl_ast_node* node);
 

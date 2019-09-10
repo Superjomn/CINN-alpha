@@ -806,3 +806,44 @@ TEST(isl, schedule_tree) {
   root.insert_filter(p0);
 }
  */
+
+TEST(isl, align) {
+  isl_ctx *ctx = isl_ctx_alloc();
+
+  isl::map schedule0(ctx, "{ S0[i,j] -> [0, i, 0, j] }");
+  isl::map schedule1(ctx, "{ S1[i,j,k] -> [0, i, 0, j, 0, k] }");
+  isl::map schedule2(ctx, "{ S2[k] -> [0, k] }");
+
+  int max_range_dim = 6;
+
+  LOG(INFO) << "map.domain: " << schedule0.domain();
+  LOG(INFO) << "map.domain.space: " << schedule0.domain().space();
+  LOG(INFO) << "map.range: " << schedule0.range();
+  LOG(INFO) << "map.range.space: " << schedule0.range().space();
+
+  int mdim = isl_map_dim(schedule0.get(), isl_dim_out);
+  schedule0 = isl::manage(isl_map_add_dims(schedule0.release(), isl_dim_out, max_range_dim - mdim));
+  LOG(INFO) << "after add dim: " << schedule0;
+
+  for (int i = mdim; i < max_range_dim; i++) {
+    isl::space sp = schedule0.space();
+    isl_local_space *lsp = isl_local_space_from_space(sp.copy());
+    isl_constraint *cst = isl_constraint_alloc_equality(lsp);
+    cst = isl_constraint_set_coefficient_si(cst, isl_dim_out, i, 1);
+    schedule0 = isl::manage(isl_map_add_constraint(schedule0.release(), cst));
+  }
+
+  LOG(INFO) << "after process: " << schedule0;
+}
+
+TEST(isl, identity_schedule) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  isl::set domain(ctx, "[n] -> { A[i,j] : 0 < i < j < n }");
+  isl_space *domain_space = isl_space_copy(domain.space().get());
+  isl::map scheduled = isl::manage(isl_map_identity(isl_space_map_from_set(domain_space)));
+  scheduled = isl::manage(isl_map_intersect_domain(scheduled.release(), domain.copy()));
+  LOG(INFO) << "scheduled: " << scheduled;
+  scheduled = isl::manage(isl_map_set_tuple_name(scheduled.release(), isl_dim_out, ""));
+  scheduled = isl::manage(isl_map_coalesce(scheduled.release()));
+  LOG(INFO) << "scheduled: " << scheduled;
+}

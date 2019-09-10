@@ -1,8 +1,10 @@
 #pragma once
 #include <isl/cpp.h>
+#include <map>
 #include <string>
 #include "cinn/core/buffer.h"
 #include "cinn/ir/ir.h"
+#include "cinn/utils/isl_utils.h"
 
 namespace cinn {
 using ir::Expr;
@@ -50,21 +52,19 @@ struct Function : public ir::ExprNode<Function> {
   std::vector<ir::Expr> argument_exprs;
 
   //! Body of the function.
-  std::vector<Stage> body;
+  std::vector<Stage> stages;
   // std::vector<Computation*> body;
 
   //! Define a function.
-  static Expr make(const std::string& name,
-                   std::vector<Expr> inputs,
-                   std::vector<Expr> outputs,
-                   std::vector<Stage> stages);
+  static std::shared_ptr<Function> make(const std::string& name,
+                                        std::vector<Expr> inputs,
+                                        std::vector<Expr> outputs,
+                                        std::vector<Stage> stages);
 
   //! Mark the function inline.
   void set_inline() { is_inline_ = true; }
   //! Tell whether this function is an inline one.
   bool is_inline() const { return is_inline_; }
-
-  void GenerateIslAst();
 
   //! Dump C like codes.
   std::string DumpIslC() const;
@@ -77,16 +77,23 @@ struct Function : public ir::ExprNode<Function> {
 
   const isl::union_set& iterator_domain() const { return iterator_domain_; }
 
+  isl::union_map GetFinalTransform() const;
+
   Function() : ctx_(isl_ctx_alloc()) {}
 
  private:
   //! Schedule the stages by their original order.
   void CollectIteratorDomain();
+  //! Initialize the basic schedule for each stage.
+  void InitSchedule();
+  //! Generate the final ISL ast node.
+  isl::ast_node GenerateIslAst() const;
 
  private:
   bool is_inline_{false};
   isl::ctx ctx_;
   isl::union_set iterator_domain_;
+  std::vector<isl_utils::map> schedule_;
   // isl::union_map schedule_;
 };
 

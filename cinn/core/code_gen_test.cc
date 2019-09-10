@@ -21,7 +21,7 @@ TEST(code_gen, IslAstExprToCinnExpr) {
   auto *transform = isl_map_read_from_str(ctx, "[T,N] -> {S[t,i] -> [t,i+t*10]}");
   auto *T = isl_union_map_from_map(isl_map_intersect_domain(transform, domain));
 
-  auto *builder = isl_ast_build_from_context(context);
+  auto build = isl::manage(isl_ast_build_from_context(context));
 
   // set iterators
   isl_id_list *iterators = isl_id_list_alloc(ctx, 2);
@@ -29,17 +29,17 @@ TEST(code_gen, IslAstExprToCinnExpr) {
   iterators = isl_id_list_add(iterators, id);
   id = isl_id_alloc(ctx, "i", nullptr);
   iterators = isl_id_list_add(iterators, id);
-  builder = isl_ast_build_set_iterators(builder, iterators);
+  build = isl::manage(isl_ast_build_set_iterators(build.release(), iterators));
 
-  auto *ast = isl_ast_build_node_from_schedule_map(builder, T);
+  auto ast = isl::manage(isl_ast_build_node_from_schedule_map(build.get(), T));
 
-  isl_ast_expr *iter = isl_ast_node_for_get_iterator(ast);
+  isl::ast_expr iter = isl::manage(isl_ast_node_for_get_iterator(ast.get()));
 
   // ISL print C code
   isl_printer *p = isl_printer_to_str(ctx);
   isl_printer_set_output_format(p, 0);
-  isl_printer_print_ast_node(p, ast);
-  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast);
+  isl_printer_print_ast_node(p, ast.get());
+  LOG(INFO) << "\n" << isl_ast_node_to_C_str(ast.get());
 
   ir::Expr expr;
   IslAstExprToCinnExpr(iter, &expr);
@@ -122,7 +122,7 @@ TEST(code_gen, ReplaceCinnIndiceWithIslTransformedIndices) {
   isl::set context(Generator::Global().ctx(), "{:}");
   auto *build = isl_ast_build_from_context(context.copy());
   isl_ast_build_set_at_each_domain(build, IslAstNodeInfoCollect, nullptr);
-  auto *ast = isl_ast_build_node_from_schedule_map(build, T);
+  auto ast = isl::manage(isl_ast_build_node_from_schedule_map(build, T));
 
   // Transform isl ast to CINN ast.
   Expr root;

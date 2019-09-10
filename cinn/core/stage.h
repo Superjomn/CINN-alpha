@@ -58,7 +58,7 @@ class Stage {
   const Expr& expr() const { return expr_; }
 
   isl_ctx* ctx() { return ctx_; }
-  const isl::set& iterator_domain() { return iter_domain_; }
+  const isl::set& iterator_domain() const { return iter_domain_; }
 
   void SetName(const std::string& name);
   const std::string& name() const { return name_; }

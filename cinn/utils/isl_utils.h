@@ -38,10 +38,28 @@ class map : public isl::map {
   inline /* implicit */ map(const map &obj) : isl::map(obj) {}
   inline /* implicit */ map(isl::basic_map bmap) : isl::map(bmap) {}
   inline explicit map(isl::ctx ctx, const std::string &str) : isl::map(ctx, str) {}
+  inline map(isl::map &&map) { ptr = map.release(); }
 
   isl::map project_out(isl_dim_type dim_type, int start, int n) {
     return isl::manage(isl_map_project_out(copy(), dim_type, start, n));
   }
+
+  void set_in_tuple_name(const std::string &name) { ptr = isl_map_set_tuple_name(ptr, isl_dim_in, name.c_str()); }
+  void set_out_tuple_name(const std::string &name) { ptr = isl_map_set_tuple_name(ptr, isl_dim_out, name.c_str()); }
+};
+
+class union_map : public isl::union_map {
+ public:
+  inline union_map() : isl::union_map() {}
+  inline /* implicit */ union_map(const isl::union_map &obj) : isl::union_map(obj) {}
+  inline /* implicit */ union_map(isl::basic_map bmap) : isl::union_map(bmap) {}
+  inline /* implicit */ union_map(isl::map map) : isl::union_map(map) {}
+  inline explicit union_map(isl::ctx ctx, const std::string &str) : isl::union_map(ctx, str) {}
+
+  void add_map_inplace(isl::map &&m) { ptr = isl_union_map_add_map(ptr, m.release()); }
+  union_map add_map(isl::map &&m) const { return isl::manage(isl_union_map_add_map(copy(), m.release())); }
+
+  void union_inplace(isl::union_map &&m) { ptr = isl_union_map_union(ptr, m.release()); }
 };
 
 }  // namespace isl_utils

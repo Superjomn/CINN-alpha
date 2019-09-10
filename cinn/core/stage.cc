@@ -49,7 +49,7 @@ isl::set ExtractDomainFromAssignExpr(const std::string& statement, Expr expr, is
     ss << " and ";
   }
 
-  if (ref->iterators.size() > 1) {
+  if (ref->iterators.size() >= 1) {
     iter_interval_repr(*ref->iterators.back().As<ir::Var>());
   }
   ss << " }";
@@ -163,8 +163,8 @@ std::string Stage::DumpAsC() const {
   isl::union_map final =
       isl::manage(isl_union_map_from_map(isl_map_intersect_domain(schedule.copy(), iter_domain_.copy())));
   isl::set C(ctx_, "{:}");
-  auto* build = isl_ast_build_from_context(C.copy());
-  auto* ast = isl_ast_build_node_from_schedule_map(build, final.copy());
+  isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
+  isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule_map(build.get(), final.copy()));
 
   Expr expr;
   IslAstNodeToCinnExpr(ast, &expr);
