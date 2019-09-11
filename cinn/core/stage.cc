@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "cinn/core/code_gen.h"
+#include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/isl_utils.h"
@@ -12,6 +13,7 @@
 #include "cinn/utils/name_generator.h"
 
 namespace cinn {
+using interval_tuple_t = ir::Reference::interval_tuple_t;
 
 isl::set ExtractDomainFromAssignExpr(const std::string& statement, Expr expr, isl_ctx* ctx) {
   CINN_DEBUG(2) << statement << " extract domain";
@@ -26,31 +28,32 @@ isl::set ExtractDomainFromAssignExpr(const std::string& statement, Expr expr, is
   CHECK(expr.type() == ir::NodeTy::Assign);
   auto ref = a.As<ir::Reference>();
   auto intervals = ref->ExtractIntervals();
+  LOG(INFO) << "intervals: " << intervals.size();
 
   std::stringstream iterators_repr;
-  for (int i = 0; i < ref->iterators.size() - 1; i++) {
-    iterators_repr << ref->iterators[i].As<ir::Var>()->name() << ",";
+  for (int i = 0; i < intervals.size() - 1; i++) {
+    iterators_repr << std::get<0>(intervals[i]) << ",";
   }
-  if (ref->iterators.size() >= 1) iterators_repr << ref->iterators.back().As<ir::Var>()->name();
+  if (intervals.size() >= 1) iterators_repr << std::get<0>(intervals.back());
 
   std::stringstream ss;
 
   ss << "{ " << statement << "[" << iterators_repr.str() << "] : ";
-  auto iter_interval_repr = [&](const ir::Var& iter) {
-    auto& interval = iter.interval();
+  auto iter_interval_repr = [&](const interval_tuple_t& iter) {
+    std::string iter_name = std::get<0>(iter);
+    auto& interval = std::get<1>(iter);
     CHECK(interval.lower_bound().is_integer())
         << "polyhedral model can only support SCoP, the type of the iterator's domain should be integer";
-    ss << interval.lower_bound().As<int32_t>() << " <= " << iter.name() << " < "
-       << interval.upper_bound().As<int32_t>();
+    ss << interval.lower_bound().As<int32_t>() << " <= " << iter_name << " < " << interval.upper_bound().As<int32_t>();
   };
 
-  for (int i = 0; i < ref->iterators.size() - 1; i++) {
-    iter_interval_repr(*ref->iterators[i].As<ir::Var>());
+  for (int i = 0; i < intervals.size() - 1; i++) {
+    iter_interval_repr(intervals[i]);
     ss << " and ";
   }
 
   if (ref->iterators.size() >= 1) {
-    iter_interval_repr(*ref->iterators.back().As<ir::Var>());
+    iter_interval_repr(intervals.back());
   }
   ss << " }";
 
@@ -60,26 +63,27 @@ isl::set ExtractDomainFromAssignExpr(const std::string& statement, Expr expr, is
 }
 
 Stage::Stage(Expr expr) {
+  InitData();
   InitFromExpr(expr);
-  Generator::Global().RegisterStage(name_, this);
+  Generator::Global().RegisterStage(data_->name, this);
 }
 
 void Stage::InitFromExpr(Expr expr) {
-  CHECK(!ctx_);
+  CHECK(!data_->ctx);
   CHECK(expr.valid());
-  CHECK(expr.IsOp());
-  CHECK(!iter_domain_.get());
-  CHECK(!schedule_.get());
+  CHECK(expr.is_op());
+  CHECK(!data_->iter_domain.get());
+  CHECK(!data_->schedule.get());
 
-  expr_ = expr;
+  data_->expr = expr;
 
-  ctx_ = Generator::Global().ctx().get();
+  data_->ctx = Generator::Global().ctx().get();
   SetName(NameGenerator::Global().NewStageName());
 
   // set iterator_domain
-  isl::set uset = ExtractDomainFromAssignExpr(name_, expr, ctx_);
+  isl::set uset = ExtractDomainFromAssignExpr(data_->name, expr, data_->ctx);
   CHECK(uset.get()) << "failed to parse the expr to ISL domain";
-  iter_domain_ = uset;
+  data_->iter_domain = uset;
 
   // init schedule
   InitSchedule();
@@ -87,53 +91,53 @@ void Stage::InitFromExpr(Expr expr) {
 
 void Stage::ApplyTransformationOnScheduleRange(const std::string& map_str) {
   LOG_INDENT("Stage::ApplyTransformationOnScheduleRange");
-  CHECK(ctx_);
-  CHECK(schedule_.get());
-  isl::map map(ctx_, map_str.c_str());
+  CHECK(data_->ctx);
+  CHECK(data_->schedule.get());
+  isl::map map(data_->ctx, map_str.c_str());
   CHECK(map.get()) << "map parse failed";
 
-  CINN_DEBUG(2) << "schedule space " << schedule_.space();
+  CINN_DEBUG(2) << "schedule space " << data_->schedule.space();
   CINN_DEBUG(2) << "map space " << map.space();
 
-  schedule_ = schedule_.apply_range(map);
+  data_->schedule = data_->schedule.apply_range(map);
 }
 
 void Stage::ApplyTransformationOnScheduleDomain(const std::string& map_str) {
-  CHECK(ctx_);
+  CHECK(data_->ctx);
   LOG(INFO) << "map " << map_str;
-  isl::map map(ctx_, map_str.c_str());
+  isl::map map(data_->ctx, map_str.c_str());
   CHECK(map.get()) << "map parse failed, " << map_str;
-  CHECK(schedule_.get());
+  CHECK(data_->schedule.get());
 
-  auto* scheduled = isl_map_apply_domain(schedule_.copy(), map.copy());
-  schedule_ = isl::manage(scheduled);
-  VLOG(2) << "schedule: " << schedule_;
+  auto* scheduled = isl_map_apply_domain(data_->schedule.copy(), map.copy());
+  data_->schedule = isl::manage(scheduled);
+  VLOG(2) << "schedule: " << data_->schedule;
 }
 
 void Stage::AddScheduleConstraint(const std::string& domain_constraints, const std::string& range_constraints) {
-  CHECK(ctx_);
-  isl::map sched = schedule_;
+  CHECK(data_->ctx);
+  isl::map sched = data_->schedule;
 
   if (!domain_constraints.empty()) {
-    isl::set domain_crts(ctx_, domain_constraints.c_str());
+    isl::set domain_crts(data_->ctx, domain_constraints.c_str());
     CHECK(domain_crts.get());
     sched = sched.intersect_domain(domain_crts);
   }
 
   if (!range_constraints.empty()) {
-    isl::set range_crts(ctx_, range_constraints.c_str());
+    isl::set range_crts(data_->ctx, range_constraints.c_str());
     sched = sched.intersect_range(range_crts);
   }
 
-  schedule_ = sched;
+  data_->schedule = sched;
 }
 
 void Stage::AssertNamesNotAssigned(const std::vector<std::string>& dimensions) {
-  CHECK(schedule_.get());
+  CHECK(data_->schedule.get());
   for (const auto& dim : dimensions) {
-    auto id = isl_map_find_dim_by_name(schedule_.get(), isl_dim_in, dim.c_str());
+    auto id = isl_map_find_dim_by_name(data_->schedule.get(), isl_dim_in, dim.c_str());
     CHECK_LT(id, 0);
-    id = isl_map_find_dim_by_name(schedule_.get(), isl_dim_out, dim.c_str());
+    id = isl_map_find_dim_by_name(data_->schedule.get(), isl_dim_out, dim.c_str());
     CHECK_LT(id, 0);
   }
 }
@@ -141,15 +145,15 @@ void Stage::AssertNamesNotAssigned(const std::vector<std::string>& dimensions) {
 std::string Stage::DumpIslC() const {
   LOG_INDENT("Stage::DumpIslC");
   std::stringstream ss;
-  CHECK(ctx_);
-  CHECK(iter_domain_.get());
+  CHECK(data_->ctx);
+  CHECK(data_->iter_domain.get());
   isl::map schedule;
-  schedule = schedule_.get() ? schedule_ : isl::manage(isl_set_to_identity_map(iter_domain_.copy()));
+  schedule = data_->schedule.get() ? data_->schedule : isl::manage(isl_set_to_identity_map(data_->iter_domain.copy()));
   isl::union_map transform =
-      isl::manage(isl_union_map_from_map(isl_map_intersect_domain(schedule.copy(), iter_domain_.copy())));
+      isl::manage(isl_union_map_from_map(isl_map_intersect_domain(schedule.copy(), data_->iter_domain.copy())));
   CINN_DEBUG(2) << "transform: " << transform;
   // auto* C = isl_set_empty(isl_space_copy(isl_union_map_get_space(T)));
-  isl::set C(ctx_, "{:}");
+  isl::set C(data_->ctx, "{:}");
   auto* build = isl_ast_build_from_context(C.copy());
   auto* ast = isl_ast_build_node_from_schedule_map(build, transform.copy());
   ss << "generated code:\n" << isl_ast_node_to_C_str(ast);
@@ -157,12 +161,13 @@ std::string Stage::DumpIslC() const {
 }
 
 std::string Stage::DumpAsC() const {
-  CHECK(ctx_);
-  CHECK(iter_domain_.get());
-  isl::map schedule = schedule_.get() ? schedule_ : isl::manage(isl_set_to_identity_map(iter_domain_.get()));
+  CHECK(data_->ctx);
+  CHECK(data_->iter_domain.get());
+  isl::map schedule =
+      data_->schedule.get() ? data_->schedule : isl::manage(isl_set_to_identity_map(data_->iter_domain.get()));
   isl::union_map final =
-      isl::manage(isl_union_map_from_map(isl_map_intersect_domain(schedule.copy(), iter_domain_.copy())));
-  isl::set C(ctx_, "{:}");
+      isl::manage(isl_union_map_from_map(isl_map_intersect_domain(schedule.copy(), data_->iter_domain.copy())));
+  isl::set C(data_->ctx, "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule_map(build.get(), final.copy()));
 
@@ -172,8 +177,8 @@ std::string Stage::DumpAsC() const {
 }
 
 void Stage::InitSchedule() {
-  LOG_INDENT(name_ + ".InitSchedule");
-  CHECK(iter_domain_.get());
+  LOG_INDENT(data_->name + ".InitSchedule");
+  CHECK(data_->iter_domain.get());
   /*
   isl::space space = iter_domain_.space();
   isl::map schedule = isl::manage(isl_map_identity(isl_space_map_from_set(space.copy())));
@@ -185,45 +190,57 @@ void Stage::InitSchedule() {
     schedule = isl::manage(isl_map_add_dim_and_eq_constraint(schedule.release(), 2 * i, 0));
   }
    */
-  isl::map schedule = iter_domain_.identity();
+  isl::map schedule = data_->iter_domain.identity();
   schedule = isl::manage(isl_map_set_tuple_name(schedule.release(), isl_dim_out, ""));
   CINN_DEBUG(2) << "schedule: " << schedule;
 
-  schedule_ = schedule;
+  data_->schedule = schedule;
 
-  CINN_DEBUG(2) << "after init: " << schedule_;
-  CINN_DEBUG(2) << name_
-                << ".schedule: " << isl::manage(isl_map_intersect_domain(schedule.copy(), iter_domain_.copy()));
+  CINN_DEBUG(2) << "after init: " << data_->schedule;
+  CINN_DEBUG(2) << data_->name
+                << ".schedule: " << isl::manage(isl_map_intersect_domain(schedule.copy(), data_->iter_domain.copy()));
 }
 
-Stage::Stage(const std::string& name, const std::string& iter_domain) : ctx_(isl_ctx_alloc()) {
-  CHECK(ctx_);
+Stage::Stage(const std::string& name, const std::string& iter_domain) {
+  InitData();
+  CHECK(data_->ctx);
   CHECK(!name.empty()) << "empty name found";
   CHECK(!iter_domain.empty()) << "empty iter_domain string found";
-  iter_domain_ = isl::set(ctx_, iter_domain.c_str());
-  CHECK(iter_domain_.get());
+  data_->iter_domain = isl::set(data_->ctx, iter_domain.c_str());
+  CHECK(!data_->iter_domain.is_null());
   InitSchedule();
 
-  Generator::Global().RegisterStage(name_, this);
+  Generator::Global().RegisterStage(data_->name, this);
 }
 
 void Stage::SetName(const std::string& name) {
   CHECK(!name.empty());
-  CHECK(!names_.count(name)) << "duplicate name for Computation, " << name;
-  name_ = name;
-  names_.insert(name_);
+  CHECK(!data_->names.count(name)) << "duplicate name for Computation, " << name;
+  data_->name = name;
+  data_->names.insert(data_->name);
 }
 
 Expr Stage::GetIndiceTransformedExpr() const {
   LOG_INDENT("Stage::GetIndiceTransformedExpr");
-  CHECK(expr_.valid());
+  CINN_DEBUG(3) << "stage: " << name() << " : " << ir::Dump(data_->expr);
+  for (auto& item : indice_map_) {
+    CINN_DEBUG(3) << "dic " << item.first << " -> " << ir::Dump(item.second);
+  }
+  CHECK(data_->expr.valid());
   CHECK(!indice_map_.empty()) << "indice_map should be created first";
-  CINN_DEBUG(3) << "original expr: " << ir::Dump(expr_);
-  Expr expr_copied = ir::CopyExpr(expr_);
+  CINN_DEBUG(3) << "original expr: " << ir::Dump(data_->expr);
+  Expr expr_copied = ir::CopyExpr(data_->expr);
   ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map_, expr_copied);
   return expr_copied;
 }
 
-std::set<std::string> Stage::names_;
+void Stage::InitData() {
+  CHECK(!data_);
+  data_ = std::make_shared<StageData>();
+  data_->ctx = Generator::Global().ctx().get();
+  data_ = std::make_shared<StageData>();
+}
+
+std::set<std::string> Stage::StageData::names;
 
 }  // namespace cinn

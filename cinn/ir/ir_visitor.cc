@@ -1,4 +1,5 @@
 #include "cinn/ir/ir_visitor.h"
+#include <cinn/core/function.h>
 #include "cinn/ir/expr.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
@@ -11,27 +12,30 @@ namespace ir {
   void IRVisitor::Visit(const op__ *op) { \
     CHECK(op->a.valid());                 \
     CHECK(op->b.valid());                 \
-    op->a.Accept(this);                   \
-    op->b.Accept(this);                   \
+    Visit(&op->a);                        \
+    Visit(&op->b);                        \
   };
 
 OP_2_ARGS_FOR_EACH(OP_2_ARGS_VISIT);
 
 void IRVisitor::Visit(const Expr *op) {
   switch (op->type()) {
-#define __(op__)                  \
-  case NodeTy::op__:              \
-    op->As<op__>()->Accept(this); \
+#define __(op__)           \
+  case NodeTy::op__:       \
+    Visit(op->As<op__>()); \
     break;
 
-    OP_2_ARGS_FOR_EACH(__);
+    OP_ALL_FOR_EACH(__)
+
+    default:
+      LOG(FATAL) << "unsupported type: " << static_cast<int>(op->type());
   }
 }
 void IRVisitor::Visit(const Stmt *op) {}
 
 void IRVisitor::Visit(const Call *op) {
   for (auto &node : op->arguments) {
-    node.Accept(this);
+    Visit(&node);
   }
 }
 
@@ -44,8 +48,15 @@ void IRVisitor::Visit(const Tensor *op) {}
 void IRVisitor::Visit(const Var *op) {}
 void IRVisitor::Visit(const Parameter *op) {}
 void IRVisitor::Visit(const For *op) {}
-void IRVisitor::Visit(const Block *op) {}
+void IRVisitor::Visit(const Block *op) {
+  for (auto &e : op->exprs) {
+    e.Accept(this);
+  }
+}
 void IRVisitor::Visit(const IfThenElse *op) {}
+void IRVisitor::Visit(const Function *op) {}
+void IRVisitor::Visit(const Statement *op) { op->expr.Accept(this); }
+void IRVisitor::Visit(const Allocate *op) {}
 
 }  // namespace ir
 }  // namespace cinn

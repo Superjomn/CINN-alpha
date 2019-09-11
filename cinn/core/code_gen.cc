@@ -52,7 +52,8 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_block);
   isl::ast_node_list list = isl::manage(isl_ast_node_block_get_children(node.get()));
   std::vector<ir::Expr> exprs;
-  for (int i = isl_ast_node_list_n_ast_node(list.get()) - 1; i >= 0; i--) {
+  // for (int i = isl_ast_node_list_n_ast_node(list.get()) - 1; i >= 0; i--) {
+  for (int i = 0; i < isl_ast_node_list_n_ast_node(list.get()); i++) {
     isl::ast_node child = isl::manage(isl_ast_node_list_get_ast_node(list.get(), i));
     // visit child
     ir::Expr child_expr;
@@ -107,7 +108,7 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   IslAstExprToCinnExpr(incrementor, &ir_inc);
   CINN_DEBUG(3) << "for get inc " << ir::Dump(ir_inc);
 
-  ir::Var ir_iter(iter_name);
+  ir::Var ir_iter(iter_name, primitive_t::float32);
   CINN_DEBUG(3) << "for get iter  " << ir::Dump(ir_iter);
 
   *expr = ir::For::make(ir_initializer, ir_condition, ir_inc, ir_body, ir_iter);
@@ -328,7 +329,7 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
     OP_2_ARGS_FOR_EACH(TWO_ARG_OP);
     case ir::NodeTy::Var: {
       auto* var = root.As<ir::Var>();
-      CINN_DEBUG(3) << "var " << var->name() << " " << var->interval().__str__();
+      CINN_DEBUG(4) << "var " << var->name() << " " << var->interval().__str__();
       auto it = indice_map.find(var->name());
       if (it != indice_map.end()) {
         root = ir::CopyExpr(it->second);
@@ -341,9 +342,9 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       auto* call = root.As<ir::Call>();
       for (auto& it : call->arguments) {
         LOG_INDENT("visit Call");
-        CINN_DEBUG(3) << "replacing argument " << ir::Dump(it);
+        CINN_DEBUG(4) << "replacing argument " << ir::Dump(it);
         ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, it);
-        CINN_DEBUG(3) << "get " << ir::Dump(it);
+        CINN_DEBUG(4) << "get " << ir::Dump(it);
       }
       CINN_DEBUG(3) << "get " << ir::Dump(root);
       break;
@@ -401,7 +402,6 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
 
   CINN_DEBUG(3) << "stage " << stage->name() << " set indice map, size: " << cinn_expr_indices.size();
   stage->SetIndiceMap(std::move(cinn_expr_indices));
-  CINN_DEBUG(3) << "stage: " << stage->name() << " " << &stage << " " << stage->indice_map().size();
   return node;
 }
 
@@ -463,7 +463,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     case ir::NodeTy::Block: {
       CINN_DEBUG(3) << "visit Block";
       auto* node = root.As<ir::Block>();
-      for (auto& e : node->list) {
+      for (auto& e : node->exprs) {
         ReplaceExprWithStage(e, s, expr);
       }
       break;

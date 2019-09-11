@@ -10,3 +10,6 @@ message(STATUS "LLVM libs: ${llvm_libs}")
 #cc_test(test_llvm_headers SRCS llvm_headers_test.cc DEPS ${llvm_libs})
 cc_test(test_isl SRCS isl_test.cc)
 target_link_libraries(test_isl ${isl_lib})
+
+cc_library(cpp_code_gen SRCS cpp_code_gen.cc DEPS ir_printer ir)
+cc_test(test_cpp_code_gen SRCS cpp_code_gen_test.cc DEPS cpp_code_gen function)

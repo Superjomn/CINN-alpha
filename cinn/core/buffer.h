@@ -21,12 +21,12 @@ class Buffer : public ir::Expr {
 
   memory_location_t memory_location_;
 
-  arg_t arg_type_{arg_t::unknown};
+  argument_t arg_type_{argument_t::unknown};
 
  public:
   using dims_t = std::vector<Expr>;
 
-  Buffer(const std::string& name, dims_t dims, primitive_t type, arg_t arg_type)
+  Buffer(const std::string& name, dims_t dims, primitive_t type, argument_t arg_type)
       : name_(name), dims_(dims), ptype_(type), arg_type_(arg_type) {}
 };
 

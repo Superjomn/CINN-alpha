@@ -1,4 +1,5 @@
 #pragma once
+#include <gtest/gtest_prod.h>
 #include <isl/cpp.h>
 #include <map>
 #include <string>
@@ -49,7 +50,10 @@ struct Function : public ir::ExprNode<Function> {
   std::vector<Buffer*> arguments;
 
   //! For inline function to expand the definition inplace.
-  std::vector<ir::Expr> argument_exprs;
+  std::vector<ir::Expr> inputs;
+
+  //! For inline function to expand the definition inplace.
+  std::vector<ir::Expr> outputs;
 
   //! Body of the function.
   std::vector<Stage*> stages;
@@ -66,6 +70,8 @@ struct Function : public ir::ExprNode<Function> {
   //! Tell whether this function is an inline one.
   bool is_inline() const { return is_inline_; }
 
+  Expr GetTransformedExpr() const;
+
   //! Dump C like codes.
   std::string DumpIslC() const;
 
@@ -81,13 +87,17 @@ struct Function : public ir::ExprNode<Function> {
 
   Function() : ctx_(isl_ctx_alloc()) {}
 
- private:
+  void PreAppendStage(Stage* stage);
+
+ protected:
   //! Schedule the stages by their original order.
   void CollectIteratorDomain();
   //! Initialize the basic schedule for each stage.
   void InitSchedule();
   //! Generate the final ISL ast node.
   isl::ast_node GenerateIslAst() const;
+
+  FRIEND_TEST(cpp_code_gen, basic);
 
  private:
   bool is_inline_{false};

@@ -50,7 +50,7 @@ Expr CopyExpr(const Expr& expr) {
       *node = *x;
       return Expr(node);
     }
-    case NodeTy::Int: {
+    case NodeTy::IntImm: {
       auto* x = expr.As<IntImm>();
       auto node = std::make_shared<IntImm>();
       *node = *x;

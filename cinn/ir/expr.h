@@ -17,9 +17,9 @@ namespace ir {
 
 /// All the node types supported by cinn.
 enum class NodeTy {
-  Int = 0,
+  IntImm = 0,
   UInt = 1,
-  Float = 2,
+  FloatImm = 2,
   String = 3,
 
   // Mathematical ones Add,
@@ -56,6 +56,8 @@ enum class NodeTy {
   Assign = 29,
 
   Function = 30,
+  Statement = 31,
+  Allocate = 32,
   // Computation,
 };
 
@@ -175,7 +177,7 @@ class IntImm : public ExprNodeBase<IntImm> {
   int64_t val() const { return val_; }
   const Type& type() const { return type_; }
 
-  static const NodeTy node_type = NodeTy::Int;
+  static const NodeTy node_type = NodeTy::IntImm;
 };
 
 /// Float constants
@@ -204,7 +206,7 @@ class FloatImm : public ExprNodeBase<FloatImm> {
 
   float val() const { return val_; }
 
-  static const NodeTy node_type = NodeTy::Float;
+  static const NodeTy node_type = NodeTy::FloatImm;
 };
 
 class Stmt : public IRHandle {

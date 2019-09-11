@@ -31,7 +31,7 @@ enum class memory_location_t {
   gpu = 1,
 };
 
-enum class arg_t {
+enum class argument_t {
   unknown = -1,
   input = 0,
   output = 1,

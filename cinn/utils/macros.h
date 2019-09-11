@@ -5,3 +5,11 @@
       macro__(GE) macro__(GT) macro__(Min) macro__(Max) macro__(And) macro__(Or) macro__(Assign)
 
 #define OP_1_ARGS_FOR_EACH(macro__) macro__(Minus);
+
+#define IMM_FOR_EACH(macro__) macro__(IntImm) macro__(FloatImm)
+
+#define OP_ALL_FOR_EACH(macro__) \
+  OP_2_ARGS_FOR_EACH(macro__)    \
+  OP_1_ARGS_FOR_EACH(macro__)    \
+  IMM_FOR_EACH(macro__)          \
+  macro__(Var) macro__(For) macro__(IfThenElse) macro__(Reference) macro__(Block) macro__(Allocate)

@@ -1,4 +1,5 @@
 #include "cinn/ir/ir_printer.h"
+#include "cinn/core/function.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
 
@@ -53,10 +54,10 @@ void IRPrinter::Visit(const Expr *op) {
     OP_1_ARGS_FOR_EACH(FOR_NODE);
     OP_2_ARGS_FOR_EACH(FOR_NODE);
 
-    case NodeTy::Int:
+    case NodeTy::IntImm:
       Visit(op->As<IntImm>());
       break;
-    case NodeTy::Float:
+    case NodeTy::FloatImm:
       Visit(op->As<FloatImm>());
       break;
     case NodeTy::Block: {
@@ -77,6 +78,9 @@ void IRPrinter::Visit(const Expr *op) {
       break;
     case NodeTy::Reference:
       Visit(op->As<Reference>());
+      break;
+    case NodeTy::Function:
+      Visit(op->As<Function>());
       break;
     default:
       LOG(FATAL) << "Unsupported NodeTy " << static_cast<int>(op->type());
@@ -212,12 +216,12 @@ void IRPrinter::Visit(const Block *op) {
   int current_indent = indent_size_;
   indent_size_++;
   os_ << "\n" << std::string(indent_block_ * current_indent, ' ') << "{\n";
-  for (auto expr : op->list) {
+  for (auto expr : op->exprs) {
     os_ << std::string(indent_block_ * (current_indent + 1), ' ');
     Print(expr);
-    os_ << ";\n";
+    os_ << "\n";
   }
-  os_ << std::string(indent_block_ * current_indent, ' ') << "}\n";
+  os_ << std::string(indent_block_ * current_indent, ' ') << "}";
   indent_size_--;
 }
 void IRPrinter::Visit(const Parameter *op) { IRVisitor::Visit(op); }
@@ -254,6 +258,7 @@ void IRPrinter::Visit(const Assign *op) {
   Print(op->b);
   os_ << ";";
 }
+void IRPrinter::Visit(const Function *op) {}
 
 }  // namespace ir
 }  // namespace cinn

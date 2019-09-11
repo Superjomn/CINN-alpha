@@ -22,24 +22,28 @@ using ir::Expr;
  * Stage is an statement.
  */
 class Stage {
-  // ISL context.
-  isl_ctx* ctx_{};
+  struct StageData {
+    // ISL context.
+    isl_ctx* ctx{};
 
-  // Iteration domain.
-  isl::set iter_domain_;
+    // Iteration domain.
+    isl::set iter_domain;
 
-  ir::Expr expr_;
+    ir::Expr expr;
 
-  // The schedules of this computation.
-  isl::map schedule_;
+    // The schedules of this computation.
+    isl::map schedule;
 
-  // Name of this computation.
-  std::string name_;
+    // Name of this computation.
+    std::string name;
 
-  static std::set<std::string> names_;
+    static std::set<std::string> names;
+  };
+
+  std::shared_ptr<StageData> data_;
 
  public:
-  Stage() : ctx_(isl_ctx_alloc()) {}
+  Stage() { InitData(); }
   Stage(const std::string& name, const std::string& iter_domain);
 
   /**
@@ -55,20 +59,20 @@ class Stage {
    */
   Stage(Expr expr);
 
-  const Expr& expr() const { return expr_; }
+  const Expr& expr() const { return data_->expr; }
 
-  isl_ctx* ctx() { return ctx_; }
-  const isl::set& iterator_domain() const { return iter_domain_; }
+  isl_ctx* ctx() { return data_->ctx; }
+  const isl::set& iterator_domain() const { return data_->iter_domain; }
 
   void SetName(const std::string& name);
-  const std::string& name() const { return name_; }
+  const std::string& name() const { return data_->name; }
 
   void ApplyTransformationOnScheduleRange(const std::string& map_str);
 
   isl::map GetTransformedSchedule() {
-    CHECK(!iter_domain_.is_null());
-    CHECK(!schedule_.is_null());
-    return schedule_.intersect_domain(iter_domain_);
+    CHECK(!data_->iter_domain.is_null());
+    CHECK(!data_->schedule.is_null());
+    return data_->schedule.intersect_domain(data_->iter_domain);
   }
 
   /*
@@ -97,6 +101,7 @@ class Stage {
   Expr GetIndiceTransformedExpr() const;
 
  private:
+  void InitData();
   // Init schedule with identity schedule.
   void InitSchedule();
 

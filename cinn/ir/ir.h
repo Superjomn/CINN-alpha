@@ -128,7 +128,7 @@ class Var : public ExprNode<Var> {
   Interval interval_;
   std::string name_;
 
-  primitive_t primitive_type_{primitive_t::unk};
+  primitive_t dtype_{primitive_t::unk};
 
   static size_t counter_;
   static std::set<std::string> name_set_;  // All registerred var's name here.
@@ -136,7 +136,10 @@ class Var : public ExprNode<Var> {
  public:
   Var() { name_ = NameGenerator::Global().NewVarName(); }
 
+  //! Create a varaible with UNK data type. The dtype should be inferenced latter with the context.
   Var(const std::string& name) : name_(name) { CheckNameValid(name); }
+
+  Var(const std::string& name, primitive_t dtype) : name_(name), dtype_(dtype) { CheckNameValid(name); }
 
   // make a variable with name and interval set.
   Var(const std::string& name, primitive_t type, const Interval& interval)
@@ -151,11 +154,11 @@ class Var : public ExprNode<Var> {
     CheckNameValid(name);
   }
 
-  Var(const Var& other) : name_(other.name()), primitive_type_(other.primitive_type()), interval_(other.interval()) {}
+  Var(const Var& other) : name_(other.name()), dtype_(other.dtype()), interval_(other.interval()) {}
 
   operator Expr();
 
-  primitive_t primitive_type() const { return primitive_type_; }
+  primitive_t dtype() const { return dtype_; }
 
   void Accept(IRVisitor* x) const override {}
 
@@ -182,7 +185,7 @@ class Expr : public IRHandle {
   Expr(const std::shared_ptr<IRNode>& x) : IRHandle(x) {}
   Expr(const Expr& n) : IRHandle(n.ptr_) {}
   Expr(Expr&& other) { ptr_ = std::move(other.ptr_); }
-  Expr(const std::string& name) { *this = Var(name); }
+  Expr(const std::string& name, primitive_t dtype = primitive_t::float32) { *this = Var(name, dtype); }
 
   // reference
   Expr(const std::vector<Var>& its) : iterators_(its) {}
@@ -236,11 +239,12 @@ class Expr : public IRHandle {
   //! Check whether this Expr is valid for use.
   bool valid() const { return ptr_.get(); }
 
-  bool IsOp() const {
-#define OP_COND(T) type() == NodeTy::T ||
-    return valid() && (OP_2_ARGS_FOR_EACH(OP_COND)  //
-                       false);
-  }
+  //! Tell whether this expression is a operator.
+  bool is_op() const;
+  //! Tell whether this expression is a Var.
+  bool is_var() const;
+  //! Tell whether this expression is a Function.
+  bool is_function() const { return type() == ir::NodeTy::Function; }
 };
 
 /**
@@ -255,6 +259,7 @@ class Expr : public IRHandle {
  *     Expr C = A(i, j); // Now C is a Reference.
  */
 struct Reference : public ExprNode<Reference> {
+  using interval_tuple_t = std::tuple<std::string, Interval>;
   //! the reference target.
   Expr target;
   //! the iterators of the element.
@@ -262,10 +267,15 @@ struct Reference : public ExprNode<Reference> {
 
   Reference() = default;
 
-  void Accept(IRVisitor* x) const override { x->Visit(this); }
+  void Accept(IRVisitor* x) const override {
+    x->Visit(&target);
+    for (auto& iter : iterators) {
+      x->Visit(&iter);
+    }
+  }
 
   //! Extract intervals from the reference of all the dimention iterators.
-  std::vector<Interval> ExtractIntervals();
+  std::vector<interval_tuple_t> ExtractIntervals();
 
   //! Create a Reference Expr.
   static Expr make(Expr expr, const std::vector<Expr>& iterators);
@@ -463,7 +473,8 @@ struct Or : public ExprNode<Or> {
 
 // Block of code.
 struct Block : public ExprNode<Block> {
-  std::vector<Expr> list;
+  // statements(Expr) in the block.
+  std::vector<Expr> exprs;
 
   static Expr make(std::vector<Expr>&& list);
 
@@ -521,5 +532,38 @@ struct Assign : public ExprNode<Assign> {
   static const NodeTy node_type = NodeTy::Assign;
 };
 
+/**
+ * Statement is the statement of CINN IR, it is a special kind of Expr, which not return a value.
+ * It is used to make `Stage` more natual to embed in IR.
+ */
+class Statement : public ExprNode<Statement> {
+ public:
+  Expr expr;
+
+  Statement() = default;
+
+  void Accept(IRVisitor* x) const override { x->Visit(this); }
+
+  static Expr make(Expr expr) {
+    auto node = std::make_shared<Statement>();
+    node->expr = expr;
+    return Expr(node);
+  }
+
+  static const NodeTy node_type = NodeTy::Statement;
+};
+
+class Allocate : public ExprNode<Allocate> {
+ public:
+  std::string buffer_name;
+  Expr size;
+  primitive_t dtype{primitive_t::unk};
+
+  Allocate() = default;
+
+  static Expr make(const std::string& buffer_name, Expr size, primitive_t dtype);
+
+  static const NodeTy node_type = NodeTy::Allocate;
+};
 }  // namespace ir
 }  // namespace cinn

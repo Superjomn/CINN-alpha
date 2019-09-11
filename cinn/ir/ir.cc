@@ -2,6 +2,7 @@
 #include "ir.h"
 
 #include <glog/logging.h>
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <utility>
@@ -223,7 +224,7 @@ Expr Block::make(std::vector<Expr> &&list) {
     CHECK(v.valid());
   }
   auto node = std::make_shared<Block>();
-  node->list = std::move(list);
+  node->exprs = std::move(list);
   return Expr(node);
 }
 
@@ -281,7 +282,7 @@ void For::Accept(IRVisitor *x) const { LOG(ERROR) << "get a for"; }
 void Block::Accept(IRVisitor *x) const { LOG(ERROR) << "get a block"; }
 
 Var::operator Expr() {
-  auto node = std::make_shared<Var>(name_, primitive_type_, interval_.lower_bound(), interval_.upper_bound());
+  auto node = std::make_shared<Var>(name_, dtype_, interval_.lower_bound(), interval_.upper_bound());
   return Expr(node);
 }
 
@@ -351,7 +352,7 @@ Expr Expr::operator[](std::vector<Var> iters) {
 }
 
 Expr Expr::operator[](Var i) {
-  CINN_DEBUG(3) << "get i:" << i.name();
+  CINN_DEBUG(4) << "get i:" << i.name();
   if (type() == ir::NodeTy::Reference) {
     As<Reference>()->iterators.emplace_back(Expr(i));
     return *this;
@@ -372,19 +373,58 @@ Expr Expr::operator[](std::vector<Expr> iters) {
   return node;
 }
 
+bool Expr::is_op() const {
+  CHECK(valid());
+#define OP_COND(T) type() == NodeTy::T ||
+  return valid() && (OP_2_ARGS_FOR_EACH(OP_COND)  //
+                     false);
+}
+
+bool Expr::is_var() const {
+  CHECK(valid());
+  return type() == ir::NodeTy::Var;
+}
+
 void Call::Accept(IRVisitor *x) const {}
 
-std::vector<Interval> Reference::ExtractIntervals() {
+class IntervalExtractor : public IRVisitor {
+ public:
+  IntervalExtractor(std::vector<Reference::interval_tuple_t> *intervals) : intervals_(intervals) {}
+
+  void Visit(const Expr *op) override { IRVisitor::Visit(op); }
+
+  void Visit(const Var *op) override {
+    CHECK(op->interval().lower_bound().primitive_type() == primitive_t::int32);
+    CHECK(op->interval().upper_bound().primitive_type() == primitive_t::int32);
+    auto it = std::find_if(intervals_->begin(), intervals_->end(), [&](const Reference::interval_tuple_t &x) {
+      return std::get<0>(x) == op->name();
+    });
+    if (it == intervals_->end()) {
+      intervals_->push_back(std::make_tuple(op->name(), op->interval()));
+      LOG(INFO) << "get interval: " << op->name() << " " << op->interval().__str__();
+    }
+  }
+
+ private:
+  std::vector<Reference::interval_tuple_t> *intervals_;
+};
+
+std::vector<Reference::interval_tuple_t> Reference::ExtractIntervals() {
   CHECK(!iterators.empty()) << "At least one iterator is required";
-  std::vector<Interval> intervals;
+  std::vector<Reference::interval_tuple_t> intervals;
+  IntervalExtractor extractor(&intervals);
   for (auto &o : iterators) {
-    CHECK(o.As<Var>()->interval().lower_bound().primitive_type() == primitive_t::int32)
-        << " type is " << static_cast<int>(o.As<Var>()->interval().lower_bound().primitive_type());
-    CHECK(o.As<Var>()->interval().upper_bound().primitive_type() == primitive_t::int32)
-        << " type is " << static_cast<int>(o.As<Var>()->interval().upper_bound().primitive_type());
-    intervals.push_back(o.As<Var>()->interval());
+    extractor.Visit(&o);
   }
   return intervals;
+}
+
+Expr Allocate::make(const std::string &buffer_name, Expr size, primitive_t dtype) {
+  auto node = std::make_shared<Allocate>();
+  node->buffer_name = buffer_name;
+  node->size = size;
+  node->dtype = dtype;
+  return Expr(node);
 }
 
 }  // namespace ir

@@ -15,6 +15,7 @@ struct Stmt;
 std::string Dump(const ir::Expr &expr);
 
 class IRPrinter : public IRVisitor {
+ protected:
   std::ostream &os_;
   const int indent_block_;
   int indent_size_{0};
@@ -55,6 +56,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const Reference *op) override;
   void Visit(const Call *op) override;
   void Visit(const Assign *op) override;
+  void Visit(const Function *op) override;
 
   virtual ~IRPrinter() = default;
 };

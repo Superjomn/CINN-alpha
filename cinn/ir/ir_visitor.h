@@ -27,21 +27,23 @@ struct GE;
 struct For;
 struct IfThenElse;
 
+struct And;
+struct Or;
+
 struct IntImm;
 struct FloatImm;
 
 struct Tensor;
 struct Parameter;
 struct Reference;
-struct Var;
 struct Block;
-struct And;
-struct Or;
 
 struct Min;
 struct Max;
 struct Call;
 struct Assign;
+struct Statement;
+struct Allocate;
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
@@ -49,6 +51,7 @@ class IRVisitor {
   IRVisitor() = default;
 
   virtual void Visit(const Expr* op);
+
   virtual void Visit(const Stmt* op);
   virtual void Visit(const Add* op);
   virtual void Visit(const Sub* op);
@@ -83,7 +86,9 @@ class IRVisitor {
   virtual void Visit(const Call* op);
   virtual void Visit(const Assign* op);
 
-  virtual void Visit(const Function* op) {}
+  virtual void Visit(const Function* op);
+  virtual void Visit(const Statement* op);
+  virtual void Visit(const Allocate* op);
 };
 
 }  // namespace ir

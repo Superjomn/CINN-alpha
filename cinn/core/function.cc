@@ -14,7 +14,8 @@ std::shared_ptr<Function> cinn::Function::make(const std::string& name,
   LOG_INDENT("Function::make");
   auto node = std::make_shared<Function>();
   node->name = name;
-  node->argument_exprs = inputs;
+  node->inputs = inputs;
+  node->outputs = outputs;
   node->stages = stages;
   CHECK(node->ctx_.get());
 
@@ -107,6 +108,17 @@ isl::union_map Function::GetFinalTransform() const {
     result.union_inplace(schedule_[i].intersect_domain(stages[i]->iterator_domain()));
   }
   return result;
+}
+
+Expr Function::GetTransformedExpr() const {
+  LOG_INDENT("Function::GetTransformedExpr");
+  isl::ast_node ast = GenerateIslAst();
+  Expr expr;
+  IslAstNodeToCinnExpr(ast, &expr);
+  for (int i = 0; i < stages.size(); i++) {
+    ReplaceExprWithStage(expr, stages[i]->name(), stages[i]->GetIndiceTransformedExpr());
+  }
+  return expr;
 }
 
 }  // namespace cinn
