@@ -1,16 +1,17 @@
 #include "cinn/core/function.h"
-#include "cinn/core/code_gen.h"
+#include "cinn/core/isl_code_gen.h"
 #include "cinn/core/stage.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/logging.h"
+#include "function.h"
 
 namespace cinn {
 
 std::shared_ptr<Function> cinn::Function::make(const std::string& name,
                                                std::vector<Expr> inputs,
                                                std::vector<Expr> outputs,
-                                               std::vector<Stage*> stages) {
+                                               std::vector<Stage> stages) {
   LOG_INDENT("Function::make");
   auto node = std::make_shared<Function>();
   node->name = name;
@@ -25,14 +26,14 @@ std::shared_ptr<Function> cinn::Function::make(const std::string& name,
   return node;
 }
 
-std::vector<std::string> CollectAllIteratorsFromStages(std::vector<Stage*>& stages) {
+std::vector<std::string> CollectAllIteratorsFromStages(std::vector<Stage>& stages) {
   std::vector<std::string> iters;
   std::set<std::string> iters_set;
 
   for (auto& stage : stages) {
-    const int ndims = isl_set_n_dim(stage->iterator_domain().get());
+    const int ndims = isl_set_n_dim(stage.iterator_domain().get());
     for (int i = 0; i < ndims; i++) {
-      std::string iter_name = isl_set_get_dim_name(stage->iterator_domain().get(), isl_dim_set, i);
+      std::string iter_name = isl_set_get_dim_name(stage.iterator_domain().get(), isl_dim_set, i);
       if (!iters_set.count(iter_name)) {
         iters.push_back(iter_name);
         iters_set.insert(iter_name);
@@ -48,9 +49,15 @@ void Function::CollectIteratorDomain() {
   auto iter_names = CollectAllIteratorsFromStages(stages);
   // Combine iterator domain
   CHECK(!iterator_domain_.get());
-  iterator_domain_ = isl::manage(isl_union_set_from_set(stages[0]->iterator_domain().copy()));
-  for (int i = 1; i < stages.size(); i++) {
-    iterator_domain_ = isl::manage(isl_union_set_add_set(iterator_domain_.copy(), stages[i]->iterator_domain().copy()));
+
+  for (auto& stage : stages) {
+    if (stage.is_assign()) {
+      if (iterator_domain_.is_null()) {
+        iterator_domain_ = isl::manage(isl_union_set_from_set(stage.iterator_domain().copy()));
+      } else {
+        iterator_domain_ = isl::manage(isl_union_set_add_set(iterator_domain_.copy(), stage.iterator_domain().copy()));
+      }
+    }
   }
 
   CINN_DEBUG(2) << "isl union map: " << iterator_domain_;
@@ -70,6 +77,7 @@ isl::ast_node Function::GenerateIslAst() const {
   LOG_INDENT("Function::GenerateIslAst");
   CHECK(iterator_domain_.get());
   auto transform = GetFinalTransform();
+  CINN_DEBUG(2) << "final transformed schedule: " << transform;
   isl::set C(ctx_, "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
@@ -83,7 +91,9 @@ std::string Function::Dump() const {
   Expr expr;
   IslAstNodeToCinnExpr(ast, &expr);
   for (int i = 0; i < stages.size(); i++) {
-    ReplaceExprWithStage(expr, stages[i]->name(), stages[i]->GetIndiceTransformedExpr());
+    if (stages[i].is_assign()) {
+      ReplaceExprWithStage(expr, stages[i].name(), stages[i].GetIndiceTransformedExpr());
+    }
   }
   return ir::Dump(expr);
 }
@@ -93,19 +103,34 @@ void Function::InitSchedule() {
   CINN_DEBUG(2) << "stage count: " << stages.size();
   CINN_DEBUG(3) << "union iterator domain: " << iterator_domain();
 
-  for (Stage* stage : stages) {
-    isl::set domain = isl::manage(stage->iterator_domain().copy());
-    isl_utils::map identity_schedule = isl::manage(isl_set_identity(domain.release()));
-    identity_schedule.set_out_tuple_name("");
-    CINN_DEBUG(3) << "generate identity schedule for " << stage->name() << " get " << identity_schedule;
-    schedule_.emplace_back(identity_schedule);
+  for (Stage& stage : stages) {
+    isl_utils::map identity_schedule;
+    if (stage.is_assign()) {
+      isl::set domain = isl::manage(stage.iterator_domain().copy());
+      identity_schedule = isl::manage(isl_set_identity(domain.release()));
+      identity_schedule.set_out_tuple_name("");
+      CINN_DEBUG(3) << "generate identity schedule for " << stage.name() << " get " << identity_schedule;
+      schedule_.emplace(stage.name(), identity_schedule);
+    }
   }
 }
 
 isl::union_map Function::GetFinalTransform() const {
-  isl_utils::union_map result = schedule_.front().intersect_domain(stages.front()->iterator_domain());
-  for (int i = 1; i < stages.size(); i++) {
-    result.union_inplace(schedule_[i].intersect_domain(stages[i]->iterator_domain()));
+  std::vector<isl_utils::map> schedules;
+  for (auto& x : schedule_) {
+    schedules.emplace_back(x.second);
+  }
+
+  isl_utils::union_map result;
+  for (auto& stage : stages) {
+    if (schedule_.count(stage.name())) {
+      auto& schedule = schedule_.at(stage.name());
+      if (result.is_null()) {
+        result = schedule.intersect_domain(stage.iterator_domain());
+      } else {
+        result.union_inplace(schedule.intersect_domain(stage.iterator_domain()));
+      }
+    }
   }
   return result;
 }
@@ -116,9 +141,17 @@ Expr Function::GetTransformedExpr() const {
   Expr expr;
   IslAstNodeToCinnExpr(ast, &expr);
   for (int i = 0; i < stages.size(); i++) {
-    ReplaceExprWithStage(expr, stages[i]->name(), stages[i]->GetIndiceTransformedExpr());
+    if (!stages[i].is_assign()) continue;
+    ReplaceExprWithStage(expr, stages[i].name(), stages[i].GetIndiceTransformedExpr());
   }
   return expr;
 }
+
+void Function::PreAppendStage(const Stage& stage) {
+  LOG_INDENT("Function::PreAppendStage");
+  stages.insert(stages.begin(), stage);
+}
+
+Function::Function() : ctx_(Generator::Global().ctx().get()) {}
 
 }  // namespace cinn

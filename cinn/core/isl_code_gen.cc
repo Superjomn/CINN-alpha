@@ -1,4 +1,5 @@
-#include "cinn/core/code_gen.h"
+#include "cinn/core/isl_code_gen.h"
+#include <utility>
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
@@ -143,7 +144,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
   switch (isl_ast_expr_get_type(node.get())) {
     case isl_ast_expr_int: {
       isl::val val = isl::manage(isl_ast_expr_get_val(node.get()));
-      *expr = ir::Expr((int)isl_val_get_num_si(val.get()));
+      *expr = ir::Expr(static_cast<int>(isl_val_get_num_si(val.get())));
     } break;
     case isl_ast_expr_id: {
       isl::id id = isl::manage(isl_ast_expr_get_id(node.get()));
@@ -386,7 +387,6 @@ Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl:
 
 isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, void* user) {
   LOG_INDENT("IslAstNodeInfoCollect");
-  // isl::set iterator_domain(isl_ast_node_get_ctx(node), "{S0[i,j]: 0 < i < j < 100 }");
   Stage* stage = Generator::Global().GetComputationByNode(node);
   CHECK(stage);
   auto isl_indice_map = ExtractIslTransformedIndiceMap(stage->iterator_domain(), build);

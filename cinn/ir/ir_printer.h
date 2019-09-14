@@ -4,6 +4,7 @@
  */
 #include <sstream>
 #include "cinn/ir/ir_visitor.h"
+#include "cinn/type.h"
 
 namespace cinn {
 namespace ir {
@@ -23,10 +24,14 @@ class IRPrinter : public IRVisitor {
  public:
   IRPrinter(std::ostream &os, int indent_num = 4) : os_(os), indent_block_(indent_num) {}
 
+  //! Add indent to the current line.
+  void PrintIndent(int diff = 0);
+
   void Print(Expr);
   void Print(Block);
   void Print(Var);
   void Print(const std::string &);
+  void Print(primitive_t dtype);
 
   void Visit(const Expr *op) override;
   void Visit(const Add *op) override;
@@ -51,12 +56,13 @@ class IRPrinter : public IRVisitor {
   void Visit(const IntImm *op) override;
   void Visit(const FloatImm *op) override;
   void Visit(const Tensor *op) override;
-  void Visit(const Parameter *op) override;
+  void Visit(const Constant *op) override;
   void Visit(const Var *op) override;
   void Visit(const Reference *op) override;
   void Visit(const Call *op) override;
   void Visit(const Assign *op) override;
   void Visit(const Function *op) override;
+  void Visit(const Allocate *op) override;
 
   virtual ~IRPrinter() = default;
 };

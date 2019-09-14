@@ -1,6 +1,7 @@
 #include "cinn/core/function.h"
 #include <gtest/gtest.h>
 #include "cinn/core/stage.h"
+#include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
@@ -15,7 +16,7 @@ TEST(Function, basic) {
   Stage s0 = C[i][j].Assign(A[i][j] * B[i][j]);
   Stage s1 = C[i][j].Assign(C[i][j] + 1);
 
-  auto func0 = Function::make("func0", {B, C}, {A}, {&s0, &s1});
+  auto func0 = Function::make("func0", {B, C}, {A}, {s0, s1});
 
   LOG(INFO) << "func0 " << func0->DumpIslC();
 }
@@ -29,7 +30,7 @@ TEST(Function, GenerateIslAst) {
   Stage s0 = C[i][j].Assign(A[i][j] * B[i][j]);
   Stage s1 = C[i][j].Assign(C[i][j] + 1);
 
-  auto func0 = Function::make("func0", {B, C}, {A}, {&s0, &s1});
+  auto func0 = Function::make("func0", {B, C}, {A}, {s0, s1});
   LOG(INFO) << "iter2 " << func0->iterator_domain();
 }
 
@@ -44,7 +45,7 @@ TEST(Function, DumpIslC) {
   Stage s1 = C[i][j].Assign(C[i][j] + 1);
   Stage s2 = B[k].Assign(Expr(1));
 
-  auto func0 = Function::make("func0", {A, B, C}, {B, C}, {&s0, &s1, &s2});
+  auto func0 = Function::make("func0", {A, B, C}, {B, C}, {s0, s1, s2});
 
   auto final_transform = func0->GetFinalTransform();
   LOG(INFO) << "final_transform: " << final_transform;
@@ -62,10 +63,25 @@ TEST(Function, Dump) {
   Stage s1 = C[i][j].Assign((C[i][j] + C[i + 1][j + 1] + C[i - 1][j - 1]) / 3);
   Stage s2 = B[k].Assign(Expr(1));
 
-  auto func0 = Function::make("func0", {A, B, C}, {B, C}, {&s0, &s1, &s2});
+  auto func0 = Function::make("func0", {A, B, C}, {B, C}, {s0, s1, s2});
 
   LOG(INFO) << "ISL C dump:\n" << func0->DumpIslC();
   LOG(INFO) << "Dump: \n" << func0->Dump();
+}
+
+TEST(Function, buffer_allocate) {
+  Var i("i", 0, 100);
+  Var j("j", 0, 150);
+  Var k("k", 0, 1500);
+
+  Expr A("A"), B("B"), C("C"), D("D");
+
+  Stage s0 = C[i][j].Assign(A[i][j * 2] * B[i - 3][j]);
+  Stage s_alloc_D = Allocate::make("D", Expr(10), primitive_t::float32);
+
+  auto func0 = Function::make("func0", {A, B}, {C}, {s_alloc_D, s0});
+
+  LOG(INFO) << "func0.code : \n" << func0->Dump();
 }
 
 }  // namespace cinn

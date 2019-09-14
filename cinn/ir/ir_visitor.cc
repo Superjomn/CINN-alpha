@@ -1,5 +1,5 @@
 #include "cinn/ir/ir_visitor.h"
-#include <cinn/core/function.h>
+#include "cinn/core/function.h"
 #include "cinn/ir/expr.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
@@ -46,7 +46,7 @@ void IRVisitor::Visit(const FloatImm *op) {}
 
 void IRVisitor::Visit(const Tensor *op) {}
 void IRVisitor::Visit(const Var *op) {}
-void IRVisitor::Visit(const Parameter *op) {}
+void IRVisitor::Visit(const Constant *op) {}
 void IRVisitor::Visit(const For *op) {}
 void IRVisitor::Visit(const Block *op) {
   for (auto &e : op->exprs) {
@@ -57,6 +57,7 @@ void IRVisitor::Visit(const IfThenElse *op) {}
 void IRVisitor::Visit(const Function *op) {}
 void IRVisitor::Visit(const Statement *op) { op->expr.Accept(this); }
 void IRVisitor::Visit(const Allocate *op) {}
+void IRVisitor::Visit(const Param *op) {}
 
 }  // namespace ir
 }  // namespace cinn

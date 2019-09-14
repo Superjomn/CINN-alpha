@@ -785,27 +785,65 @@ TEST(isl, dependence_analysis) {
   // ...
 }
 
-/*
+std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
+  isl_printer *printer = isl_printer_to_str(ctx);
+  printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
+  printer = isl_printer_print_schedule(printer, schedule.get());
+  return isl_printer_get_str(printer);
+}
+
+std::string ScheduleGenC(isl_ctx *ctx, const isl::schedule &schedule) {
+  auto *build = isl_ast_build_from_context(isl_set_read_from_str(ctx, "[N, M, K]->{:N = 10 and  M = 20 and K = 30}"));
+  auto *ast = isl_ast_build_node_from_schedule(build, schedule.copy());
+  return isl_ast_node_to_C_str(ast);
+}
+
 TEST(isl, schedule_tree) {
   isl_ctx *ctx = isl_ctx_alloc();
   isl::union_set domain(ctx, "[N] -> { A[i,j]: 0<=i,j<N; B[i]: 0 <=i < N }");
-  LOG(INFO) << "domain: " << domain;
-  isl::schedule schedule = isl::manage(isl_schedule_from_domain(domain.copy()));
-  LOG(INFO) << "schedule: " << schedule;
-  ASSERT_FALSE(schedule.is_null());
+  {
+    LOG(INFO) << "domain: " << domain;
+    isl::schedule schedule = isl::manage(isl_schedule_from_domain(domain.copy()));
+    LOG(INFO) << "schedule: " << schedule;
+    ASSERT_FALSE(schedule.is_null());
 
-  auto root = schedule.get_root();
-  LOG(INFO) << "root: " << root;
-  ASSERT_EQ(root.get_tree_depth(), 0);
+    auto root = schedule.get_root();
+    LOG(INFO) << "root: " << root;
+    ASSERT_EQ(root.get_tree_depth(), 0);
 
-  isl::union_map schedule_map = isl::manage(isl_schedule_get_map(schedule.copy()));
-  LOG(INFO) << "schedule_map: " << schedule_map;
+    isl::union_map schedule_map = isl::manage(isl_schedule_get_map(schedule.copy()));
+    LOG(INFO) << "schedule_map: " << schedule_map;
+    LOG(INFO) << "node type: " << isl_schedule_node_get_type(root.get());
 
-  LOG(INFO) << "node type: " << isl_schedule_node_get_type(root.get());
-  isl::union_set p0(ctx, "[N] -> { B[i] }");
-  root.insert_filter(p0);
+    LOG(INFO) << "schedule tree:";
+    DumpSchedule(ctx, schedule);
+  }
+  {
+    LOG(INFO) << "compute schedule";
+    isl::union_set domain(ctx,
+                          "[N,M,K] -> { S0[i']: 0<=i'<=N; S1[i,j]: 0<=i,j<=N; S2[i,j,k]: 0<=i,j <= M and 0 <= k<=K }");
+    // S0 << S1
+    isl::union_map validity(ctx, "[N] -> { S0[a] -> S1[b,c]: 0 <=a<=N; S1[b,c]->S2[b,c,k] }");
+    isl::union_map proximity(ctx, "[N]->{ S1[a,b]->S2[a,b,k] }");
+    isl::schedule_constraints sc = isl::manage(isl_schedule_constraints_on_domain(domain.copy()));
+    sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.copy()));
+    sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.copy()));
+    isl::schedule schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc.copy()));
+    LOG(INFO) << "original schedule: " << DumpSchedule(ctx, schedule);
+    LOG(INFO) << "original C code:\n" << ScheduleGenC(ctx, schedule);
+
+    // Add some transformation
+    isl::union_map transform(ctx, "[N] -> { S0[i']->S0[i']; S1[i,j]->S1[i,j]; S2[i,j,k] -> S2[j,i,k] }");
+    isl::schedule_constraints sc1 = isl::manage(sc.copy());
+    sc1 = isl::manage(isl_schedule_constraints_apply(sc1.release(), transform.release()));
+    LOG(INFO) << "sc transformed: " << sc1;
+    LOG(INFO) << "sc1.coincidence: " << sc1.get_coincidence();
+    LOG(INFO) << "sc1.validity: " << sc1.get_validity();
+    schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc1.release()));
+    LOG(INFO) << "transformed schedule: " << DumpSchedule(ctx, schedule);
+    LOG(INFO) << "transformed schedule: " << ScheduleGenC(ctx, schedule);
+  }
 }
- */
 
 TEST(isl, align) {
   isl_ctx *ctx = isl_ctx_alloc();
@@ -846,4 +884,11 @@ TEST(isl, identity_schedule) {
   scheduled = isl::manage(isl_map_set_tuple_name(scheduled.release(), isl_dim_out, ""));
   scheduled = isl::manage(isl_map_coalesce(scheduled.release()));
   LOG(INFO) << "scheduled: " << scheduled;
+}
+
+TEST(isl, Interchange) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  isl::set set(ctx, "{ S[i, j]: 0 < i < 100 }");
+  isl::map schedule(ctx, "{ S[i,j] -> [i, j] }");
+  isl::map t0(ctx, "{ [i, j] -> [j, i] }");
 }

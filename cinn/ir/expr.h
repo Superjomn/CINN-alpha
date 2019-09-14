@@ -49,7 +49,7 @@ enum class NodeTy {
   Block = 23,
 
   Var = 24,
-  Parameter = 25,
+  Param = 25,
   Tensor = 26,
   Reference = 27,
   Call = 28,
@@ -59,6 +59,7 @@ enum class NodeTy {
   Statement = 31,
   Allocate = 32,
   // Computation,
+  Parameter = 33,
 };
 
 /// The base class for all the IR nodes.
@@ -76,20 +77,6 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
  protected:
   NodeTy type_{NodeTy::Var};
 };
-
-/*
-class Var : public IRNode {
- public:
-  Var(const std::string& name, Var lower_bound, Var upper_bound) : IRNode(NodeTy::Var) {}
-  Var(const std::string& name, int val) : int32_val_(val), type_(primitive_t ::int32), IRNode(NodeTy::Var) {}
-
-  void Accept(IRVisitor* x) const override {}
-
- private:
-  int int32_val_;
-  primitive_t type_;
-};
-*/
 
 /// A handle to store any expression.
 class IRHandle {

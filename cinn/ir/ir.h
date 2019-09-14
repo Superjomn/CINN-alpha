@@ -6,13 +6,14 @@
 #include "cinn/ir/expr.h"
 #include "cinn/type.h"
 #include "cinn/utils/any.h"
+#include "cinn/utils/isl_utils.h"
 #include "cinn/utils/macros.h"
 #include "cinn/utils/name_generator.h"
 
 namespace cinn {
 namespace ir {
 
-class Parameter : public ExprNode<Parameter> {
+class Constant : public ExprNode<Constant> {
   std::string name_;
   primitive_t primitive_type_{primitive_t::unk};
   union {
@@ -24,10 +25,10 @@ class Parameter : public ExprNode<Parameter> {
   };
 
  public:
-  Parameter() = default;
-  Parameter(const std::string& name, primitive_t type) : name_(name), primitive_type_(type) {}
-  Parameter(const std::string& name, int32_t val) : name_(name), primitive_type_(primitive_t::int32), int32_val_(val) {}
-  Parameter(const Parameter& other) {
+  Constant() = default;
+  Constant(const std::string& name, primitive_t type) : name_(name), primitive_type_(type) {}
+  Constant(const std::string& name, int32_t val) : name_(name), primitive_type_(primitive_t::int32), int32_val_(val) {}
+  Constant(const Constant& other) {
     name_ = other.name_;
     primitive_type_ = other.primitive_type_;
     switch (primitive_type()) {
@@ -54,9 +55,9 @@ class Parameter : public ExprNode<Parameter> {
   }
 
   template <typename T>
-  Parameter(const std::string& name, T val);
+  Constant(const std::string& name, T val);
   template <typename T>
-  Parameter(T val);
+  Constant(T val);
 
   primitive_t primitive_type() const { return primitive_type_; }
 
@@ -87,10 +88,10 @@ class Parameter : public ExprNode<Parameter> {
 class Interval {
  public:
   Interval() = default;
-  Interval(Parameter lower_bound, Parameter upper_bound) : lower_bound_(lower_bound), upper_bound_(upper_bound) {}
+  Interval(Constant lower_bound, Constant upper_bound) : lower_bound_(lower_bound), upper_bound_(upper_bound) {}
 
-  const Parameter& lower_bound() const { return lower_bound_; }
-  const Parameter& upper_bound() const { return upper_bound_; }
+  const Constant& lower_bound() const { return lower_bound_; }
+  const Constant& upper_bound() const { return upper_bound_; }
 
   std::string __str__() const {
     std::stringstream ss;
@@ -101,8 +102,8 @@ class Interval {
   }
 
  private:
-  Parameter lower_bound_;
-  Parameter upper_bound_;
+  Constant lower_bound_;
+  Constant upper_bound_;
 };
 
 /*
@@ -149,7 +150,7 @@ class Var : public ExprNode<Var> {
 
   Var(const std::string& name, int32_t lower_bound, int32_t upper_bound);
 
-  Var(const std::string& name, primitive_t type, Parameter lower_bound, Parameter upper_bound)
+  Var(const std::string& name, primitive_t type, Constant lower_bound, Constant upper_bound)
       : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {
     CheckNameValid(name);
   }
@@ -241,10 +242,14 @@ class Expr : public IRHandle {
 
   //! Tell whether this expression is a operator.
   bool is_op() const;
-  //! Tell whether this expression is a Var.
-  bool is_var() const;
-  //! Tell whether this expression is a Function.
-  bool is_function() const { return type() == ir::NodeTy::Function; }
+
+#define IS_TYPE(m__, ty__) \
+  bool is_##m__() const { return type() == ir::NodeTy::ty__; }
+  IS_TYPE(var, Var)
+  IS_TYPE(function, Function)
+  IS_TYPE(allocate, Allocate)
+  IS_TYPE(assign, Assign)
+#undef IS_TYPE
 };
 
 /**
@@ -289,10 +294,10 @@ struct Reference : public ExprNode<Reference> {
 class Tensor : public ExprNode<Tensor> {
   std::string name_;
   primitive_t type_;
-  std::vector<Parameter> dims_;
+  std::vector<Constant> dims_;
 
  public:
-  Tensor(const std::string& name, primitive_t type, const std::vector<Parameter>& dims)
+  Tensor(const std::string& name, primitive_t type, const std::vector<Constant>& dims)
       : name_(name), type_(type), dims_(dims) {}
 
   /*
@@ -565,5 +570,36 @@ class Allocate : public ExprNode<Allocate> {
 
   static const NodeTy node_type = NodeTy::Allocate;
 };
+
+/**
+ * @brief Param is the parameter in polyhedral model, the constant value across the program.
+ *
+ * @attention the Param's data type should be int.
+ */
+class Param : public ir::ExprNode<Param> {
+  struct Data {
+    /// name of the parameter, should be unique accross the Function.
+    std::string name;
+    /// the condition that can represent the condition in ISL.
+    /// e.g. a Param with name of "N" and cond of "N>0" will get "[N]->{ : N>0 }" in ISL syntax.
+    std::string cond;
+  };
+
+  std::shared_ptr<Data> data_;
+
+ public:
+  Param() : data_(std::make_shared<Data>()) {}
+  Param(const std::string& name, const std::string& cond = "");
+
+  isl::set GetContext();
+
+  const std::string& name() const;
+  const std::string& cond() const;
+
+  virtual void Accept(ir::IRVisitor* visitor) const {}
+
+  static const ir::NodeTy node_type = ir::NodeTy::Param;
+};
+
 }  // namespace ir
 }  // namespace cinn

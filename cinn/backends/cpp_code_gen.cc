@@ -7,6 +7,8 @@ namespace cinn {
 namespace backends {
 
 void CppCodeGen::Visit(const ir::For *op) {
+  PrintIndent();
+
   os_ << "for(int ";
   Print(op->iterator);
   os_ << " = ";
@@ -40,17 +42,17 @@ void CppCodeGen::Visit(const Function *op) {
     CHECK(op->outputs[i].is_var());
     os_ << "char * " << op->outputs[i].As<ir::Var>()->name();
   }
-  os_ << ") ";
+  os_ << ")\n";
 
   // body print with indent
-  int current_indent = indent_size_;
+  PrintIndent();
+  os_ << "{\n";
   indent_size_++;
-  os_ << "" << std::string(indent_block_ * current_indent, ' ') << "{\n";
-  os_ << std::string(indent_block_ * (current_indent + 1), ' ');
+
   Print(op->GetTransformedExpr());
-  os_ << "\n";
-  os_ << std::string(indent_block_ * current_indent, ' ') << "}";
+
   indent_size_--;
+  os_ << "}";
 }
 
 }  // namespace backends

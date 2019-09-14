@@ -1,11 +1,13 @@
 #pragma once
-#include <cinn/ir/ir.h>
 #include <glog/logging.h>
 #include <isl/ast.h>
 #include <isl/cpp.h>
 #include <isl/space.h>
 #include <map>
+#include <string>
+#include <vector>
 #include "cinn/core/stage.h"
+#include "cinn/ir/ir.h"
 
 namespace cinn {
 

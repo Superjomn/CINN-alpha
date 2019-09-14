@@ -8,6 +8,7 @@
 #include <isl/set.h>
 #include <isl/union_set.h>
 #include <string>
+#include <vector>
 
 namespace cinn {
 
@@ -33,12 +34,28 @@ std::string isl_to_str(__isl_keep isl_union_pw_aff *);
 
 namespace isl_utils {
 
+isl_ast_build *__isl_give isl_ast_build_set_iterators(__isl_take isl_ast_build *build,
+                                                      const std::vector<std::string> &iterators);
+
 class map : public isl::map {
  public:
+  inline map() : isl::map() {}
   inline /* implicit */ map(const map &obj) : isl::map(obj) {}
   inline /* implicit */ map(isl::basic_map bmap) : isl::map(bmap) {}
   inline explicit map(isl::ctx ctx, const std::string &str) : isl::map(ctx, str) {}
   inline map(isl::map &&map) { ptr = map.release(); }
+
+  int domain_dims() const { return isl_map_dim(ptr, isl_dim_in); }
+  int range_dims() const { return isl_map_dim(ptr, isl_dim_out); }
+
+  const char *domain_dim_name(int i) const { return isl_map_get_dim_name(ptr, isl_dim_in, i); }
+  const char *range_dim_name(int i) const { return isl_map_get_dim_name(ptr, isl_dim_out, i); }
+
+  bool domain_has_dim_name(int i) const { return isl_map_has_dim_name(ptr, isl_dim_in, i); }
+  bool range_has_dim_name(int i) const { return isl_map_has_dim_name(ptr, isl_dim_out, i); }
+
+  void domain_set_dim_name(int i, const char *name) { isl_map_set_dim_name(ptr, isl_dim_in, i, name); }
+  void range_set_dim_name(int i, const char *name) { isl_map_set_dim_name(ptr, isl_dim_out, i, name); }
 
   isl::map project_out(isl_dim_type dim_type, int start, int n) {
     return isl::manage(isl_map_project_out(copy(), dim_type, start, n));
@@ -62,6 +79,10 @@ class union_map : public isl::union_map {
   void union_inplace(isl::union_map &&m) { ptr = isl_union_map_union(ptr, m.release()); }
 };
 
-}  // namespace isl_utils
+static isl_ctx *global_isl_ctx() {
+  thread_local isl_ctx *x = isl_ctx_alloc();
+  return x;
+}
 
+}  // namespace isl_utils
 }  // namespace cinn

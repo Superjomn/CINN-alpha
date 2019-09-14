@@ -1,4 +1,4 @@
-#include "cinn/core/code_gen.h"
+#include "cinn/core/isl_code_gen.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <isl/ast.h>
@@ -7,6 +7,7 @@
 #include <isl/map.h>
 #include <isl/set.h>
 #include <isl/union_set.h>
+#include <algorithm>
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
@@ -135,7 +136,8 @@ TEST(code_gen, ReplaceCinnIndiceWithIslTransformedIndices) {
   std::stringstream os;
   os << Dump(expr);
 
-  ASSERT_EQ(os.str(), "A((c0 - 1),(c1 + 2)) = (((B((c0 - 1),(c1 + 2)) * 2) + C(((c0 - 1) + 1),((c1 + 2) - 2))) - 1);");
+  ASSERT_EQ(os.str(),
+            "A((c0 - 1),(c1 + 2)) = (((B((c0 - 1),(c1 + 2)) * 2) + C(((c0 - 1) + 1),((c1 + 2) - 2))) - 1);\n");
 
   ReplaceExprWithStage(root, s0.name(), s0.GetIndiceTransformedExpr());
 

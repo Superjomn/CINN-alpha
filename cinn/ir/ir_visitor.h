@@ -34,7 +34,7 @@ struct IntImm;
 struct FloatImm;
 
 struct Tensor;
-struct Parameter;
+struct Constant;
 struct Reference;
 struct Block;
 
@@ -44,6 +44,7 @@ struct Call;
 struct Assign;
 struct Statement;
 struct Allocate;
+class Param;
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
@@ -52,6 +53,7 @@ class IRVisitor {
 
   virtual void Visit(const Expr* op);
 
+  virtual void Visit(const Param* op);
   virtual void Visit(const Stmt* op);
   virtual void Visit(const Add* op);
   virtual void Visit(const Sub* op);
@@ -80,7 +82,7 @@ class IRVisitor {
   virtual void Visit(const FloatImm* op);
 
   virtual void Visit(const Tensor* op);
-  virtual void Visit(const Parameter* op);
+  virtual void Visit(const Constant* op);
   virtual void Visit(const Var* op);
   virtual void Visit(const Reference* op) {}
   virtual void Visit(const Call* op);

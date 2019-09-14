@@ -46,7 +46,7 @@ std::set<std::string> FindoutTemporaryBuffer(Function &function) {
   }
 
   for (auto &stage : function.stages) {
-    buf_collector.Visit(&stage->expr());
+    buf_collector.Visit(&stage.expr());
   }
 
   CINN_DEBUG(3) << "get ios.size " << io_names.size();

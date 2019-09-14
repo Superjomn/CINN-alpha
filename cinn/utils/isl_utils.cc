@@ -6,6 +6,22 @@
 
 namespace cinn {
 
+namespace isl_utils {
+
+isl_ast_build *isl_ast_build_set_iterators(isl_ast_build *build, const std::vector<std::string> &iterators) {
+  CHECK(build);
+  CHECK(!iterators.empty());
+  auto *ctx = isl_ast_build_get_ctx(build);
+  isl_id_list *ids = isl_id_list_alloc(ctx, iterators.size());
+  for (int i = 0; i < iterators.size(); i++) {
+    isl_id *id = isl_id_alloc(ctx, iterators[i].c_str(), nullptr);
+    ids = isl_id_list_add(ids, id);
+  }
+  return isl_ast_build_set_iterators(build, ids);
+}
+
+}  // namespace isl_utils
+
 isl_map __isl_give *isl_set_to_identity_map(__isl_keep isl_set *set) {
   std::vector<std::string> iterator_names;
   int ndims = isl_set_n_dim(set);

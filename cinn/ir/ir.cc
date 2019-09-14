@@ -1,11 +1,10 @@
 #include "cinn/ir/ir.h"
-#include "ir.h"
-
 #include <glog/logging.h>
 #include <algorithm>
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/utils/isl_utils.h"
 #include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
 
@@ -100,52 +99,52 @@ Expr Minus::make(Expr a) {
 size_t Var::counter_ = 0;
 
 template <>
-Parameter::Parameter(const std::string &name, int32_t val) : name_(name) {
+Constant::Constant(const std::string &name, int32_t val) : name_(name) {
   primitive_type_ = primitive_t::int32;
   int32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
-Parameter::Parameter(const std::string &name, float val) : name_(name) {
+Constant::Constant(const std::string &name, float val) : name_(name) {
   primitive_type_ = primitive_t::float32;
   fp32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
-Parameter::Parameter(int32_t val) : name_(DefaultUniqueName()) {
+Constant::Constant(int32_t val) : name_(DefaultUniqueName()) {
   primitive_type_ = primitive_t::int32;
   int32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
-Parameter::Parameter(float val) : name_(DefaultUniqueName()) {
+Constant::Constant(float val) : name_(DefaultUniqueName()) {
   primitive_type_ = primitive_t::float32;
   fp32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
-int32_t Parameter::As<int32_t>() const {
+int32_t Constant::As<int32_t>() const {
   CHECK(primitive_type() == primitive_t::int32);
   return int32_val_;
 }
 template <>
-float Parameter::As<float>() const {
+float Constant::As<float>() const {
   CHECK(primitive_type() == primitive_t::float32);
   return fp32_val_;
 }
 template <>
-int64_t Parameter::As<int64_t>() const {
+int64_t Constant::As<int64_t>() const {
   CHECK(primitive_type() == primitive_t::int64);
   return int64_val_;
 }
 
-unsigned int Parameter::counter = 0;
+unsigned int Constant::counter = 0;
 
-std::string Parameter::__str__() const {
+std::string Constant::__str__() const {
   switch (primitive_type()) {
     case primitive_t::float32:
       return std::to_string(As<float>()) + "fp32";
@@ -380,11 +379,6 @@ bool Expr::is_op() const {
                      false);
 }
 
-bool Expr::is_var() const {
-  CHECK(valid());
-  return type() == ir::NodeTy::Var;
-}
-
 void Call::Accept(IRVisitor *x) const {}
 
 class IntervalExtractor : public IRVisitor {
@@ -426,6 +420,24 @@ Expr Allocate::make(const std::string &buffer_name, Expr size, primitive_t dtype
   node->dtype = dtype;
   return Expr(node);
 }
+
+Param::Param(const std::string &name, const std::string &cond) {
+  data_ = std::make_shared<Data>();
+  data_->name = name;
+  data_->cond = cond;
+}
+
+const std::string &Param::name() const {
+  CHECK(data_);
+  return data_->name;
+}
+
+const std::string &Param::cond() const {
+  CHECK(data_);
+  return data_->cond;
+}
+
+isl::set Param::GetContext() { return isl::set(isl_utils::global_isl_ctx(), "[" + name() + "]->{:" + cond() + "}"); }
 
 }  // namespace ir
 }  // namespace cinn

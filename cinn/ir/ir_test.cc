@@ -33,27 +33,27 @@ TEST(ir, complex2) {
 }
 
 TEST(ir, Image) {
-  Parameter C("C", primitive_t::int32);
-  Parameter H("H", primitive_t::int32);
-  Parameter W("W", primitive_t::int32);
+  Constant C("C", primitive_t::int32);
+  Constant H("H", primitive_t::int32);
+  Constant W("W", primitive_t::int32);
   Tensor input("image0", primitive_t::float32, {C, H, W});
 }
 
 TEST(ir, Var) {
-  Parameter zero("zero", primitive_t::int32);
-  Parameter N("N", primitive_t::int32);
+  Constant zero("zero", primitive_t::int32);
+  Constant N("N", primitive_t::int32);
   Interval interval(zero, N);
 
   Var i("i", primitive_t::int32, interval);
 }
 
 TEST(ir, basic1) {
-  Parameter C("C", 200);
-  Parameter H("H", 100);
-  Parameter W("W", 20);
+  Constant C("C", 200);
+  Constant H("H", 100);
+  Constant W("W", 20);
   Tensor input("image0", primitive_t::float32, {C, H, W});
 
-  Parameter zero("zero", 0);
+  Constant zero("zero", 0);
   Var i("c", primitive_t::int32, zero, C);
   Var j("j", primitive_t::int32, zero, H);
   Var k("k", primitive_t::int32, zero, W);
@@ -69,10 +69,10 @@ TEST(ir, basic1) {
 }
 
 TEST(Parameter, basic) {
-  Parameter x(100);
+  Constant x(100);
   ASSERT_EQ(x.primitive_type(), primitive_t::int32);
 
-  Parameter y = x;
+  Constant y = x;
   ASSERT_EQ(x.As<int32_t>(), 100);
 }
 
@@ -84,7 +84,7 @@ TEST(Interval, basic) {
 }
 
 TEST(Interval, basic1) {
-  Interval interval(Parameter(0), Parameter(100));
+  Interval interval(Constant(0), Constant(100));
   ASSERT_EQ(interval.lower_bound().As<int32_t>(), 0);
   ASSERT_EQ(interval.upper_bound().As<int32_t>(), 100);
   LOG(INFO) << interval.lower_bound().As<int32_t>() << " " << interval.upper_bound().As<int32_t>();
@@ -119,6 +119,16 @@ TEST(Reference, basic1) {
 
   ASSERT_EQ(interval0.lower_bound().As<int32_t>(), 0);
   ASSERT_EQ(interval0.upper_bound().As<int32_t>(), 100);
+}
+
+TEST(Param, basic) {
+  Param x("N", "N > 0");
+  LOG(INFO) << x.GetContext();
+
+  std::stringstream ss;
+  ss << x.GetContext();
+
+  ASSERT_EQ(ss.str(), "[N] -> {  : N > 0 }");
 }
 
 }  // namespace ir

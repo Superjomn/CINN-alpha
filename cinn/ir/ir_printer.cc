@@ -1,7 +1,9 @@
 #include "cinn/ir/ir_printer.h"
 #include "cinn/core/function.h"
+#include "cinn/core/stage.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
+#include "ir_printer.h"
 
 namespace cinn {
 namespace ir {
@@ -44,49 +46,7 @@ void IRPrinter::Visit(const Div *op) {
 void IRPrinter::Visit(const IntImm *op) { os_ << op->val(); }
 void IRPrinter::Visit(const FloatImm *op) { os_ << op->val(); }
 
-void IRPrinter::Visit(const Expr *op) {
-  switch (op->type()) {
-#define FOR_NODE(op__)     \
-  case NodeTy::op__:       \
-    Visit(op->As<op__>()); \
-    break;
-
-    OP_1_ARGS_FOR_EACH(FOR_NODE);
-    OP_2_ARGS_FOR_EACH(FOR_NODE);
-
-    case NodeTy::IntImm:
-      Visit(op->As<IntImm>());
-      break;
-    case NodeTy::FloatImm:
-      Visit(op->As<FloatImm>());
-      break;
-    case NodeTy::Block: {
-      Visit(op->As<Block>());
-      break;
-    }
-    case NodeTy::For:
-      Visit(op->As<For>());
-      break;
-    case NodeTy::IfThenElse:
-      Visit(op->As<IfThenElse>());
-      break;
-    case NodeTy::Var:
-      Visit(op->As<Var>());
-      break;
-    case NodeTy::Call:
-      Visit(op->As<Call>());
-      break;
-    case NodeTy::Reference:
-      Visit(op->As<Reference>());
-      break;
-    case NodeTy::Function:
-      Visit(op->As<Function>());
-      break;
-    default:
-      LOG(FATAL) << "Unsupported NodeTy " << static_cast<int>(op->type());
-  }
-#undef FOR_NODE
-}
+void IRPrinter::Visit(const Expr *op) { IRVisitor::Visit(op); }
 
 void IRPrinter::Print(Expr op) { Visit(&op); }
 void IRPrinter::Print(Var op) { os_ << op.name(); }
@@ -191,6 +151,7 @@ void IRPrinter::Visit(const Or *op) {
 void IRPrinter::Visit(const Tensor *op) { os_ << "tensor<>"; }
 
 void IRPrinter::Visit(const For *op) {
+  PrintIndent();
   os_ << "for(";
   Print(op->iterator);
   os_ << ", ";
@@ -204,6 +165,7 @@ void IRPrinter::Visit(const For *op) {
 }
 
 void IRPrinter::Visit(const IfThenElse *op) {
+  PrintIndent();
   Print("if(");
   Print(op->condition);
   Print(")");
@@ -213,18 +175,18 @@ void IRPrinter::Visit(const IfThenElse *op) {
 }
 
 void IRPrinter::Visit(const Block *op) {
-  int current_indent = indent_size_;
+  os_ << "\n";
+  PrintIndent();
+  os_ << "{\n";
   indent_size_++;
-  os_ << "\n" << std::string(indent_block_ * current_indent, ' ') << "{\n";
   for (auto expr : op->exprs) {
-    os_ << std::string(indent_block_ * (current_indent + 1), ' ');
     Print(expr);
-    os_ << "\n";
   }
-  os_ << std::string(indent_block_ * current_indent, ' ') << "}";
   indent_size_--;
+  PrintIndent();
+  os_ << "}\n";
 }
-void IRPrinter::Visit(const Parameter *op) { IRVisitor::Visit(op); }
+void IRPrinter::Visit(const Constant *op) { IRVisitor::Visit(op); }
 void IRPrinter::Visit(const Var *op) { Print(*op); }
 void IRPrinter::Visit(const Reference *op) {
   Print(op->target);
@@ -253,12 +215,68 @@ void IRPrinter::Visit(const Call *op) {
 }
 
 void IRPrinter::Visit(const Assign *op) {
+  PrintIndent();
   Print(op->a);
   os_ << " = ";
   Print(op->b);
-  os_ << ";";
+  os_ << ";\n";
 }
-void IRPrinter::Visit(const Function *op) {}
+void IRPrinter::Visit(const Function *op) {
+  // os_ << "def " << op->name << "(";
+  // // input arguments
+  // int i;
+  // for (i = 0; i < op->inputs.size(); i++) {
+  //   CHECK(op->inputs[i].is_var());
+  //   os_ << "Buffer& " << op->inputs[i].As<ir::Var>()->name() << ", ";
+  // }
+  // // output arguments
+  // for (i = 0; i < op->outputs.size() - 1; i++) {
+  //   CHECK(op->outputs[i].is_var());
+  //   os_ << "Buffer& " << op->outputs[i].As<ir::Var>()->name() << ", ";
+  // }
+  // if (op->outputs.size() >= 1) {
+  //   CHECK(op->outputs[i].is_var());
+  //   os_ << "Buffer& " << op->outputs[i].As<ir::Var>()->name();
+  // }
+  // os_ << ") ";
+
+  // // body print with indent
+  // int current_indent = indent_size_;
+  // indent_size_++;
+  // os_ << "" << std::string(indent_block_ * current_indent, ' ') << "{\n";
+
+  // // print the buffer allocate.
+  // for (auto &stage : op->stages) {
+  //   if (stage.is_allocate()) Print(stage.expr());
+  // }
+
+  // Print(op->GetTransformedExpr());
+  // os_ << std::string(indent_block_ * current_indent, ' ') << "}";
+  // indent_size_--;
+}
+
+void IRPrinter::Visit(const Allocate *op) {
+  PrintIndent();
+  os_ << "Buffer " << op->buffer_name << "(";
+  Print(op->size);
+  os_ << ", ";
+  Print(op->dtype);
+  os_ << ");\n";
+}
+
+void IRPrinter::Print(primitive_t dtype) {
+  switch (dtype) {
+#define TYPE_CASE(type__)   \
+  case primitive_t::type__: \
+    os_ << #type__ "_t";    \
+    break;
+
+    PRIMITIVE_TYPE_FOR_EACH(TYPE_CASE)
+#undef TYPE_CASE
+  }
+}
+
+void IRPrinter::PrintIndent(int diff) { os_ << std::string(indent_block_ * (indent_size_ + diff), ' '); }
 
 }  // namespace ir
 }  // namespace cinn

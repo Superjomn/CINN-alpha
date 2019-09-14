@@ -56,14 +56,14 @@ struct Function : public ir::ExprNode<Function> {
   std::vector<ir::Expr> outputs;
 
   //! Body of the function.
-  std::vector<Stage*> stages;
+  std::vector<Stage> stages;
   // std::vector<Computation*> body;
 
   //! Define a function.
   static std::shared_ptr<Function> make(const std::string& name,
                                         std::vector<Expr> inputs,
                                         std::vector<Expr> outputs,
-                                        std::vector<Stage*> stages);
+                                        std::vector<Stage> stages);
 
   //! Mark the function inline.
   void set_inline() { is_inline_ = true; }
@@ -85,9 +85,9 @@ struct Function : public ir::ExprNode<Function> {
 
   isl::union_map GetFinalTransform() const;
 
-  Function() : ctx_(isl_ctx_alloc()) {}
+  Function();
 
-  void PreAppendStage(Stage* stage);
+  void PreAppendStage(const Stage& stage);
 
  protected:
   //! Schedule the stages by their original order.
@@ -103,7 +103,7 @@ struct Function : public ir::ExprNode<Function> {
   bool is_inline_{false};
   isl::ctx ctx_;
   isl::union_set iterator_domain_;
-  std::vector<isl_utils::map> schedule_;
+  std::map<std::string, isl_utils::map> schedule_;
   // isl::union_map schedule_;
 };
 
