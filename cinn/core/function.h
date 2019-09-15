@@ -57,7 +57,13 @@ struct Function : public ir::ExprNode<Function> {
 
   //! Body of the function.
   std::vector<Stage> stages;
-  // std::vector<Computation*> body;
+
+  //! All of the dependencies.
+  isl::union_map dependencies;
+
+  //! Schedule of the stages.
+  // It will compute automatically by the dependence of the stages.
+  isl::schedule schedule;
 
   //! Define a function.
   static std::shared_ptr<Function> make(const std::string& name,
@@ -89,10 +95,23 @@ struct Function : public ir::ExprNode<Function> {
 
   void PreAppendStage(const Stage& stage);
 
+  //! Compute the dependence relations between the stages, we treat the WAR, WAW, RAW as dependencies.
+  // For example:
+  // for (i=0; i<10; i++)
+  //   A[i] = 0;           // S0
+  // for (i=0; i<20; i++)
+  //   for (j=0; j<30; j++)
+  //     B[i,j] += A[i];   // S1
+  // And we will get { S1[i,j] -> S0[a] }
+  void ComputeStageFlows();
+
+  //! Compute the schedule.
+  void ComputeSchedule();
+
  protected:
   //! Schedule the stages by their original order.
   void CollectIteratorDomain();
-  //! Initialize the basic schedule for each stage.
+  //! Initialize the schedule to identity for each stage.
   void InitSchedule();
   //! Generate the final ISL ast node.
   isl::ast_node GenerateIslAst() const;

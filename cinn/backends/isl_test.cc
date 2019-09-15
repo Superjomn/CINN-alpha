@@ -886,9 +886,29 @@ TEST(isl, identity_schedule) {
   LOG(INFO) << "scheduled: " << scheduled;
 }
 
-TEST(isl, Interchange) {
+// TODO How to use the flow?
+TEST(isl, dependency_analysis) {
+  /*
+   * for (int i = 0; i < N; i++) {
+   *   A[i] = 0; //         S0(i)
+   * }
+   *
+   * for (int i = 0; i < N; i++) {
+   *   for (int j = 0; j < N; j++) {
+   *     A[i] += B[i,j];  // S1(i,j)
+   *   }
+   * }
+   */
   isl_ctx *ctx = isl_ctx_alloc();
-  isl::set set(ctx, "{ S[i, j]: 0 < i < 100 }");
-  isl::map schedule(ctx, "{ S[i,j] -> [i, j] }");
-  isl::map t0(ctx, "{ [i, j] -> [j, i] }");
+  isl::union_map reads(ctx, "[N,M] -> { S1[i,j]->A[i]; S1[i,j]->B[i,j] }");
+  isl::union_map writes(ctx, "[N,M]-> { S0[i]->A[i]; S1[i,j]->A[i] }");
+
+  isl_union_access_info *ai;
+  ai = isl_union_access_info_from_sink(reads.copy());
+  ai = isl_union_access_info_set_must_source(ai, writes.copy());
+  LOG(INFO) << "ai: " << isl_union_access_info_to_str(ai);
+  auto *flow = isl_union_access_info_compute_flow(ai);
+  LOG(INFO) << "flow: " << isl_union_flow_to_str(flow);
+  isl::union_map raw = isl::manage(isl_union_flow_get_must_dependence(flow));
+  LOG(INFO) << "raw: " << raw;
 }

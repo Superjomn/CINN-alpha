@@ -147,6 +147,26 @@ Expr Function::GetTransformedExpr() const {
   return expr;
 }
 
+// This is a naive implementation which has complexity of N^2
+void Function::ComputeStageFlows() {
+  isl::union_map all_deps;
+  for (size_t s1_id = 0; s1_id < stages.size(); s1_id++) {
+    for (size_t s0_id = s1_id + 1; s0_id < stages.size(); s0_id++) {
+      auto& s0 = stages[s0_id];
+      auto& s1 = stages[s1_id];
+
+      CHECK(s0.read_access());
+      CHECK(s0.write_access());
+      CHECK(s1.read_access());
+      CHECK(s1.write_access());
+
+      isl_union_map* deps =
+          isl_utils::isl_calculate_dependency(s0.read_access(), s0.write_access(), s1.read_access(), s1.write_access());
+      all_deps = all_deps.is_null() ? isl::manage(deps) : isl::manage(isl_union_map_union(all_deps.release(), deps));
+    }
+  }
+}
+
 void Function::PreAppendStage(const Stage& stage) {
   LOG_INDENT("Function::PreAppendStage");
   stages.insert(stages.begin(), stage);

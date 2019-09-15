@@ -189,8 +189,9 @@ void IRPrinter::Visit(const Block *op) {
 void IRPrinter::Visit(const Constant *op) { IRVisitor::Visit(op); }
 void IRPrinter::Visit(const Var *op) { Print(*op); }
 void IRPrinter::Visit(const Reference *op) {
+  CHECK_EQ(reference_braces.size(), 2UL);
   Print(op->target);
-  os_ << "(";
+  os_ << reference_braces[0];
   for (int i = 0; i < op->iterators.size() - 1; i++) {
     Print(op->iterators[i]);
     os_ << ",";
@@ -198,7 +199,7 @@ void IRPrinter::Visit(const Reference *op) {
   if (op->iterators.size() >= 1) {
     Print(op->iterators.back());
   }
-  os_ << ")";
+  os_ << reference_braces[1];
 }
 
 void IRPrinter::Visit(const Call *op) {

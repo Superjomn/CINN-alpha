@@ -237,6 +237,7 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& 
 
   isl::space model2 = iterator_map.space();
   index_aff = isl::manage(isl_pw_multi_aff_align_params(index_aff.copy(), model2.copy()));
+  CINN_DEBUG(2) << "align_params index_aff: " << index_aff;
   isl::space model = index_aff.space();
   CINN_DEBUG(2) << "model: " << model;
   iterator_map = isl::manage(isl_pw_multi_aff_align_params(iterator_map.copy(), model.copy()));

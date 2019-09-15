@@ -160,6 +160,32 @@ std::string Constant::__str__() const {
   return "Parameter-UNK";
 }
 
+Constant::Constant(const Constant &other) {
+  name_ = other.name_;
+  primitive_type_ = other.primitive_type_;
+  switch (primitive_type()) {
+    case primitive_t::int8:
+      int8_val_ = other.int8_val_;
+      break;
+    case primitive_t::int32:
+      int32_val_ = other.int32_val_;
+      break;
+    case primitive_t::int64:
+      int64_val_ = other.int64_val_;
+      break;
+    case primitive_t::float32:
+      fp32_val_ = other.fp32_val_;
+      break;
+    case primitive_t::float64:
+      fp64_val_ = other.fp64_val_;
+      break;
+    case primitive_t::unk:
+      break;
+    default:
+      LOG(FATAL) << "unsupported type " << static_cast<int>(primitive_type());
+  }
+}
+
 Expr Mul::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Mul a not defined";
   CHECK(b.valid()) << "Mul b not defined";

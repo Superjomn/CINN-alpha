@@ -37,6 +37,13 @@ namespace isl_utils {
 isl_ast_build *__isl_give isl_ast_build_set_iterators(__isl_take isl_ast_build *build,
                                                       const std::vector<std::string> &iterators);
 
+isl_union_map *__isl_give isl_calculate_dependency(__isl_take isl_union_map *s0_reads,
+                                                   __isl_take isl_union_map *s0_writes,
+                                                   __isl_take isl_union_map *s1_reads,
+                                                   __isl_take isl_union_map *s1_writes);
+
+std::string isl_space_get_statement_repr(isl_space *__isl_keep space);
+
 class map : public isl::map {
  public:
   inline map() : isl::map() {}

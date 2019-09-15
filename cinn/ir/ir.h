@@ -28,31 +28,7 @@ class Constant : public ExprNode<Constant> {
   Constant() = default;
   Constant(const std::string& name, primitive_t type) : name_(name), primitive_type_(type) {}
   Constant(const std::string& name, int32_t val) : name_(name), primitive_type_(primitive_t::int32), int32_val_(val) {}
-  Constant(const Constant& other) {
-    name_ = other.name_;
-    primitive_type_ = other.primitive_type_;
-    switch (primitive_type()) {
-      case primitive_t::int8:
-        int8_val_ = other.int8_val_;
-        break;
-      case primitive_t::int32:
-        int32_val_ = other.int32_val_;
-        break;
-      case primitive_t::int64:
-        int64_val_ = other.int64_val_;
-        break;
-      case primitive_t::float32:
-        fp32_val_ = other.fp32_val_;
-        break;
-      case primitive_t::float64:
-        fp64_val_ = other.fp64_val_;
-        break;
-      case primitive_t::unk:
-        break;
-      default:
-        LOG(FATAL) << "unsupported type " << static_cast<int>(primitive_type());
-    }
-  }
+  Constant(const Constant& other);
 
   template <typename T>
   Constant(const std::string& name, T val);
@@ -66,6 +42,10 @@ class Constant : public ExprNode<Constant> {
   bool is_integer() const {
     return primitive_type() == primitive_t::int32 || primitive_type() == primitive_t::int8 ||
            primitive_type() == primitive_t::int16 || primitive_type() == primitive_t::int64;
+  }
+
+  bool operator==(const Constant& other) const {
+    return name_ == other.name_ && primitive_type() == other.primitive_type();
   }
 
   std::string __str__() const;
@@ -92,6 +72,10 @@ class Interval {
 
   const Constant& lower_bound() const { return lower_bound_; }
   const Constant& upper_bound() const { return upper_bound_; }
+
+  bool operator==(const Interval& other) const {
+    return lower_bound() == other.lower_bound() && upper_bound() == other.upper_bound();
+  }
 
   std::string __str__() const {
     std::stringstream ss;
@@ -128,7 +112,6 @@ class Var : public ExprNode<Var> {
   primitive_t data_type_;
   Interval interval_;
   std::string name_;
-
   primitive_t dtype_{primitive_t::unk};
 
   static size_t counter_;
@@ -160,6 +143,8 @@ class Var : public ExprNode<Var> {
   operator Expr();
 
   primitive_t dtype() const { return dtype_; }
+
+  bool operator==(const Var& other) const { return name() == other.name() && interval() == other.interval(); }
 
   void Accept(IRVisitor* x) const override {}
 

@@ -56,8 +56,11 @@ TEST(Stage, Interchange) {
     s0.Interchange(0, 1);
 
     auto repr = GetStreamStr(s0.schedule());
-    ASSERT_EQ(repr,
-              "{ " + s0.name() + "[i, j] -> " + s0.name() + "[j' = j, i' = i] : 0 <= i <= 99 and 0 <= j <= 199 }");
+    ASSERT_EQ(
+        repr,
+        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 99 and 0 <= j <= 199 and 0 <= k <= 299 }",
+                     s0.name().c_str(),
+                     s0.name().c_str()));
     LOG(INFO) << "schedule: " << s0.schedule();
   }
   {
@@ -65,15 +68,16 @@ TEST(Stage, Interchange) {
     s0.Interchange(i, j);
 
     auto repr = GetStreamStr(s0.schedule());
-    ASSERT_EQ(repr,
-              "{ " + s0.name() + "[i, j] -> " + s0.name() + "[j' = j, i' = i] : 0 <= i <= 99 and 0 <= j <= 199 }");
+    ASSERT_EQ(
+        repr,
+        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 99 and 0 <= j <= 199 and 0 <= k <= 299 }",
+                     s0.name().c_str(),
+                     s0.name().c_str()));
     LOG(INFO) << "schedule: " << s0.schedule();
     LOG(INFO) << s0.DumpIslC();
     ASSERT_EQ(s0.DumpIslC(),
-              StringFormat(R"DOC(for (int j = 0; j <= 199; j += 1)
-  for (int i = 0; i <= 99; i += 1)
-    %s(i, j);
-)DOC",
+              StringFormat("for (int j = 0; j <= 199; j += 1)\n  for (int i = 0; i <= 99; i += 1)\n    for (int k = 0; "
+                           "k <= 299; k += 1)\n      %s(i, j, k);\n",
                            s0.name().c_str()));
   }
 }

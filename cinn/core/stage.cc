@@ -1,6 +1,8 @@
 #include "cinn/core/stage.h"
 #include <isl/map.h>
 #include <isl/set.h>
+#include <algorithm>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -12,63 +14,77 @@
 #include "cinn/utils/logging.h"
 #include "cinn/utils/name_generator.h"
 #include "cinn/utils/string.h"
-#include "stage.h"
 
 namespace cinn {
 using interval_tuple_t = ir::Reference::interval_tuple_t;
 
-isl::set ExtractDomainFromAssignExpr(const std::string& statement, Expr expr, isl_ctx* ctx) {
-  CINN_DEBUG(2) << statement << " extract domain";
-  CINN_DEBUG(2) << "expr: " << ir::Dump(expr);
+void Stage::ExtractDomainFromExpr(Expr x) {
+  LOG_INDENT("Stage::ExtractDomainFromExpr");
+  class Collector : public ir::IRVisitor {
+    std::vector<ir::Var> iterators_;
+    bool in_reference_{false};
 
-  CHECK(expr.type() == ir::NodeTy::Assign);
-  auto assign = expr.As<ir::Assign>();
-  auto& a = assign->a;
-  CHECK(a.type() == ir::NodeTy::Reference);
+   public:
+    Collector() : ir::IRVisitor() {}
 
-  // Extract domain from the expr.
-  CHECK(expr.type() == ir::NodeTy::Assign);
-  auto ref = a.As<ir::Reference>();
-  auto intervals = ref->ExtractIntervals();
-  LOG(INFO) << "intervals: " << intervals.size();
+    const std::vector<ir::Var>& iterators() { return iterators_; }
 
-  std::stringstream iterators_repr;
-  for (int i = 0; i < intervals.size() - 1; i++) {
-    iterators_repr << std::get<0>(intervals[i]) << ",";
-  }
-  if (intervals.size() >= 1) iterators_repr << std::get<0>(intervals.back());
-
-  std::stringstream ss;
-
-  ss << "{ " << statement << "[" << iterators_repr.str() << "] : ";
-  auto iter_interval_repr = [&](const interval_tuple_t& iter) {
-    std::string iter_name = std::get<0>(iter);
-    auto& interval = std::get<1>(iter);
-    CHECK(interval.lower_bound().is_integer())
-        << "polyhedral model can only support SCoP, the type of the iterator's domain should be integer";
-    ss << interval.lower_bound().As<int32_t>() << " <= " << iter_name << " < " << interval.upper_bound().As<int32_t>();
+    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
+    void Visit(const ir::Var* var) override {
+      if (!in_reference_) return;
+      // check if exists
+      auto it = std::find_if(iterators_.begin(), iterators_.end(), [&](const ir::Var& o) { return o == *var; });
+      if (it == iterators_.end()) {
+        iterators_.push_back(*var);
+      }
+    }
+    void Visit(const ir::Reference* op) override {
+      in_reference_ = true;
+      for (auto& x : op->iterators) {
+        Visit(&x);
+      }
+      in_reference_ = false;
+    }
   };
 
-  for (int i = 0; i < intervals.size() - 1; i++) {
-    iter_interval_repr(intervals[i]);
-    ss << " and ";
-  }
+  Collector collector;
+  collector.Visit(&x);
+  const auto& iterators = collector.iterators();
+  CINN_DEBUG(2) << "collect " << iterators.size() << " iterators";
 
-  if (ref->iterators.size() >= 1) {
-    iter_interval_repr(intervals.back());
-  }
-  ss << " }";
+  if (iterators.empty()) return;
+  // construct the set
+  std::vector<std::string> iterator_names;
+  std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
+    return x.name();
+  });
+  std::string statement = name() + "[" + Concat(iterator_names, ", ") + "]";
 
-  isl::set uset(ctx, ss.str().c_str());
-  VLOG(2) << "extract domain from expr: " << uset;
-  return uset;
+  std::vector<std::string> sub_domains;
+  std::transform(iterators.begin(), iterators.end(), std::back_inserter(sub_domains), [](const ir::Var& x) {
+    std::stringstream ss;
+    ss << x.interval().lower_bound().As<int32_t>() << " <= " << x.name() << " < "
+       << x.interval().upper_bound().As<int32_t>();
+    return ss.str();
+  });
+
+  std::stringstream repr;
+  repr << "{ " << statement << ": " << Concat(sub_domains, " and ") << " }";
+  std::string format = repr.str();
+  CINN_DEBUG(2) << "constructs iterator domain repr: " << format;
+  data_->iter_domain = isl::manage(isl_set_read_from_str(ctx(), format.c_str()));
 }
 
 Stage::Stage(Expr expr) {
   InitData();
   data_->expr = expr;
+  set_name(NameGenerator::Global().NewStageName());
+
+  ExtractDomainFromExpr(expr);
+
   if (expr.is_assign()) {
     InitFromAssignExpr(expr);
+    InitSchedule();
   } else if (expr.is_allocate()) {
     InitFromAllocateExpr(expr);
   }
@@ -76,24 +92,7 @@ Stage::Stage(Expr expr) {
   Generator::Global().RegisterStage(data_->name, this);
 }
 
-void Stage::InitFromAssignExpr(Expr expr) {
-  CHECK(!data_->ctx);
-  CHECK(expr.valid());
-  CHECK(expr.is_op() || expr.is_allocate());
-  CHECK(!data_->iter_domain.get());
-  CHECK(!data_->schedule.get());
-
-  data_->ctx = Generator::Global().ctx().get();
-  SetName(NameGenerator::Global().NewStageName());
-
-  // set iterator_domain
-  isl::set uset = ExtractDomainFromAssignExpr(data_->name, expr, data_->ctx);
-  CHECK(uset.get()) << "failed to parse the expr to ISL domain";
-  data_->iter_domain = uset;
-
-  // init schedule
-  InitSchedule();
-}
+void Stage::InitFromAssignExpr(Expr expr) {}
 
 void Stage::ApplyTransformationOnScheduleRange(const std::string& map_str) {
   LOG_INDENT("Stage::ApplyTransformationOnScheduleRange");
@@ -183,7 +182,7 @@ Stage::Stage(const std::string& name, const std::string& iter_domain) {
   Generator::Global().RegisterStage(data_->name, this);
 }
 
-void Stage::SetName(const std::string& name) {
+void Stage::set_name(const std::string& name) {
   CHECK(!name.empty());
   CHECK(!data_->names.count(name)) << "duplicate name for Computation, " << name;
   data_->name = name;
@@ -208,7 +207,6 @@ void Stage::InitData() {
   CHECK(!data_);
   data_ = std::make_shared<StageData>();
   data_->ctx = Generator::Global().ctx().get();
-  data_ = std::make_shared<StageData>();
 }
 
 isl::map Stage::GetTransformedSchedule() {
@@ -285,6 +283,63 @@ void Stage::ScheduleNameAllDims() {
       data_->schedule.range_set_dim_name(i, NameGenerator::Global().NewIteratorName().c_str());
     }
   }
+}
+
+namespace {
+
+class ReferenceCollector : public ir::IRPrinter {
+  std::set<std::string>& statements;
+  std::stringstream& ss_;
+
+ public:
+  ReferenceCollector(std::stringstream& os, std::set<std::string>& statements)
+      : ss_(os), ir::IRPrinter(os), statements(statements) {
+    set_reference_braces("[]");
+  }
+
+  void Visit(const ir::Reference* op) override {
+    ss_.str("");
+    IRPrinter::Visit(op);
+    statements.insert(ss_.str());
+    ss_.str("");
+  }
+
+  void Visit(const Expr* op) override { IRPrinter::Visit(op); }
+};
+
+}  // namespace
+
+void Stage::InitRWDependencies() {
+  if (iterator_domain().is_null()) return;
+  LOG_INDENT("Stage::InitRWDependencies");
+  CHECK(!iterator_domain().is_null());
+  CHECK(!read_access()) << "duplicate init read_access";
+  CHECK(!write_access()) << "duplicate init write access";
+  set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
+  set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
+
+  // init read access
+  std::set<std::string> stmts;
+  std::stringstream ss;
+  ReferenceCollector collector(ss, stmts);
+  collector.Print(expr());
+  CINN_DEBUG(2) << "collected " << stmts.size() << " reads: " << Concat(stmts, ", ");
+
+  std::vector<std::string> read_reprs;
+  auto statement_repr = isl_utils::isl_space_get_statement_repr(iterator_domain().space().get());
+
+  for (auto& stmt : stmts) {
+    read_reprs.push_back(statement_repr + " -> " + stmt);
+  }
+
+  ss.str("");
+  ss << "{ " << Concat(read_reprs, "; ") << "}";
+  auto read_repr = ss.str();
+
+  CINN_DEBUG(2) << "get read dependency: " << read_repr;
+  read_repr = "{ S0[i, j, k] -> A[i + 1,k]; S0[i, j, k] -> B[k+1,j]; S0[i, j, k] -> C[i,j,k]}";
+  set_read_access(isl::manage(isl_union_map_read_from_str(ctx(), read_repr.c_str())));
+  CINN_DEBUG(2) << "get read dependency: " << isl_union_map_to_str(read_access());
 }
 
 }  // namespace cinn

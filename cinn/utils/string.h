@@ -10,12 +10,14 @@
 namespace cinn {
 
 //! Concat a list of strings, similar to python's xx.join([...])
-static std::string Concat(const std::vector<std::string>& fields, const std::string& splitter) {
+template <typename T>
+static std::string Concat(const T& fields, const std::string& splitter) {
+  std::vector<std::string> ordered(fields.begin(), fields.end());
   std::stringstream ss;
-  for (int i = 0; i < fields.size() - 1; i++) {
-    ss << fields[i] << splitter;
+  for (int i = 0; i < ordered.size() - 1; i++) {
+    ss << ordered[i] << splitter;
   }
-  if (fields.size() >= 1) ss << fields.back();
+  if (ordered.size() >= 1) ss << ordered.back();
   return ss.str();
 }
 

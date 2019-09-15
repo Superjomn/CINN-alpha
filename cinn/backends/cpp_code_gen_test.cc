@@ -30,21 +30,10 @@ TEST(cpp_code_gen, basic) {
   LOG(INFO) << "generated code: \n" << log;
 
   std::string target =
-
-      R"ROC(void f0(char* A, char* B, char * C)
-{
-    for(int c0 = 0; (c0 <= 99); c0 += 1)
-    {
-        for(int c1 = 0; (c1 <= 199); c1 += 1)
-        {
-
-            {
-                C(c0,c1) = ((A(c0,c1) * 2) + (B(c0,c1) / 2));
-                B((c0 + 1),c1) = (((A((c0 - 1),c1) + A(c0,c1)) + A((c0 + 1),c1)) / 3);
-            }
-        }
-    }
-})ROC";
+      "void f0(char* A, char* B, char * C)\n{\n    for(int c0 = 0; (c0 <= 99); c0 += 1)\n    {\n        for(int c1 = "
+      "0; (c1 <= 199); c1 += 1)\n        {\n\n            {\n                C(c0,c1) = ((A(c0,c1) * 2) + (B(c0,c1) / "
+      "2));\n                B((c0 + 1),c1) = (((A((c0 - 1),c1) + A(c0,c1)) + A((c0 + 1),c1)) / 3);\n            }\n   "
+      "     }\n    }\n}";
 
   ASSERT_EQ(log, target);
 }

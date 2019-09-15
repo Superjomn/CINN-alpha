@@ -10,6 +10,7 @@
 #include <algorithm>
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
+#include "cinn/utils/string.h"
 
 namespace cinn {
 
@@ -108,15 +109,17 @@ TEST(code_gen, ReplaceCinnIndiceWithIslTransformedIndices) {
   Expr A("A"), B("B"), C("C");
 
   Stage s0 = A[i][j].Assign(B[i][j] * 2 + C[i + 1][j - 2] - 1);
-  LOG(INFO) << "S0.iterator_domain: " << s0.iterator_domain();
-
   isl::map t = s0.GetTransformedSchedule();
   CHECK(!t.is_null());
   LOG(INFO) << "transformed: " << t;
 
-  isl::map t1(ctx, "{ " + s0.name() + "[i,j] -> [i+1, j-2] }");
-  auto t2 = t1.intersect_domain(s0.iterator_domain());
+  isl::map t1(ctx, StringFormat("{ %s[i,j] -> %s[i, j] }", s0.name().c_str(), s0.name().c_str()));
+  LOG(INFO) << "t1: " << t1;
+  LOG(INFO) << "domain.space: " << s0.iterator_domain().space();
+  LOG(INFO) << "t1.space: " << t1.space();
+  LOG(INFO) << "S0.iterator_domain: " << s0.iterator_domain();
 
+  auto t2 = t1.intersect_domain(isl::manage(isl_set_read_from_str(ctx, "{ S3[i,j] : 0 <=i <=99 and 0<=j<=199 }")));
   auto *T = isl_union_map_from_map(t2.release());
 
   // generate isl ast
@@ -136,8 +139,7 @@ TEST(code_gen, ReplaceCinnIndiceWithIslTransformedIndices) {
   std::stringstream os;
   os << Dump(expr);
 
-  ASSERT_EQ(os.str(),
-            "A((c0 - 1),(c1 + 2)) = (((B((c0 - 1),(c1 + 2)) * 2) + C(((c0 - 1) + 1),((c1 + 2) - 2))) - 1);\n");
+  ASSERT_EQ(os.str(), "A(c0,c1) = (((B(c0,c1) * 2) + C((c0 + 1),(c1 - 2))) - 1);\n");
 
   ReplaceExprWithStage(root, s0.name(), s0.GetIndiceTransformedExpr());
 

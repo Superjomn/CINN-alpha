@@ -21,6 +21,8 @@ class IRPrinter : public IRVisitor {
   const int indent_block_;
   int indent_size_{0};
 
+  std::string reference_braces{"()"};
+
  public:
   IRPrinter(std::ostream &os, int indent_num = 4) : os_(os), indent_block_(indent_num) {}
 
@@ -63,6 +65,8 @@ class IRPrinter : public IRVisitor {
   void Visit(const Assign *op) override;
   void Visit(const Function *op) override;
   void Visit(const Allocate *op) override;
+
+  void set_reference_braces(const std::string &x) { reference_braces = x; }
 
   virtual ~IRPrinter() = default;
 };

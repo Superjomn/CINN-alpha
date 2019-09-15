@@ -3,6 +3,7 @@
 #include <isl/space.h>
 #include <string>
 #include <vector>
+#include "cinn/utils/string.h"
 
 namespace cinn {
 
@@ -18,6 +19,31 @@ isl_ast_build *isl_ast_build_set_iterators(isl_ast_build *build, const std::vect
     ids = isl_id_list_add(ids, id);
   }
   return isl_ast_build_set_iterators(build, ids);
+}
+
+isl_union_map *__isl_give isl_calculate_dependency(__isl_take isl_union_map *s0_reads,
+                                                   __isl_take isl_union_map *s0_writes,
+                                                   __isl_take isl_union_map *s1_reads,
+                                                   __isl_take isl_union_map *s1_writes) {
+  isl_union_map *reads = isl_union_map_union(s0_reads, s1_reads);
+  isl_union_map *writes = isl_union_map_union(s0_writes, s1_writes);
+  isl_union_map *reads_writes = isl_union_map_union(isl_union_map_copy(reads), isl_union_map_copy(writes));
+  isl_union_map *deps = isl_union_map_apply_range(reads_writes, isl_union_map_reverse(writes));
+  return deps;
+}
+
+std::string isl_space_get_statement_repr(isl_space *space) {
+  std::stringstream ss;
+  ss << isl_space_get_tuple_name(space, isl_dim_set);
+  ss << "[";
+  std::vector<std::string> dims;
+  for (int i = 0; i < isl_space_dim(space, isl_dim_set); i++) {
+    dims.push_back(isl_space_get_dim_name(space, isl_dim_set, i));
+  }
+
+  ss << Concat(dims, ", ");
+  ss << "]";
+  return ss.str();
 }
 
 }  // namespace isl_utils

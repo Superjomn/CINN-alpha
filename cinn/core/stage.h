@@ -12,7 +12,10 @@
 #include <isl/union_map.h>
 #include <isl/union_set.h>
 #include <map>
+#include <memory>
+#include <set>
 #include <sstream>
+#include <utility>
 
 #include "cinn/core/buffer.h"
 
@@ -34,6 +37,9 @@ class Stage {
 
     // The schedules of this computation.
     isl_utils::map schedule;
+
+    isl::union_map read_access;
+    isl::union_map write_access;
 
     // Name of this computation.
     std::string name;
@@ -78,14 +84,22 @@ class Stage {
   bool is_allocate() const;
 
   //! Get the isl ctx.
-  isl_ctx* ctx() { return data_->ctx; }
+  isl_ctx* ctx() {
+    CHECK(data_->ctx);
+    return data_->ctx;
+  }
   //! Get the iteration domain of the expression this stage holds.
   const isl::set& iterator_domain() const { return data_->iter_domain; }
 
   //! Set name of the stage.
-  void SetName(const std::string& name);
+  void set_name(const std::string& name);
   //! Get the name of the stage.
   const std::string& name() const { return data_->name; }
+
+  isl_union_map* read_access() const { return data_->read_access.get(); }
+  void set_read_access(const isl::union_map& other) { data_->read_access = other; }
+  isl_union_map* write_access() const { return data_->read_access.get(); }
+  void set_write_access(const isl::union_map& other) { data_->write_access = other; }
 
   const isl_utils::map& schedule() const { return data_->schedule; }
 
@@ -142,6 +156,12 @@ class Stage {
   void InitFromAssignExpr(Expr x);
   //! Initialize the stage from an allocate expression.
   void InitFromAllocateExpr(Expr x);
+  //! Extract the iterator domain from the expr.
+  // e.g. given the expression: A(i,j) = B(i,j) + C(i,k+1); 0<=i,j,k<=N, the iterator domain is
+  // [N]->{ S0[i,j,k]: 0<=i,j,k<=N }
+  void ExtractDomainFromExpr(Expr x);
+  //! Init the read and write dependencies.
+  void InitRWDependencies();
   //! Interchange the i-th and j-th loop level.
   void Interchange(int pos0, int pos1);
 
