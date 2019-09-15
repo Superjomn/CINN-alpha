@@ -82,4 +82,23 @@ TEST(Stage, Interchange) {
   }
 }
 
+TEST(Stage, InitRWAccess) {
+  Expr A("A"), B("B"), C("C");
+  Var i("i", 0, 100);
+  Var j("j", 0, 200);
+  Var k("k", 0, 300);
+
+  {
+    Stage s0 = C[i][j].Assign(A[i + 1][k] * B[k - 1][j]);
+    auto repr = GetStreamStr(s0.schedule());
+    LOG(INFO) << "schedule: " << s0.schedule();
+    LOG(INFO) << "read access: " << isl_union_map_to_str(s0.read_access());
+    LOG(INFO) << "write access: " << isl_union_map_to_str(s0.write_access());
+    ASSERT_EQ(isl_union_map_to_str(s0.read_access()),
+              StringFormat(
+                  "{ %s[i, j, k] -> A[1 + i, k]; %s[i, j, k] -> B[-1 + k, j] }", s0.name().c_str(), s0.name().c_str()));
+    ASSERT_EQ(isl_union_map_to_str(s0.write_access()), StringFormat("{ %s[i, j, k] -> C[i, j] }", s0.name().c_str()));
+  }
+}
+
 }  // namespace cinn

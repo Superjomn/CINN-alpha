@@ -50,7 +50,7 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   Collector collector;
   collector.Visit(&x);
   const auto& iterators = collector.iterators();
-  CINN_DEBUG(2) << "collect " << iterators.size() << " iterators";
+  CINN_DEBUG(4) << "collect " << iterators.size() << " iterators";
 
   if (iterators.empty()) return;
   // construct the set
@@ -85,6 +85,8 @@ Stage::Stage(Expr expr) {
   if (expr.is_assign()) {
     InitFromAssignExpr(expr);
     InitSchedule();
+    InitReadDependencies();
+    InitWriteDependencies();
   } else if (expr.is_allocate()) {
     InitFromAllocateExpr(expr);
   }
@@ -309,37 +311,62 @@ class ReferenceCollector : public ir::IRPrinter {
 
 }  // namespace
 
-void Stage::InitRWDependencies() {
-  if (iterator_domain().is_null()) return;
-  LOG_INDENT("Stage::InitRWDependencies");
-  CHECK(!iterator_domain().is_null());
-  CHECK(!read_access()) << "duplicate init read_access";
-  CHECK(!write_access()) << "duplicate init write access";
-  set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
-  set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
-
+isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) {
   // init read access
   std::set<std::string> stmts;
   std::stringstream ss;
   ReferenceCollector collector(ss, stmts);
-  collector.Print(expr());
-  CINN_DEBUG(2) << "collected " << stmts.size() << " reads: " << Concat(stmts, ", ");
+  collector.Visit(&expr);
 
-  std::vector<std::string> read_reprs;
-  auto statement_repr = isl_utils::isl_space_get_statement_repr(iterator_domain().space().get());
+  if (stmts.empty()) {
+    CINN_DEBUG(2) << "no access found";
+    auto space = iterator_domain.space();
+    isl::union_map result = isl::manage(isl_union_map_from_map(isl_map_empty(iterator_domain.space().release())));
+    return result;
+  }
+  // collect the Assign RHS
+  CINN_DEBUG(2) << "collected " << stmts.size() << " accesses ";
+  CINN_DEBUG(4) << "repr: " << Concat(stmts, ", ");
+
+  std::vector<std::string> reprs;
+  auto statement_repr = isl_utils::isl_space_get_statement_repr(iterator_domain.space().get());
 
   for (auto& stmt : stmts) {
-    read_reprs.push_back(statement_repr + " -> " + stmt);
+    reprs.push_back(statement_repr + " -> " + stmt);
   }
 
   ss.str("");
-  ss << "{ " << Concat(read_reprs, "; ") << "}";
-  auto read_repr = ss.str();
+  ss << "{ " << Concat(reprs, "; ") << "}";
+  auto final_repr = ss.str();
 
-  CINN_DEBUG(2) << "get read dependency: " << read_repr;
-  read_repr = "{ S0[i, j, k] -> A[i + 1,k]; S0[i, j, k] -> B[k+1,j]; S0[i, j, k] -> C[i,j,k]}";
-  set_read_access(isl::manage(isl_union_map_read_from_str(ctx(), read_repr.c_str())));
+  isl_ctx* ctx = isl_set_get_ctx(iterator_domain.get());
+  isl::union_map result(ctx, final_repr.c_str());
+  return result;
+}
+
+void Stage::InitReadDependencies() {
+  if (iterator_domain().is_null()) return;
+  CHECK(expr().is_assign());
+  LOG_INDENT("Stage::InitReadDependencies");
+  CHECK(!iterator_domain().is_null());
+  CHECK(!read_access()) << "duplicate init read_access";
+  set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
+
+  auto* assign_expr = expr().As<ir::Assign>();
+  set_read_access(CollectAccess(iterator_domain(), assign_expr->b));
   CINN_DEBUG(2) << "get read dependency: " << isl_union_map_to_str(read_access());
+}
+
+void Stage::InitWriteDependencies() {
+  if (iterator_domain().is_null()) return;
+  CHECK(expr().is_assign());
+  LOG_INDENT("Stage::InitWriteDependencies");
+  CHECK(!iterator_domain().is_null());
+  set_write_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
+
+  auto* assign_expr = expr().As<ir::Assign>();
+  set_write_access(CollectAccess(iterator_domain(), assign_expr->a));
+  CINN_DEBUG(2) << "get write dependency: " << isl_union_map_to_str(write_access());
 }
 
 }  // namespace cinn

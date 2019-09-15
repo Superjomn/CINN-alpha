@@ -98,7 +98,7 @@ class Stage {
 
   isl_union_map* read_access() const { return data_->read_access.get(); }
   void set_read_access(const isl::union_map& other) { data_->read_access = other; }
-  isl_union_map* write_access() const { return data_->read_access.get(); }
+  isl_union_map* write_access() const { return data_->write_access.get(); }
   void set_write_access(const isl::union_map& other) { data_->write_access = other; }
 
   const isl_utils::map& schedule() const { return data_->schedule; }
@@ -160,8 +160,10 @@ class Stage {
   // e.g. given the expression: A(i,j) = B(i,j) + C(i,k+1); 0<=i,j,k<=N, the iterator domain is
   // [N]->{ S0[i,j,k]: 0<=i,j,k<=N }
   void ExtractDomainFromExpr(Expr x);
-  //! Init the read and write dependencies.
-  void InitRWDependencies();
+  //! Init the read dependencies.
+  void InitReadDependencies();
+  //! Init the read dependencies.
+  void InitWriteDependencies();
   //! Interchange the i-th and j-th loop level.
   void Interchange(int pos0, int pos1);
 
