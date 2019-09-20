@@ -905,3 +905,16 @@ TEST(isl, dependency_analysis) {
   isl::union_map raw = isl::manage(isl_union_flow_get_must_dependence(flow));
   LOG(INFO) << "raw: " << raw;
 }
+
+TEST(isl, range) {
+  auto *ctx = isl_ctx_alloc();
+  isl::map access(ctx, "[N] -> { S[i,j] -> A[i+1, j-1] : 0 < 2*i+1,j < N }");
+  isl::map map(ctx, "[N] -> { A[i,j] -> [i] }");
+
+  LOG(INFO) << "map applied: " << access.apply_range(map);
+
+  LOG(INFO) << "access: " << access;
+  auto box = access.get_range_simple_fixed_box_hull();
+  LOG(INFO) << "size: " << box.get_offset().get_at(0);
+  LOG(INFO) << "box: " << box;
+}
