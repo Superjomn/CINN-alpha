@@ -130,6 +130,8 @@ TEST(Function, syntax) {
     tanh_fn.Inputs({x});
     tanh_fn.Outputs({y});
     auto s0 = tanh_fn.AddStage(y[i][j].Assign(tanh(x[i][j])));
+    auto s1 = tanh_fn.AddStage(y[i][j].Assign(y[i][j] + 0));
+    auto s2 = tanh_fn.AddStage(y[i][j].Assign(y[i][j] + 0));
     LOG(INFO) << "s0.expr: " << ir::Dump(s0.expr());
   }
   tanh_fn.EndDefinition();

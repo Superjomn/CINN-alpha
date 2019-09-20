@@ -91,5 +91,12 @@ static isl_ctx *global_isl_ctx() {
   return x;
 }
 
+static std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
+  isl_printer *printer = isl_printer_to_str(ctx);
+  printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
+  printer = isl_printer_print_schedule(printer, schedule.get());
+  return isl_printer_get_str(printer);
+}
+
 }  // namespace isl_utils
 }  // namespace cinn

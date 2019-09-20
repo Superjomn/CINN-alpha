@@ -785,13 +785,6 @@ TEST(isl, dependence_analysis) {
   // ...
 }
 
-std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
-  isl_printer *printer = isl_printer_to_str(ctx);
-  printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
-  printer = isl_printer_print_schedule(printer, schedule.get());
-  return isl_printer_get_str(printer);
-}
-
 std::string ScheduleGenC(isl_ctx *ctx, const isl::schedule &schedule) {
   auto *build = isl_ast_build_from_context(isl_set_read_from_str(ctx, "[N, M, K]->{:N = 10 and  M = 20 and K = 30}"));
   auto *ast = isl_ast_build_node_from_schedule(build, schedule.copy());
@@ -816,7 +809,7 @@ TEST(isl, schedule_tree) {
     LOG(INFO) << "node type: " << isl_schedule_node_get_type(root.get());
 
     LOG(INFO) << "schedule tree:";
-    DumpSchedule(ctx, schedule);
+    cinn::isl_utils::DumpSchedule(ctx, schedule);
   }
   {
     LOG(INFO) << "compute schedule";
@@ -829,7 +822,7 @@ TEST(isl, schedule_tree) {
     sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.copy()));
     sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.copy()));
     isl::schedule schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc.copy()));
-    LOG(INFO) << "original schedule: " << DumpSchedule(ctx, schedule);
+    LOG(INFO) << "original schedule: " << cinn::isl_utils::DumpSchedule(ctx, schedule);
     LOG(INFO) << "original C code:\n" << ScheduleGenC(ctx, schedule);
 
     // Add some transformation
@@ -840,7 +833,7 @@ TEST(isl, schedule_tree) {
     LOG(INFO) << "sc1.coincidence: " << sc1.get_coincidence();
     LOG(INFO) << "sc1.validity: " << sc1.get_validity();
     schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc1.release()));
-    LOG(INFO) << "transformed schedule: " << DumpSchedule(ctx, schedule);
+    LOG(INFO) << "transformed schedule: " << cinn::isl_utils::DumpSchedule(ctx, schedule);
     LOG(INFO) << "transformed schedule: " << ScheduleGenC(ctx, schedule);
   }
 }
