@@ -3,14 +3,109 @@
 #include <isl/cpp.h>
 #include <map>
 #include <string>
+#include <utility>
+#include <vector>
 #include "cinn/core/buffer.h"
+#include "cinn/core/stage.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/isl_utils.h"
 
 namespace cinn {
 using ir::Expr;
 
-struct Stage;
+/**
+ * \brief Snippet is a list of Stages can merged into a single polyhedral representation or a non-inline function
+ * call.
+ *
+ * For example, if we have following list of stages in order:
+ *
+ * {
+ * S0: A[i][j] = B[i][j] * 2
+ * S1: C[i][j] = 1.
+ * S2: tanh(A)
+ * S3: B[i][j] = max(B[i][j], 0)
+ * }
+ *
+ * It will output three Snippets:
+ *
+ * the first is a polyhedral snippet: {S0, S1},
+ * the second is a function call that can't transform to a polyhedral model,
+ * the third is another polyhedral snippet {S3}
+ */
+class Snippet {
+ public:
+  Snippet()
+      : iterator_domain_(new isl::union_set),
+        transform_(new isl::union_map),
+        access_reads_(new isl::union_map),
+        access_writes_(new isl::union_map),
+        memory_dependencies_(new isl::union_map),
+        schedule_(new isl::schedule) {}
+  //! Add a stage to snippet.
+  void AddStage(const Stage& stage);
+
+  //! End of snippet definition, should't AddStage latter.
+  void End() {
+    is_end_ = true;
+    if (is_polyhedral()) {
+      CollectIteratorDomain();
+      CollectTransforms();
+      CollectReadAccess();
+      CollectWriteAccess();
+      ComputeSchedule();
+    }
+  }
+
+  Stage::Type type() const { return type_; }
+
+  const isl::union_set& iterator_domain() const { return *iterator_domain_; }
+  const isl::union_map& transform() const { return *transform_; }
+  const isl::union_map& access_reads() const { return *access_reads_; }
+  const isl::union_map& access_writes() const { return *access_writes_; }
+
+  bool is_polyhedral() const { return Stage::is_polyhedral(type()); }
+  bool is_function_call() const { return Stage::is_function_call(type()); }
+  bool is_unk() const { return Stage::is_unk(type()); }
+
+  Expr GetTransformedExpr() const;
+
+ private:
+  //! Collect the iterator domain from stages, only works for polyhedral snippets.
+  void CollectIteratorDomain();
+
+  //! Collect polyhedral transforms from stages.
+  void CollectTransforms();
+
+  //! Collect read access information from stages.
+  void CollectReadAccess();
+
+  //! Collect write access information from stages.
+  void CollectWriteAccess();
+
+  //! Compute the polyhedral schedule.
+  void ComputeSchedule();
+
+  isl::ast_node GenerateIslAst() const;
+
+ private:
+  //! stages in order.
+  std::vector<Stage> stages_;
+
+  std::unique_ptr<isl::union_set> iterator_domain_;
+  std::unique_ptr<isl::union_map> transform_;
+
+  std::unique_ptr<isl::union_map> access_reads_;
+  std::unique_ptr<isl::union_map> access_writes_;
+
+  std::unique_ptr<isl::union_map> memory_dependencies_;
+
+  std::unique_ptr<isl::schedule> schedule_;
+
+  Stage::Type type_{Stage::Type::unk};
+
+  mutable bool is_end_{false};
+};
+
 /**
  * Function is the core part of CINN.
  *
@@ -43,27 +138,68 @@ struct Stage;
  *     A0(i,j) = B(i,j) + C(i,j)
  */
 struct Function : public ir::ExprNode<Function> {
-  //! Name of the function, should be unique across the compile context.
-  std::string name;
+  struct Data {
+    //! Name of the function, should be unique across the compile context.
+    std::string name;
 
-  //! Pass argument by value.
-  std::vector<Buffer*> arguments;
+    //! Pass argument by value.
+    std::vector<Buffer*> arguments;
 
-  //! For inline function to expand the definition inplace.
-  std::vector<ir::Expr> inputs;
+    //! For inline function to expand the definition inplace.
+    std::vector<ir::Expr> inputs;
 
-  //! For inline function to expand the definition inplace.
-  std::vector<ir::Expr> outputs;
+    //! For inline function to expand the definition inplace.
+    std::vector<ir::Expr> outputs;
 
-  //! Body of the function.
-  std::vector<Stage> stages;
+    //! Body of the function.
+    std::vector<Stage> stages;
 
-  //! All of the dependencies.
-  isl::union_map dependencies;
+    //! All of the dependencies.
+    isl::union_map dependencies;
 
-  //! Schedule of the stages.
-  // It will compute automatically by the dependence of the stages.
-  isl::schedule schedule;
+    //! Schedule of the stages.
+    // It will compute automatically by the dependence of the stages.
+    isl::schedule schedule;
+
+    bool is_inline{false};
+    isl::union_set iterator_domain;
+    std::map<std::string, isl_utils::map> schedules;
+
+    std::vector<Snippet> snippets;
+
+    isl_ctx* ctx{nullptr};
+  };
+
+ private:
+  std::shared_ptr<Data> data_;
+
+ public:
+  //! Create a function with name specified, the other member should be inferenced latter.
+  Function(const std::string& name) {
+    InitData();
+    data_->name = name;
+    data_->ctx = isl_utils::global_isl_ctx();
+  }
+
+  Stage AddStage(const Stage& stage);
+
+  //! Set the function's inputs.
+  void Inputs(const std::vector<Expr>& xs) { data_->inputs = xs; }
+
+  //! Set the function's outupts.
+  void Outputs(const std::vector<Expr>& xs) { data_->outputs = xs; }
+
+  Expr operator()(const std::vector<Expr>& inputs, const std::vector<Expr>& outputs);
+
+  const std::vector<Snippet>& snippets() const { return data_->snippets; }
+  std::vector<Snippet>* mutable_snippets() { return &data_->snippets; }
+
+  const std::string& name() const { return data_->name; }
+  const std::vector<ir::Expr>& inputs() const { return data_->inputs; }
+  const std::vector<ir::Expr>& outputs() const { return data_->outputs; }
+  const std::vector<Stage>& stages() const { return data_->stages; }
+  const isl::schedule& schedule() const { return data_->schedule; }
+  isl_ctx* ctx() { return data_->ctx; }
 
   //! Define a function.
   static std::shared_ptr<Function> make(const std::string& name,
@@ -72,28 +208,30 @@ struct Function : public ir::ExprNode<Function> {
                                         std::vector<Stage> stages);
 
   //! Mark the function inline.
-  void set_inline() { is_inline_ = true; }
+  void set_inline() { data_->is_inline = true; }
   //! Tell whether this function is an inline one.
-  bool is_inline() const { return is_inline_; }
+  bool is_inline() const { return data_->is_inline; }
 
   Expr GetTransformedExpr() const;
-
-  //! Dump C like codes.
-  std::string DumpIslC() const;
-
-  std::string Dump() const;
 
   void Accept(ir::IRVisitor* visitor) const override;
 
   static const ir::NodeTy node_type = ir::NodeTy::Function;
 
-  const isl::union_set& iterator_domain() const { return iterator_domain_; }
+  // const isl::union_set& iterator_domain() const { return data_->iterator_domain; }
 
-  isl::union_map GetFinalTransform() const;
+  // isl::union_map GetFinalTransform() const;
 
-  Function();
+  Function() = default;
 
-  void PreAppendStage(const Stage& stage);
+  operator Expr();
+
+  // TODO(Superjomn) Remove this method
+  void EndDefinition() { BuildSnippets(); }
+
+  void BuildSnippets();
+
+  // void PreAppendStage(const Stage& stage);
 
   //! Compute the dependence relations between the stages, we treat the WAR, WAW, RAW as dependencies.
   // For example:
@@ -109,21 +247,13 @@ struct Function : public ir::ExprNode<Function> {
   void ComputeSchedule();
 
  protected:
-  //! Schedule the stages by their original order.
-  void CollectIteratorDomain();
-  //! Initialize the schedule to identity for each stage.
-  void InitSchedule();
-  //! Generate the final ISL ast node.
-  isl::ast_node GenerateIslAst() const;
+  void InitData() {
+    CHECK(!data_);
+    data_ = std::make_shared<Function::Data>();
+    data_->ctx = isl_utils::global_isl_ctx();
+  }
 
   FRIEND_TEST(cpp_code_gen, basic);
-
- private:
-  bool is_inline_{false};
-  isl::ctx ctx_;
-  isl::union_set iterator_domain_;
-  std::map<std::string, isl_utils::map> schedule_;
-  // isl::union_map schedule_;
 };
 
 }  // namespace cinn

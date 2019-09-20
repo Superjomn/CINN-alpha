@@ -1,5 +1,6 @@
 #include "cinn/core/isl_code_gen.h"
 #include <utility>
+#include "cinn/ir/expr.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
@@ -280,24 +281,24 @@ std::map<std::string, isl::ast_expr> ExtractIslTransformedIndiceMap(const isl::s
 
 // class Generator
 
-Stage* Generator::GetStageByName(const std::string& name) {
+Stage Generator::GetStageByName(const std::string& name) {
   auto it = stages_.find(name);
-  if (it == stages_.end()) return nullptr;
-  return it->second;
+  if (it == stages_.end()) return Stage();
+  return Stage(it->second);
 }
 
 void Generator::RegisterStage(const std::string& name, Stage* x) {
   CHECK(!stages_.count(name)) << "duplicate register a stage called [" << name << "]";
   CHECK(x) << "stage is null";
-  stages_[name] = x;
+  stages_[name] = x->data_;
 }
 
-std::vector<Stage*> Generator::FilterStagesByDomain(const isl::set& domain) {
-  std::vector<Stage*> result;
+std::vector<Stage> Generator::FilterStagesByDomain(const isl::set& domain) {
+  std::vector<Stage> result;
 
   for (auto& item : stages_) {
-    Stage* stage = item.second;
-    const auto& iterator_domain = stage->iterator_domain();
+    Stage stage = item.second;
+    const auto& iterator_domain = stage.iterator_domain();
 
     auto interct = iterator_domain.intersect(domain);
     if (!interct.is_empty()) result.push_back(stage);
@@ -366,7 +367,7 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       break;
     }
     default:
-      LOG(ERROR) << "Unsupported op type: " << static_cast<int>(root.type());
+      LOG(ERROR) << "Unsupported op type: " << root.type();
   }
 }
 
@@ -388,9 +389,12 @@ Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl:
 
 isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, void* user) {
   LOG_INDENT("IslAstNodeInfoCollect");
-  Stage* stage = Generator::Global().GetComputationByNode(node);
-  CHECK(stage);
-  auto isl_indice_map = ExtractIslTransformedIndiceMap(stage->iterator_domain(), build);
+  Stage stage = Generator::Global().GetComputationByNode(node);
+  CINN_DEBUG(2) << "Stage name is " << stage.name();
+  CHECK(!stage.name().empty());
+  CHECK(!stage.iterator_domain().is_null());
+  CHECK(build);
+  auto isl_indice_map = ExtractIslTransformedIndiceMap(stage.iterator_domain(), build);
 
   std::map<std::string, Expr> cinn_expr_indices;
   CINN_DEBUG(2) << "collected isl_indice_map.size: " << isl_indice_map.size();
@@ -401,8 +405,8 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
     CINN_DEBUG(2) << "CINN indice expr: " << item.first << " -> " << ir::Dump(expr);
   }
 
-  CINN_DEBUG(3) << "stage " << stage->name() << " set indice map, size: " << cinn_expr_indices.size();
-  stage->SetIndiceMap(std::move(cinn_expr_indices));
+  CINN_DEBUG(3) << "stage " << stage.name() << " set indice map, size: " << cinn_expr_indices.size();
+  stage.SetIndiceMap(std::move(cinn_expr_indices));
   return node;
 }
 
@@ -471,17 +475,17 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     }
 
     default:
-      LOG(ERROR) << "not supported type: " << static_cast<int>(root.type());
+      LOG(ERROR) << "not supported type: " << root.type();
   }
 }
 
-Stage* Generator::GetComputationByNode(isl_ast_node* node) {
+Stage Generator::GetComputationByNode(isl_ast_node* node) {
   CHECK(node);
   LOG_INDENT("Generator::GetComputationByNode");
   isl_ast_expr* expr = isl_ast_node_user_get_expr(node);
   isl_ast_expr* arg = isl_ast_expr_get_op_arg(expr, 0);
   std::string name = isl_id_get_name(isl_ast_expr_get_id(arg));
-  CINN_DEBUG(2) << "get stage name: " << name;
+  CINN_DEBUG(4) << "get stage name: " << name;
   isl_ast_expr_free(expr);
   isl_ast_expr_free(arg);
   return Generator::Global().GetStageByName(name);

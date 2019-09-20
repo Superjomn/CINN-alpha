@@ -2,6 +2,7 @@
 #include "cinn/core/function.h"
 #include "cinn/core/stage.h"
 #include "cinn/ir/ir.h"
+#include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
 #include "ir_printer.h"
 
@@ -222,38 +223,52 @@ void IRPrinter::Visit(const Assign *op) {
   Print(op->b);
   os_ << ";\n";
 }
+
 void IRPrinter::Visit(const Function *op) {
-  // os_ << "def " << op->name << "(";
-  // // input arguments
-  // int i;
-  // for (i = 0; i < op->inputs.size(); i++) {
-  //   CHECK(op->inputs[i].is_var());
-  //   os_ << "Buffer& " << op->inputs[i].As<ir::Var>()->name() << ", ";
-  // }
-  // // output arguments
-  // for (i = 0; i < op->outputs.size() - 1; i++) {
-  //   CHECK(op->outputs[i].is_var());
-  //   os_ << "Buffer& " << op->outputs[i].As<ir::Var>()->name() << ", ";
-  // }
-  // if (op->outputs.size() >= 1) {
-  //   CHECK(op->outputs[i].is_var());
-  //   os_ << "Buffer& " << op->outputs[i].As<ir::Var>()->name();
-  // }
-  // os_ << ") ";
+  LOG_INDENT("IRPrinter::Visit Function");
+  CINN_DEBUG(3) << "print function " << op->name();
+  PrintIndent();
+  os_ << "def " << op->name() << "(";
+  // input arguments
+  int i;
+  for (i = 0; i < op->inputs().size(); i++) {
+    CHECK(op->inputs()[i].is_var());
+    os_ << "Buffer& " << op->inputs()[i].As<ir::Var>()->name() << ", ";
+  }
+  // output arguments
+  for (i = 0; i < op->outputs().size() - 1; i++) {
+    CHECK(op->outputs()[i].is_var());
+    os_ << "Buffer& " << op->outputs()[i].As<ir::Var>()->name() << ", ";
+  }
+  if (op->outputs().size() >= 1) {
+    CHECK(op->outputs()[i].is_var());
+    os_ << "Buffer& " << op->outputs()[i].As<ir::Var>()->name();
+  }
+  os_ << ") ";
 
-  // // body print with indent
-  // int current_indent = indent_size_;
-  // indent_size_++;
-  // os_ << "" << std::string(indent_block_ * current_indent, ' ') << "{\n";
+  // body print with indent
+  int current_indent = indent_size_;
+  PrintIndent();
+  os_ << "{\n";
+  indent_size_++;
 
-  // // print the buffer allocate.
-  // for (auto &stage : op->stages) {
-  //   if (stage.is_allocate()) Print(stage.expr());
-  // }
+  // print the buffer allocate.
+  CINN_DEBUG(3) << "stage size: " << op->stages().size();
 
-  // Print(op->GetTransformedExpr());
-  // os_ << std::string(indent_block_ * current_indent, ' ') << "}";
-  // indent_size_--;
+  Print(op->GetTransformedExpr());
+
+  /*
+  for (auto &stage : op->stages()) {
+    // if (stage.is_allocate()) Print(stage.expr());
+    PrintIndent();
+    Print(stage.expr());
+    os_ << "\n";
+  }
+   */
+
+  indent_size_--;
+  PrintIndent();
+  os_ << "}\n";
 }
 
 void IRPrinter::Visit(const Allocate *op) {

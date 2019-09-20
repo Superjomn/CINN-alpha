@@ -11,56 +11,28 @@
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/ir/node_base.h"
 #include "cinn/type.h"
+#include "cinn/utils/macros.h"
 
 namespace cinn {
 namespace ir {
 
 /// All the node types supported by cinn.
 enum class NodeTy {
-  IntImm = 0,
-  UInt = 1,
-  FloatImm = 2,
-  String = 3,
-
-  // Mathematical ones Add,
-  Add = 4,
-  Sub = 5,
-  Mul = 6,
-  Div = 7,
-  Mod = 8,
-  Min = 9,
-  Max = 10,
-
-  Minus = 11,
-
-  // Conditional ones
-  EQ = 12,
-  NE = 13,
-  LT = 14,
-  LE = 15,
-  GT = 16,
-  GE = 17,
-  And = 18,
-  Or = 19,
-  Not = 20,
-  For = 21,
-  IfThenElse = 22,
-
-  Block = 23,
-
-  Var = 24,
-  Param = 25,
-  Tensor = 26,
-  Reference = 27,
-  Call = 28,
-  Assign = 29,
-
-  Function = 30,
-  Statement = 31,
-  Allocate = 32,
-  // Computation,
-  Parameter = 33,
+  __START__ = -1,
+#define DECL_ENUM_ITEM(x__) x__,
+  NODETY_FOR_EACH(DECL_ENUM_ITEM)
+#undef DECL_ENUM_ITEM
+      __NUM__,
 };
+
+static const std::string& GetNodeTyRepr(NodeTy ty) {
+#define NODETY_REPR(x__) #x__,
+  static std::vector<std::string> NodeTyReprs{{NODETY_FOR_EACH(NODETY_REPR)}};
+#undef NODETY_REPR
+  return NodeTyReprs[static_cast<int>(ty)];
+}
+
+static size_t GetNodeTyNum() { return static_cast<size_t>(NodeTy::__NUM__); }
 
 /// The base class for all the IR nodes.
 class IRNode : public std::enable_shared_from_this<IRNode> {
@@ -204,4 +176,10 @@ class Stmt : public IRHandle {
 };
 
 }  // namespace ir
+
+static std::ostream& operator<<(std::ostream& os, ir::NodeTy type) {
+  os << ir::GetNodeTyRepr(type);
+  return os;
+}
+
 }  // namespace cinn

@@ -3,7 +3,6 @@
 #include "cinn/ir/expr.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/macros.h"
-#include "ir_visitor.h"
 
 namespace cinn {
 namespace ir {
@@ -58,6 +57,14 @@ void IRVisitor::Visit(const Function *op) {}
 void IRVisitor::Visit(const Statement *op) { op->expr.Accept(this); }
 void IRVisitor::Visit(const Allocate *op) {}
 void IRVisitor::Visit(const Param *op) {}
+void IRVisitor::Visit(const Tanh *op) {
+  CHECK(op->a.valid());
+  Visit(&op->a);
+}
+void IRVisitor::Visit(const Sigmoid *op) {
+  CHECK(op->a.valid());
+  Visit(&op->a);
+}
 
 }  // namespace ir
 }  // namespace cinn

@@ -4,9 +4,11 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/ir/ir_printer.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
+#include "cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {
@@ -344,6 +346,24 @@ Expr Reference::make(Expr expr, const std::vector<Expr> &iterators) {
   return Expr(x);
 }
 
+/*
+isl::aff ExprToAff(const std::string &statement_repr, isl_ctx *ctx, const isl::set &domain, Expr e) {
+  std::string repr = StringFormat("{ %s -> [%s] }", statement_repr.c_str(), ir::Dump(e).c_str());
+  isl::aff aff(ctx, repr.c_str());
+  return aff;
+}
+ */
+
+// this works only when the params are valid.
+void Reference::InferenceDimsFromIterators() {
+  for (auto &iterator : iterators) {
+    // the max value of the iterator expression as a dimension.
+  }
+}
+
+// Inference the variable's dimensions dims.
+void Reference::InferenceIteratorDims() { CHECK_EQ(dims.size(), iterators.size()); }
+
 Expr Expr::operator=(const Expr &other) {
   if (!valid() || type() != NodeTy::Reference) {
     ptr_ = other.ptr_;
@@ -464,6 +484,10 @@ const std::string &Param::cond() const {
 }
 
 isl::set Param::GetContext() { return isl::set(isl_utils::global_isl_ctx(), "[" + name() + "]->{:" + cond() + "}"); }
+
+isl::set Param::context() const {
+  return isl::set(isl_utils::global_isl_ctx(), StringFormat("[%s]->{:%s}", name().c_str(), cond().c_str()));
+}
 
 }  // namespace ir
 }  // namespace cinn

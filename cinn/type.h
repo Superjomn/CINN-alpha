@@ -37,6 +37,9 @@ enum class argument_t {
   output = 1,
 };
 
+//! Get number of bytes of a primitive type.
+int primitive_bytes(primitive_t type);
+
 class Type {
  public:
   Type() = default;

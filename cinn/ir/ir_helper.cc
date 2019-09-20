@@ -57,8 +57,15 @@ Expr CopyExpr(const Expr& expr) {
       return Expr(node);
     }
 
+    case NodeTy::FloatImm: {
+      auto* x = expr.As<FloatImm>();
+      auto node = std::make_shared<FloatImm>();
+      *node = *x;
+      return Expr(node);
+    }
+
     default:
-      LOG(FATAL) << "unsupported type " << static_cast<int>(expr.type());
+      LOG(FATAL) << "unsupported type " << GetNodeTyRepr(expr.type());
   }
 }
 

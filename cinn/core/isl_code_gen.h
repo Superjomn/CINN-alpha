@@ -62,13 +62,13 @@ class Generator {
   isl::ctx& ctx() { return ctx_; }
 
   //! Get a stage by its name.
-  Stage* GetStageByName(const std::string& name);
+  Stage GetStageByName(const std::string& name);
   //! Register a stage.
   void RegisterStage(const std::string& name, Stage* x);
   //! Given a domain, collect all the stages those iterator domains intersect it.
-  std::vector<Stage*> FilterStagesByDomain(const isl::set& domain);
+  std::vector<Stage> FilterStagesByDomain(const isl::set& domain);
 
-  Stage* GetComputationByNode(isl_ast_node* node);
+  Stage GetComputationByNode(isl_ast_node* node);
 
   size_t num_stages() const { return stages_.size(); }
 
@@ -76,7 +76,7 @@ class Generator {
   Generator() : ctx_(isl_ctx_alloc()) {}
 
   isl::ctx ctx_{nullptr};
-  std::map<std::string, Stage*> stages_;
+  std::map<std::string, std::shared_ptr<Stage::Data>> stages_;
 };
 
 }  // namespace cinn

@@ -11,6 +11,9 @@
 #include "cinn/utils/name_generator.h"
 
 namespace cinn {
+
+struct Buffer;
+
 namespace ir {
 
 class Constant : public ExprNode<Constant> {
@@ -165,6 +168,7 @@ class Var : public ExprNode<Var> {
  */
 class Expr : public IRHandle {
   std::vector<Var> iterators_;
+  Buffer* buffer_{nullptr};
 
  public:
   Expr() : IRHandle() {}
@@ -210,7 +214,8 @@ class Expr : public IRHandle {
   // Expr operator[](Var i, Var j, Var k) { return (*this)({i, j, k}); }
   // Expr operator()(Var i, Var j, Var k, Var l) { return (*this)({i, j, k, l}); }
 
-  virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
+  void Bind(Buffer& buffer) { buffer_ = &buffer; }
+  bool buffer_binded() const { return buffer_; }
 
   /**
    * Assign an Expr from other or create an ir::Assign node representing the assignment of an ir::Reference node.
@@ -233,8 +238,12 @@ class Expr : public IRHandle {
   IS_TYPE(var, Var)
   IS_TYPE(function, Function)
   IS_TYPE(allocate, Allocate)
+  IS_TYPE(reference, Reference)
   IS_TYPE(assign, Assign)
+  IS_TYPE(function_call, Call)
 #undef IS_TYPE
+
+  virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
 };
 
 /**
@@ -254,6 +263,8 @@ struct Reference : public ExprNode<Reference> {
   Expr target;
   //! the iterators of the element.
   std::vector<Expr> iterators;
+  //! the dimension of the reference.
+  std::vector<Expr> dims;
 
   Reference() = default;
 
@@ -271,6 +282,11 @@ struct Reference : public ExprNode<Reference> {
   static Expr make(Expr expr, const std::vector<Expr>& iterators);
 
   static const NodeTy node_type = NodeTy::Reference;
+
+ private:
+  void InferenceDimsFromIterators();
+
+  void InferenceIteratorDims();
 };
 
 /**
@@ -349,7 +365,7 @@ struct Mod : public ExprNode<Mod> {
   static const NodeTy node_type = NodeTy::Mod;
 };
 
-struct Min : public ExprNode<Mod> {
+struct Min : public ExprNode<Min> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
@@ -359,7 +375,7 @@ struct Min : public ExprNode<Mod> {
   static const NodeTy node_type = NodeTy::Min;
 };
 
-struct Max : public ExprNode<Mod> {
+struct Max : public ExprNode<Max> {
   Expr a, b;
 
   static Expr make(Expr a, Expr b);
@@ -581,9 +597,44 @@ class Param : public ir::ExprNode<Param> {
   const std::string& name() const;
   const std::string& cond() const;
 
+  //! get the isl context of parameter constraits.
+  isl::set context() const;
+
   virtual void Accept(ir::IRVisitor* visitor) const {}
 
   static const ir::NodeTy node_type = ir::NodeTy::Param;
+};
+
+// Math functions.
+
+class Tanh : public ir::ExprNode<Tanh> {
+ public:
+  Expr a;
+
+  static Expr make(const Expr& e) {
+    auto node = std::make_shared<Tanh>();
+    node->a = e;
+    return Expr(node);
+  }
+
+  void Accept(IRVisitor* x) const override {}
+
+  static const NodeTy node_type = NodeTy::Tanh;
+};
+
+class Sigmoid : public ir::ExprNode<Tanh> {
+ public:
+  Expr a;
+
+  static Expr make(const Expr& e) {
+    auto node = std::make_shared<Tanh>();
+    node->a = e;
+    return Expr(node);
+  }
+
+  void Accept(IRVisitor* x) const override {}
+
+  static const NodeTy node_type = NodeTy::Sigmoid;
 };
 
 }  // namespace ir

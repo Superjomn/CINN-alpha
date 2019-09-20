@@ -9,7 +9,7 @@ void Module::AddFunction(const Expr &function) { functions_.push_back(function);
 void Module::Lower() {
   LOG_INDENT("Module::Lower");
   for (auto &function : functions_) {
-    CINN_DEBUG(2) << "lower function " << function.As<Function>()->name;
+    CINN_DEBUG(2) << "lower function " << function.As<Function>()->name();
     LowerFunction(function);
   }
 }
@@ -38,14 +38,14 @@ std::set<std::string> FindoutTemporaryBuffer(Function &function) {
   std::set<std::string> io_names, buf_names;
   AssignTargetNameCollector io_collector(&io_names), buf_collector(&buf_names);
 
-  for (Expr &x : function.inputs) {
+  for (const Expr &x : function.inputs()) {
     io_collector.Visit(&x);
   }
-  for (Expr &x : function.outputs) {
+  for (const Expr &x : function.outputs()) {
     io_collector.Visit(&x);
   }
 
-  for (auto &stage : function.stages) {
+  for (auto &stage : function.stages()) {
     buf_collector.Visit(&stage.expr());
   }
 

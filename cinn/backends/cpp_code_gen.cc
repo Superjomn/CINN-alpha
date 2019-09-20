@@ -26,21 +26,21 @@ void CppCodeGen::Visit(const ir::For *op) {
 }
 
 void CppCodeGen::Visit(const Function *op) {
-  os_ << "void " << op->name << "(";
+  os_ << "void " << op->name() << "(";
   // input arguments
   int i;
-  for (i = 0; i < op->inputs.size(); i++) {
-    CHECK(op->inputs[i].is_var());
-    os_ << "char* " << op->inputs[i].As<ir::Var>()->name() << ", ";
+  for (i = 0; i < op->inputs().size(); i++) {
+    CHECK(op->inputs()[i].is_var());
+    os_ << "char* " << op->inputs()[i].As<ir::Var>()->name() << ", ";
   }
   // output arguments
-  for (i = 0; i < op->outputs.size() - 1; i++) {
-    CHECK(op->outputs[i].is_var());
-    os_ << "char * " << op->outputs[i].As<ir::Var>()->name() << ", ";
+  for (i = 0; i < op->outputs().size() - 1; i++) {
+    CHECK(op->outputs()[i].is_var());
+    os_ << "char * " << op->outputs()[i].As<ir::Var>()->name() << ", ";
   }
-  if (op->outputs.size() >= 1) {
-    CHECK(op->outputs[i].is_var());
-    os_ << "char * " << op->outputs[i].As<ir::Var>()->name();
+  if (op->outputs().size() >= 1) {
+    CHECK(op->outputs()[i].is_var());
+    os_ << "char * " << op->outputs()[i].As<ir::Var>()->name();
   }
   os_ << ")\n";
 

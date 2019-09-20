@@ -26,7 +26,18 @@ using ir::Expr;
  * Stage is an statement.
  */
 class Stage {
-  struct StageData {
+ public:
+  enum class Type {
+    unk = -1,
+    polyhedral,
+    function_call,
+  };
+
+  static bool is_unk(Type x) { return x == Type::unk; }
+  static bool is_polyhedral(Type x) { return x == Type::polyhedral; }
+  static bool is_function_call(Type x) { return x == Type::function_call; }
+
+  struct Data {
     // ISL context.
     isl_ctx* ctx{};
 
@@ -50,8 +61,6 @@ class Stage {
     static std::set<std::string> names;
   };
 
-  std::shared_ptr<StageData> data_;
-
  public:
   Stage() { InitData(); }
   Stage(const std::string& name, const std::string& iter_domain);
@@ -69,6 +78,8 @@ class Stage {
    */
   Stage(Expr expr);
 
+  Stage(const std::shared_ptr<Stage::Data>& x) : data_(x) {}
+
   // Stage is free to copy.
   Stage(const Stage& stage) : data_(stage.data_) {}
   Stage(Stage&& stage) : data_(std::move(stage.data_)) {}
@@ -77,6 +88,19 @@ class Stage {
 
   /// Get the expression this stage holds.
   const Expr& expr() const { return data_->expr; }
+
+  Type type() const {
+    switch (expr().type()) {
+      case ir::NodeTy::Assign:
+        return Type::polyhedral;
+      case ir::NodeTy::Call:
+      case ir::NodeTy::Allocate:
+        return Type::function_call;
+      default:
+        LOG(INFO) << "type: " << expr().type();
+        return Type::unk;
+    }
+  }
 
   //! Tell whether this stage is an Assign stage.
   bool is_assign() const;
@@ -164,11 +188,29 @@ class Stage {
   void InitReadDependencies();
   //! Init the read dependencies.
   void InitWriteDependencies();
+  /**
+   * Initalize the stage's buffer access(write).
+   * Each stage associates to a buffer by default, for examle:
+   *
+   *   Buffer buf0;
+   *   Expr A("A");
+   *   A.Attach(buf0);
+   *
+   * all expression A's dependency also associate to buf0.
+   */
+  void InitBufferDependency();
   //! Interchange the i-th and j-th loop level.
   void Interchange(int pos0, int pos1);
 
   // Tests
   FRIEND_TEST(Stage, Interchange);
+
+  friend class Generator;
+
+ private:
+  std::shared_ptr<Data> data_;
 };
+
+std::ostream& operator<<(std::ostream& os, Stage::Type t);
 
 }  // namespace cinn

@@ -1,11 +1,14 @@
 #pragma once
 
 #include <iosfwd>
+
 namespace cinn {
 
 struct Function;
 
 namespace ir {
+
+#define NODE_PRE_DEFINE(x__) struct x__;
 
 struct Var;
 struct Stmt;
@@ -44,7 +47,10 @@ struct Call;
 struct Assign;
 struct Statement;
 struct Allocate;
-class Param;
+struct Param;
+
+struct Tanh;
+struct Sigmoid;
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
 class IRVisitor {
@@ -91,6 +97,9 @@ class IRVisitor {
   virtual void Visit(const Function* op);
   virtual void Visit(const Statement* op);
   virtual void Visit(const Allocate* op);
+
+  virtual void Visit(const Tanh* op);
+  virtual void Visit(const Sigmoid* op);
 };
 
 }  // namespace ir

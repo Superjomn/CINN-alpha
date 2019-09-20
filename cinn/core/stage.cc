@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "cinn/core/function.h"
 #include "cinn/core/isl_code_gen.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
@@ -20,6 +21,8 @@ using interval_tuple_t = ir::Reference::interval_tuple_t;
 
 void Stage::ExtractDomainFromExpr(Expr x) {
   LOG_INDENT("Stage::ExtractDomainFromExpr");
+  CINN_DEBUG(3) << "expr.type: " << ir::GetNodeTyRepr(x.type());
+  CINN_DEBUG(3) << "expr: " << ir::Dump(x);
   class Collector : public ir::IRVisitor {
     std::vector<ir::Var> iterators_;
     bool in_reference_{false};
@@ -31,6 +34,7 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 
     void Visit(const Expr* op) override { IRVisitor::Visit(op); }
     void Visit(const ir::Var* var) override {
+      LOG_INDENT("Collector::Visit Var");
       if (!in_reference_) return;
       // check if exists
       auto it = std::find_if(iterators_.begin(), iterators_.end(), [&](const ir::Var& o) { return o == *var; });
@@ -39,18 +43,31 @@ void Stage::ExtractDomainFromExpr(Expr x) {
       }
     }
     void Visit(const ir::Reference* op) override {
+      LOG_INDENT("Collector::Visit Reference");
       in_reference_ = true;
       for (auto& x : op->iterators) {
         Visit(&x);
       }
       in_reference_ = false;
     }
+    void Visit(const Function* op) override {
+      LOG_INDENT("Collector::Visit Function");
+      for (auto& x : op->inputs()) {
+        Visit(&x);
+      }
+      for (auto& x : op->outputs()) {
+        Visit(&x);
+      }
+      for (auto& stage : op->stages()) {
+        Visit(&stage.expr());
+      }
+    }
   };
 
   Collector collector;
   collector.Visit(&x);
   const auto& iterators = collector.iterators();
-  CINN_DEBUG(4) << "collect " << iterators.size() << " iterators";
+  CINN_DEBUG(3) << "collect " << iterators.size() << " iterators";
 
   if (iterators.empty()) return;
   // construct the set
@@ -76,9 +93,11 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 }
 
 Stage::Stage(Expr expr) {
+  LOG_INDENT("Stage::Stage");
   InitData();
   data_->expr = expr;
   set_name(NameGenerator::Global().NewStageName());
+  CINN_DEBUG(2) << "stage set name " << name();
 
   ExtractDomainFromExpr(expr);
 
@@ -162,12 +181,12 @@ void Stage::InitSchedule() {
   CHECK(data_->iter_domain.get());
   isl_utils::map schedule = data_->iter_domain.identity();
   // schedule = isl::manage(isl_map_set_tuple_name(schedule.release(), isl_dim_out, ""));
-  CINN_DEBUG(2) << "schedule: " << schedule;
+  CINN_DEBUG(4) << "schedule: " << schedule;
 
   schedule = isl::manage(isl_map_coalesce(schedule.release()));
   data_->schedule = schedule;
 
-  CINN_DEBUG(2) << "after init: " << data_->schedule;
+  CINN_DEBUG(4) << "after init: " << data_->schedule;
   CINN_DEBUG(2) << data_->name
                 << ".schedule: " << isl::manage(isl_map_intersect_domain(schedule.copy(), data_->iter_domain.copy()));
 }
@@ -207,7 +226,7 @@ Expr Stage::GetIndiceTransformedExpr() const {
 
 void Stage::InitData() {
   CHECK(!data_);
-  data_ = std::make_shared<StageData>();
+  data_ = std::make_shared<Data>();
   data_->ctx = Generator::Global().ctx().get();
 }
 
@@ -223,7 +242,7 @@ bool Stage::is_assign() const { return expr().is_assign(); }
 
 bool Stage::is_allocate() const { return expr().is_allocate(); }
 
-std::set<std::string> Stage::StageData::names;
+std::set<std::string> Stage::Data::names;
 
 void Stage::Interchange(ir::Var i, ir::Var j) { Interchange(i.name(), j.name()); }
 
@@ -367,6 +386,21 @@ void Stage::InitWriteDependencies() {
   auto* assign_expr = expr().As<ir::Assign>();
   set_write_access(CollectAccess(iterator_domain(), assign_expr->a));
   CINN_DEBUG(2) << "get write dependency: " << isl_union_map_to_str(write_access());
+}
+
+std::ostream& operator<<(std::ostream& os, Stage::Type t) {
+  switch (t) {
+    case Stage::Type::polyhedral:
+      os << "polyhedral";
+      break;
+    case Stage::Type::function_call:
+      os << "function_call";
+      break;
+    default:
+      os << "unk";
+      break;
+  }
+  return os;
 }
 
 }  // namespace cinn
