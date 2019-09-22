@@ -72,5 +72,22 @@ Expr CopyExpr(const Expr& expr) {
 #undef ONE_PARAM_OP
 #undef TWO_PARAM_OP
 
+std::vector<const Var*> CollectVarsFromExpr(const Expr& expr) {
+  class Visitor : public IRVisitor {
+    int id_;
+
+   public:
+    std::set<const Var*> vars;
+
+    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
+    void Visit(const Var* op) override { vars.insert(op); }
+  };
+
+  Visitor visitor;
+  visitor.Visit(&expr);
+
+  return std::vector<const Var*>(visitor.vars.begin(), visitor.vars.end());
+}
+
 }  // namespace ir
 }  // namespace cinn

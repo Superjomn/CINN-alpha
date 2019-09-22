@@ -101,4 +101,45 @@ TEST(Stage, InitRWAccess) {
   }
 }
 
+TEST(Stage, BuildDomainFromDimensions) {
+  Constant I("I", 30);
+  Constant J("J", 40);
+  Constant M("M", 20);
+
+  auto domains = BuildDomainFromDimensions({I, J, M}, {"ii0", "ii1", "ii2"});
+  LOG(INFO) << "domains: " << domains;
+  ASSERT_EQ(GetStreamStr(domains), "{ [ii0, ii1, ii2] : 0 <= ii0 <= 30 and 0 <= ii1 <= 40 and 0 <= ii2 <= 20 }");
+}
+
+TEST(Stage, BuildDomainFromExprWithDimension) {
+  Constant I("I", 30);
+  Constant J("J", 40);
+  Constant M("M", 20);
+
+  Var i, j, k;
+
+  LOG(INFO) << "i: " << i.name();
+  LOG(INFO) << "j: " << j.name();
+  LOG(INFO) << "k: " << k.name();
+  std::vector<Expr> iterators({Expr(i) * 2, Expr(j) + 3, Expr(k) - 2});
+
+  auto domain = BuildDomainFromExprWithDimension(iterators, {I, J, M});
+  LOG(INFO) << "domain " << domain;
+  ASSERT_EQ(GetStreamStr(domain), "{ [i0, i1, i2] : 0 <= i0 <= 15 and -3 <= i1 <= 37 and 2 <= i2 <= 22 }");
+}
+
+TEST(Stage, syntax) {
+  Constant I("I", 30);
+  Constant J("J", 40);
+  Constant M("M", 20);
+
+  Var i, j, k;
+
+  Expr A({I, M});
+  Expr B({M, J});
+  Expr C({I, J});
+
+  Stage s0 = C[i][j].Assign(A[i * 2][k + 3] * B[k + 3][j]);
+}
+
 }  // namespace cinn

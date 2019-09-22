@@ -111,55 +111,95 @@ class Interval {
  *
  */
 class Var : public ExprNode<Var> {
-  Any val_;
-  primitive_t data_type_;
-  Interval interval_;
-  std::string name_;
-  primitive_t dtype_{primitive_t::unk};
+  struct Data {
+    Any val_;
+    primitive_t ptype_;
+    Interval interval_;
+    std::string name_;
+    primitive_t dtype_{primitive_t::unk};
+    std::unique_ptr<isl::set> domain_;
+  };
+
+  std::shared_ptr<Data> data_;
 
   static size_t counter_;
   static std::set<std::string> name_set_;  // All registerred var's name here.
 
  public:
-  Var() { name_ = NameGenerator::Global().NewVarName(); }
+  Var() {
+    InitData();
+    data_->name_ = NameGenerator::Global().NewIteratorName();
+  }
 
   //! Create a varaible with UNK data type. The dtype should be inferenced latter with the context.
-  Var(const std::string& name) : name_(name) { CheckNameValid(name); }
+  Var(const std::string& name) {
+    InitData();
+    data_->name_ = name;
+    CheckNameValid(name);
+  }
 
-  Var(const std::string& name, primitive_t dtype) : name_(name), dtype_(dtype) { CheckNameValid(name); }
+  Var(const std::string& name, primitive_t dtype) {
+    InitData();
+    data_->name_ = name;
+    data_->dtype_ = dtype;
+    CheckNameValid(name);
+  }
 
   // make a variable with name and interval set.
-  Var(const std::string& name, primitive_t type, const Interval& interval)
-      : name_(name), data_type_(type), interval_(interval) {
-    CheckNameValid(name_);
+  Var(const std::string& name, primitive_t type, const Interval& interval) {
+    InitData();
+    data_->name_ = name;
+    data_->ptype_ = type;
+    data_->interval_ = interval;
+    CheckNameValid(data_->name_);
   }
 
   Var(const std::string& name, int32_t lower_bound, int32_t upper_bound);
 
-  Var(const std::string& name, primitive_t type, Constant lower_bound, Constant upper_bound)
-      : name_(name), data_type_(type), interval_(lower_bound, upper_bound) {
+  Var(const std::string& name, primitive_t type, Constant lower_bound, Constant upper_bound) {
+    InitData();
+    data_->name_ = name;
+    data_->ptype_ = type;
+    data_->interval_ = Interval(lower_bound, upper_bound);
     CheckNameValid(name);
   }
 
-  Var(const Var& other) : name_(other.name()), dtype_(other.dtype()), interval_(other.interval()) {}
+  Var(const Var& other) { data_ = other.data_; }
 
   operator Expr();
 
-  primitive_t dtype() const { return dtype_; }
+  primitive_t dtype() const { return data_->dtype_; }
 
-  bool operator==(const Var& other) const { return name() == other.name() && interval() == other.interval(); }
+  bool operator==(const Var& other) const {
+    return data_ == other.data_ || (name() == other.name() && interval() == other.interval());
+  }
 
   void Accept(IRVisitor* x) const override {}
 
-  const std::string& name() const { return name_; }
+  const std::string& name() const { return data_->name_; }
+  void set_name(const std::string& name) { data_->name_ = name; }
 
   static const NodeTy node_type = NodeTy::Var;
 
-  const Interval& interval() const { return interval_; }
+  const Interval& interval() const { return data_->interval_; }
+
+  primitive_t ptype() const { return data_->ptype_; }
+  void set_ptype(primitive_t ptype) { data_->ptype_ = ptype; }
+
+  bool is_domain_valid() const { return data_->domain_.get() && !data_->domain_->is_null(); }
+  void set_domain(const isl::set& domain) {
+    if (!data_->domain_.get()) data_->domain_.reset(new isl::set);
+    *data_->domain_ = domain;
+  }
+  const isl::set& domain() const {
+    CHECK(is_domain_valid());
+    return *data_->domain_;
+  }
 
   std::string __repr__() const;
 
  private:
+  void InitData() { data_ = std::make_shared<Data>(); }
   static bool CheckNameValid(const std::string& name);
 };
 
@@ -169,6 +209,8 @@ class Var : public ExprNode<Var> {
 class Expr : public IRHandle {
   std::vector<Var> iterators_;
   Buffer* buffer_{nullptr};
+  // dimentions.
+  std::vector<Constant> dims_;
 
  public:
   Expr() : IRHandle() {}
@@ -188,6 +230,41 @@ class Expr : public IRHandle {
   explicit Expr(int64_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 64), x); }
   //! Create an float Expr.
   explicit Expr(float x) { ptr_ = FloatImm::make(Type(type_code_t::Float, 32), x); }
+
+  /**
+   * // reduce
+   * Expr A({N, M}, primitive_t::float32);    // declare an expression with the dimensions: N x M
+   * Var i, j;
+   * Expr C({N}, primitive_t::float32);
+   * C[i] = 0         // S0[i], 0 <= i <= N
+   * C[i] += A[i][j]  // S1[i,j], 0 <= i <=N and 0 <= j <= M
+   *
+   * // mat mul vector
+   * Expr A({R,C}, primitive::float32);
+   * Expr B({C}, primitive::float32);
+   * Expr O({C});
+   * O[i].Assign( O[i] + A[i][j] * B[j] );   // S0[i,j]
+   *
+   * // softmax
+   * Expr I({N,D}, primitive_t::float32);
+   * Expr O({N}, T::float32);
+   * Expr expsum({N}, T::float32);
+   * expsum[n].Assign( expsum[n] + exp(I[n][d]) );
+   * O[n][d].Assign( exp(I[n][d]) / expsum[n] );
+   *
+   * // matmul
+   * Expr A({M,K}, T::float32);
+   * Expr B({K,N}, T::float32);
+   * Expr C({M,K});
+   * Var m,n,k;
+   * C[m][n].Assign( A[m][k] * B[k][n] );
+   */
+  Expr(const std::vector<Constant>& dims) : dims_(dims) {
+    CHECK(!dims_.empty()) << "dims should not be empty";
+    for (auto& dim : dims_) {
+      CHECK(dim.is_integer());
+    }
+  }
 
   /**
    * Element assignment.
@@ -210,9 +287,8 @@ class Expr : public IRHandle {
   Expr operator[](Var i);
   Expr operator[](Expr i);
   Expr operator[](std::vector<Expr> iters);
-  // Expr operator[](Var i, Var j) { return (*this)({i, j}); }
-  // Expr operator[](Var i, Var j, Var k) { return (*this)({i, j, k}); }
-  // Expr operator()(Var i, Var j, Var k, Var l) { return (*this)({i, j, k, l}); }
+
+  Expr operator()(const std::vector<Expr>& iters);
 
   void Bind(Buffer& buffer) { buffer_ = &buffer; }
   bool buffer_binded() const { return buffer_; }
@@ -244,6 +320,10 @@ class Expr : public IRHandle {
 #undef IS_TYPE
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
+
+ private:
+  // Inference the dimention indice on the id-th dimention.
+  void InferenceIteratorDomain(Expr dim_expr, int id);
 };
 
 /**
@@ -300,13 +380,6 @@ class Tensor : public ExprNode<Tensor> {
  public:
   Tensor(const std::string& name, primitive_t type, const std::vector<Constant>& dims)
       : name_(name), type_(type), dims_(dims) {}
-
-  /*
-Expr operator()(Var i) { return Reference::make(Expr(), {i}); }
-Expr operator()(Var i, Var j) { return Reference::make(Expr(), {i, j}); }
-Expr operator()(Var i, Var j, Var z) { return Reference::make(Expr(), {i, j, z}); }
-Expr operator()(Var i, Var j, Var z, Var k) { return Reference::make(Expr(), {i, j, z, k}); }
-   */
 
   void Accept(IRVisitor* x) const override {}
 
@@ -636,6 +709,19 @@ class Sigmoid : public ir::ExprNode<Tanh> {
 
   static const NodeTy node_type = NodeTy::Sigmoid;
 };
+
+//! Extract the Vars from a expression.
+std::vector<Var> ExtractVarsFromExpr(const Expr& expr);
+
+//! Build a domain considering all the dimensions.
+// e.g. [ M, N, K ] {:} will get { [i0, i1, i2] : 0 <= i0 <= M and 0 <= i1 <= i1 and 0 <= i2 <= K }
+isl::union_set BuildDomainFromDimensions(const std::vector<Constant>& dims, const std::vector<std::string>& iter_names);
+
+//! Generate iterator's name.
+// e.g. get i2 if id=2
+inline std::string GenIndexedIteratorName(int id);
+
+isl::union_set BuildDomainFromExprWithDimension(const std::vector<Expr>& exprs, const std::vector<Constant>& dims);
 
 }  // namespace ir
 }  // namespace cinn
