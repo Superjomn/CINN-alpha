@@ -209,8 +209,6 @@ class Var : public ExprNode<Var> {
 class Expr : public IRHandle {
   std::vector<Var> iterators_;
   Buffer* buffer_{nullptr};
-  // dimentions.
-  std::vector<Constant> dims_;
 
  public:
   Expr() : IRHandle() {}
@@ -220,7 +218,7 @@ class Expr : public IRHandle {
   Expr(const std::string& name, primitive_t dtype = primitive_t::float32) { *this = Var(name, dtype); }
 
   // reference
-  Expr(const std::vector<Var>& its) : iterators_(its) {}
+  // explicit Expr(const std::vector<Var>& its) : iterators_(its) {}
 
   Expr Assign(Expr other);
 
@@ -259,12 +257,30 @@ class Expr : public IRHandle {
    * Var m,n,k;
    * C[m][n].Assign( A[m][k] * B[k][n] );
    */
-  Expr(const std::vector<Constant>& dims) : dims_(dims) {
+
+  //! Construct from dimentions, and get a Tensor.
+  explicit Expr(const std::vector<Constant>& dims, primitive_t ptype, const std::string& name = "");
+  /*
+  explicit Expr(const Constant& dim) : dims_(std::vector<Constant>({dim})) {
     CHECK(!dims_.empty()) << "dims should not be empty";
     for (auto& dim : dims_) {
       CHECK(dim.is_integer());
     }
   }
+  Expr(const Constant& dim0, const Constant& dim1) : dims_(std::vector<Constant>({dim0, dim1})) {
+    CHECK(!dims_.empty()) << "dims should not be empty";
+    for (auto& dim : dims_) {
+      CHECK(dim.is_integer());
+    }
+  }
+  Expr(const Constant& dim0, const Constant& dim1, const Constant& dim2)
+      : dims_(std::vector<Constant>({dim0, dim1, dim2})) {
+    CHECK(!dims_.empty()) << "dims should not be empty";
+    for (auto& dim : dims_) {
+      CHECK(dim.is_integer());
+    }
+  }
+   */
 
   /**
    * Element assignment.
@@ -283,10 +299,10 @@ class Expr : public IRHandle {
    * @param iters list of iterators.
    * @return Expr.
    */
-  Expr operator[](std::vector<Var> iters);
-  Expr operator[](Var i);
+  // Expr operator[](std::vector<Var> iters);
+  // Expr operator[](Var i);
   Expr operator[](Expr i);
-  Expr operator[](std::vector<Expr> iters);
+  // Expr operator[](std::vector<Expr> iters);
 
   Expr operator()(const std::vector<Expr>& iters);
 
@@ -317,13 +333,14 @@ class Expr : public IRHandle {
   IS_TYPE(reference, Reference)
   IS_TYPE(assign, Assign)
   IS_TYPE(function_call, Call)
+  IS_TYPE(tensor, Tensor)
 #undef IS_TYPE
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }
 
  private:
   // Inference the dimention indice on the id-th dimention.
-  void InferenceIteratorDomain(Expr dim_expr, int id);
+  void InferenceIteratorDomain(Expr* expr);
 };
 
 /**
@@ -345,6 +362,8 @@ struct Reference : public ExprNode<Reference> {
   std::vector<Expr> iterators;
   //! the dimension of the reference.
   std::vector<Expr> dims;
+
+  isl::set domain;
 
   Reference() = default;
 
@@ -374,12 +393,21 @@ struct Reference : public ExprNode<Reference> {
  */
 class Tensor : public ExprNode<Tensor> {
   std::string name_;
-  primitive_t type_;
+  primitive_t ptype_;
   std::vector<Constant> dims_;
 
  public:
   Tensor(const std::string& name, primitive_t type, const std::vector<Constant>& dims)
-      : name_(name), type_(type), dims_(dims) {}
+      : name_(name), ptype_(type), dims_(dims) {}
+
+  const std::string& name() const { return name_; }
+  primitive_t ptype() const { return ptype_; }
+  const std::vector<Constant>& dims() const { return dims_; }
+
+  static Expr make(const std::vector<Constant>& dims, primitive_t type, const std::string& name) {
+    auto node = std::make_shared<Tensor>(name.empty() ? NameGenerator::Global().NewVarName() : name, type, dims);
+    return Expr(node);
+  }
 
   void Accept(IRVisitor* x) const override {}
 
@@ -715,13 +743,13 @@ std::vector<Var> ExtractVarsFromExpr(const Expr& expr);
 
 //! Build a domain considering all the dimensions.
 // e.g. [ M, N, K ] {:} will get { [i0, i1, i2] : 0 <= i0 <= M and 0 <= i1 <= i1 and 0 <= i2 <= K }
-isl::union_set BuildDomainFromDimensions(const std::vector<Constant>& dims, const std::vector<std::string>& iter_names);
+isl::set BuildDomainFromDimensions(const std::vector<Constant>& dims, const std::vector<std::string>& iter_names);
 
 //! Generate iterator's name.
 // e.g. get i2 if id=2
 inline std::string GenIndexedIteratorName(int id);
 
-isl::union_set BuildDomainFromExprWithDimension(const std::vector<Expr>& exprs, const std::vector<Constant>& dims);
+isl::set BuildDomainFromExprWithDimension(const std::vector<Expr>& exprs, const std::vector<Constant>& dims);
 
 }  // namespace ir
 }  // namespace cinn

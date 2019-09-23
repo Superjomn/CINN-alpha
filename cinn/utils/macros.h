@@ -92,6 +92,7 @@
   macro__(IfThenElse)                  \
   macro__(Reference)                   \
   macro__(Block)                       \
+  macro__(Tensor)                       \
   macro__(Allocate) macro__(Call)      \
   macro__(Function) macro__(Param)
 // clang-format on

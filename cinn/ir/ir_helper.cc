@@ -89,5 +89,24 @@ std::vector<const Var*> CollectVarsFromExpr(const Expr& expr) {
   return std::vector<const Var*>(visitor.vars.begin(), visitor.vars.end());
 }
 
+template <>
+std::vector<const Reference*> CollectExprNode<Reference>(const Expr& expr) {
+  class Visitor : public IRVisitor {
+   public:
+    std::set<const Reference*> set;
+
+    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
+    void Visit(const Reference* op) override {
+      set.insert(op);
+      IRVisitor::Visit(op);
+    }
+  };
+
+  Visitor visitor;
+  visitor.Visit(&expr);
+
+  return std::vector<const Reference*>(visitor.set.begin(), visitor.set.end());
+}
+
 }  // namespace ir
 }  // namespace cinn

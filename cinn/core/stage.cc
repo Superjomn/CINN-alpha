@@ -75,7 +75,93 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
     return x.name();
   });
+
   std::string statement = name() + "[" + Concat(iterator_names, ", ") + "]";
+  CINN_DEBUG(3) << "get statement: " << statement;
+
+  auto references = ir::CollectExprNode<ir::Reference>(x);
+
+  std::map<std::string, isl::set> iter_domain;
+  std::set<std::string> var_names;
+  for (auto& ref : references) {
+    CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
+    CINN_DEBUG(3) << "reference domain: " << ref->domain;
+
+    for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
+      var_names.insert(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
+    }
+    /*
+    for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
+      std::string var_name = isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i);
+      std::string transform_repr = StringFormat("{ [%s] -> [%s] }", Concat(var_names, ", ").c_str(), var_name.c_str());
+      CINN_DEBUG(3) << "domain to single var transform: " << transform_repr;
+      isl::map transform(isl_utils::global_isl_ctx(), transform_repr.c_str());
+      isl::set var_domain = ref->domain.apply(transform);
+      CINN_DEBUG(3) << "var domain: " << var_domain;
+      // insert to iter_domain
+      if (iter_domain.count(var_name)) {
+        iter_domain[var_name] = isl::manage(isl_set_intersect(iter_domain[var_name].release(), var_domain.release()));
+      } else {
+        iter_domain[var_name] = var_domain;
+      }
+    }
+     */
+  }
+  std::vector<std::string> var_names_in_order(var_names.begin(), var_names.end());
+  CINN_DEBUG(3) << "variable names collected from all the References: " << Concat(var_names_in_order, ", ");
+
+  // make all the reference's the same space
+  for (auto& ref : references) {
+    auto ref_domain = ref->domain;
+    int set_dim = isl_set_dim(ref->domain.get(), isl_dim_set);
+    std::vector<std::string> dim_names;
+    for (int i = 0; i < set_dim; i++) {
+      dim_names.push_back(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
+    }
+
+    std::string transform_repr =
+        StringFormat("{ [%s] -> [%s] }", Concat(dim_names, ", ").c_str(), Concat(var_names_in_order, ", ").c_str());
+    isl::map transform(isl_utils::global_isl_ctx(), transform_repr.c_str());
+    CINN_DEBUG(3) << "transform: " << transform;
+    ref_domain = ref_domain.apply(transform);
+    *const_cast<isl::set*>(&ref->domain) = ref_domain;
+    CINN_DEBUG(3) << "final domain: " << ref->domain;
+    // set to Stage's domain
+    if (iterator_domain().is_null()) {
+      data_->iter_domain = ref->domain;
+    } else {
+      data_->iter_domain = isl::manage(isl_set_intersect(data_->iter_domain.release(), ref->domain.copy()));
+    }
+  }
+
+  data_->iter_domain = isl::manage(isl_set_set_tuple_name(data_->iter_domain.release(), name().c_str()));
+  // set dim name
+  for (int i = 0; i < var_names_in_order.size(); i++) {
+    data_->iter_domain =
+        isl::manage(isl_set_set_dim_name(data_->iter_domain.release(), isl_dim_set, i, var_names_in_order[i].c_str()));
+  }
+
+  CINN_DEBUG(3) << "get Stage's domain: " << iterator_domain();
+
+  return;
+
+  // check if all the Vars has domain, and we will construct the overall domain from each var's domain.
+  bool all_var_has_domain = true;
+  for (auto& var : collector.iterators()) {
+    if (!var.is_domain_valid()) {
+      CINN_DEBUG(3) << "var " << var.name() << " not have domain";
+      all_var_has_domain = false;
+      break;
+    }
+  }
+
+  CHECK(all_var_has_domain);
+  if (all_var_has_domain) {
+    isl::union_set domain(isl_utils::global_isl_ctx(), StringFormat("{ %s : }", statement.c_str()));
+    for (auto& var : collector.iterators()) {
+      LOG(INFO) << "domain: " << var.domain();
+    }
+  }
 
   std::vector<std::string> sub_domains;
   std::transform(iterators.begin(), iterators.end(), std::back_inserter(sub_domains), [](const ir::Var& x) {
@@ -144,7 +230,6 @@ std::string Stage::DumpIslC() const {
   int transform_range_dims = isl_map_dim(t0.get(), isl_dim_out);
   CINN_DEBUG(2) << "transform: " << t0;
   for (int i = 0; i < transform_range_dims; i++) {
-    LOG(INFO) << "t0: " << t0 << isl_map_has_dim_name(t0.get(), isl_dim_out, i);
     if (isl_bool_true == isl_map_has_dim_name(t0.get(), isl_dim_out, i)) {
       iterators.push_back(isl_map_get_dim_name(t0.get(), isl_dim_out, i));
     } else {
@@ -318,6 +403,8 @@ class ReferenceCollector : public ir::IRPrinter {
     set_reference_braces("[]");
   }
 
+  void Visit(const ir::Tensor* op) override { ss_ << op->name(); }
+
   void Visit(const ir::Reference* op) override {
     ss_.str("");
     IRPrinter::Visit(op);
@@ -331,6 +418,9 @@ class ReferenceCollector : public ir::IRPrinter {
 }  // namespace
 
 isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) {
+  LOG_INDENT("CollectAccess");
+  CINN_DEBUG(6) << "input interator_domain: " << iterator_domain;
+  CINN_DEBUG(6) << "input expr: " << ir::Dump(expr);
   // init read access
   std::set<std::string> stmts;
   std::stringstream ss;
@@ -347,8 +437,10 @@ isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) 
   CINN_DEBUG(2) << "collected " << stmts.size() << " accesses ";
   CINN_DEBUG(4) << "repr: " << Concat(stmts, ", ");
 
+  CINN_DEBUG(3) << "iterator_domain.space: " << iterator_domain.space();
   std::vector<std::string> reprs;
   auto statement_repr = isl_utils::isl_space_get_statement_repr(iterator_domain.space().get());
+  CINN_DEBUG(3) << "statement_repr: " << statement_repr;
 
   for (auto& stmt : stmts) {
     reprs.push_back(statement_repr + " -> " + stmt);

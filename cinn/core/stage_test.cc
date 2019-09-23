@@ -135,11 +135,16 @@ TEST(Stage, syntax) {
 
   Var i, j, k;
 
-  Expr A({I, M});
-  Expr B({M, J});
-  Expr C({I, J});
+  Expr A(std::vector<Constant>({I, M}), primitive_t::float32, "A");
+  Expr B(std::vector<Constant>({M, J}), primitive_t::float32, "B");
+  Expr C(std::vector<Constant>({I, J}), primitive_t::float32, "C");
 
   Stage s0 = C[i][j].Assign(A[i * 2][k + 3] * B[k + 3][j]);
+  LOG(INFO) << "s0.iterator_domain: " << s0.iterator_domain();
+  Stage s1 = C[i][j].Assign(C[i][j] + 1);
+  LOG(INFO) << "s1.iterator_domain: " << s1.iterator_domain();
+  LOG(INFO) << "s0.code: " << s0.DumpIslC();
+  LOG(INFO) << "s1.code: " << s1.DumpIslC();
 }
 
 }  // namespace cinn

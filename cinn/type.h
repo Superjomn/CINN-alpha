@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <ostream>
 
 namespace cinn {
 
@@ -25,6 +26,8 @@ enum class primitive_t : int {
   float64,
   boolean,
 };
+
+std::ostream& operator<<(std::ostream& os, primitive_t t);
 
 enum class memory_location_t {
   host = 0,

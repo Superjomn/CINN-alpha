@@ -149,7 +149,7 @@ void IRPrinter::Visit(const Or *op) {
   os_ << ")";
 }
 
-void IRPrinter::Visit(const Tensor *op) { os_ << "tensor<>"; }
+void IRPrinter::Visit(const Tensor *op) { os_ << op->name() << "<>"; }
 
 void IRPrinter::Visit(const For *op) {
   PrintIndent();

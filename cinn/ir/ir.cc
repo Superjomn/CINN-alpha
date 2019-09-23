@@ -131,7 +131,7 @@ Constant::Constant(float val) : name_(DefaultUniqueName()) {
 
 template <>
 int32_t Constant::As<int32_t>() const {
-  CHECK(primitive_type() == primitive_t::int32);
+  CHECK_EQ(primitive_type(), primitive_t::int32);
   return int32_val_;
 }
 template <>
@@ -342,9 +342,11 @@ Expr Call::make(const std::string &caller, std::vector<Expr> arguments) {
 }
 
 Expr Reference::make(Expr expr, const std::vector<Expr> &iterators) {
+  CHECK(expr.valid());
   auto x = std::make_shared<Reference>();
   x->target = expr;
   for (const Expr &iterator : iterators) {
+    CHECK(iterator.valid());
     x->iterators.push_back(iterator);
   }
   return Expr(x);
@@ -391,6 +393,7 @@ Expr Assign::make(Expr a, Expr b) {
 
 Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
 
+/*
 Expr Expr::operator[](std::vector<Var> iters) {
   std::vector<Expr> iterators;
   for (auto &iter : iters) {
@@ -399,13 +402,15 @@ Expr Expr::operator[](std::vector<Var> iters) {
   auto node = Reference::make(*this, iterators);
   return node;
 }
+ */
 
+/*
 Expr Expr::operator[](Var i) {
   CINN_DEBUG(4) << "get i:" << i.name();
   // inference iterators' type
   if (i.ptype() == primitive_t::unk) i.set_ptype(primitive_t::int32);
   if (!i.is_domain_valid()) {
-    InferenceIteratorDomain(Expr(i), iterators_.size() - 1);
+    InferenceIteratorDomain();
   }
 
   if (ptr() && type() == ir::NodeTy::Reference) {
@@ -414,27 +419,33 @@ Expr Expr::operator[](Var i) {
   }
   return Reference::make(*this, {Expr(i)});
 }
+ */
 
 Expr Expr::operator[](Expr i) {
+  LOG_INDENT("Expr::operator[](Expr i)");
   auto vars = CollectVarsFromExpr(i);
-  CHECK_EQ(vars.size(), 1UL);
+  CHECK_EQ(vars.size(), 1UL) << "Currentlly only support one variable in a dimension";
   Var *var = const_cast<Var *>(vars.front());
   if (var->ptype() == primitive_t::unk) var->set_ptype(primitive_t::int32);
-  if (!var->is_domain_valid()) {
-    InferenceIteratorDomain(Expr(i), iterators_.size() - 1);
-  }
 
   if (ptr() && type() == ir::NodeTy::Reference) {
     As<Reference>()->iterators.push_back(i);
+    InferenceIteratorDomain(this);
     return *this;
   }
-  return Reference::make(*this, {i});
+
+  auto node = Reference::make(*this, {i});
+  Expr result(node);
+  InferenceIteratorDomain(&result);
+  return result;
 }
 
+/*
 Expr Expr::operator[](std::vector<Expr> iters) {
   auto node = Reference::make(*this, iters);
   return node;
 }
+ */
 
 bool Expr::is_op() const {
   CHECK(valid());
@@ -508,8 +519,22 @@ isl::set Param::context() const {
 }
 
 // TODO(Superjomn) Support complex expression with more than one Var.
-void Expr::InferenceIteratorDomain(Expr dim_expr, int id) {
+void Expr::InferenceIteratorDomain(Expr *expr) {
+  LOG_INDENT("Expr::InferenceIteratorDomain");
+  CINN_DEBUG(3) << "expr: " << ir::Dump(*expr);
+  isl::union_set result;
   // extract iterator from the expr.
+  if (!expr->is_reference()) return;
+  CHECK(expr->is_reference()) << "type is " << expr->type();
+  auto *ref = expr->As<Reference>();
+  if (!ref->target.is_tensor()) return;
+  auto *tensor = ref->target.As<Tensor>();
+  CHECK_LE(ref->iterators.size(), tensor->dims().size());
+  CINN_DEBUG(6) << "Reference " << ir::Dump(ref->target) << " has " << ref->iterators.size() << " iterators";
+  if (ref->iterators.size() == tensor->dims().size()) {
+    ref->domain = BuildDomainFromExprWithDimension(ref->iterators, tensor->dims());
+    CINN_DEBUG(3) << "set reference's domain: " << ref->domain;
+  }
 }
 
 Expr Expr::operator()(const std::vector<Expr> &iters) {
@@ -521,6 +546,14 @@ Expr Expr::operator()(const std::vector<Expr> &iters) {
   return Expr(node);
 }
 
+Expr::Expr(const std::vector<Constant> &dims, primitive_t ptype = primitive_t::float32, const std::string &name) {
+  for (auto &dim : dims) {
+    CHECK(dim.is_integer());
+  }
+
+  *this = Tensor::make(dims, ptype, name);
+}
+
 std::vector<Var> ExtractVarsFromExpr(const Expr &expr) {
   class Collector : public IRVisitor {
    public:
@@ -530,7 +563,7 @@ std::vector<Var> ExtractVarsFromExpr(const Expr &expr) {
   return std::vector<Var>();
 }
 
-isl::union_set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std::vector<std::string> &iterators) {
+isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std::vector<std::string> &iterators) {
   LOG_INDENT("BuildDomainFromDimensions");
   CHECK(!dims.empty());
 
@@ -545,7 +578,7 @@ isl::union_set BuildDomainFromDimensions(const std::vector<Constant> &dims, cons
   std::string repr =
       StringFormat("{ [%s] : %s }", Concat(iterators, ", ").c_str(), Concat(constraints, " and ").c_str());
   CINN_DEBUG(3) << "repr: " << repr;
-  isl::union_set result(isl_utils::global_isl_ctx(), repr);
+  isl::set result(isl_utils::global_isl_ctx(), repr);
   CINN_DEBUG(3) << "get domain " << result;
 
   return result;
@@ -579,7 +612,7 @@ Expr ReplaceVarWithIterator(int id, const Expr &expr) {
 
 }  // namespace
 
-isl::union_set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dims) {
+isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dims) {
   LOG_INDENT("BuildDomainFromExprWithDimension");
   CHECK_EQ(exprs.size(), dims.size());
 
@@ -595,7 +628,6 @@ isl::union_set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, 
 
     iterator_vars.push_back(sorted.front());
     dim_iters.push_back(GenIndexedIteratorName(i));
-    LOG(INFO) << "get iterator: " << sorted.front();
   }
 
   auto domains = BuildDomainFromDimensions(dims, dim_iters);
@@ -614,9 +646,9 @@ isl::union_set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, 
                                   Concat(iterator_vars, ", ").c_str(),
                                   Concat(alias_eq, " and ").c_str());
   CINN_DEBUG(3) << "repr " << repr;
-  isl::union_map transforms(isl_utils::global_isl_ctx(), repr.c_str());
+  isl::map transforms(isl_utils::global_isl_ctx(), repr.c_str());
 
-  isl::union_set result = domains.apply(transforms);
+  isl::set result = domains.apply(transforms);
 
   CINN_DEBUG(3) << "finial domain: " << result;
   return result;
