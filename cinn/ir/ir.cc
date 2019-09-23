@@ -416,7 +416,15 @@ Expr Expr::operator[](Var i) {
 }
 
 Expr Expr::operator[](Expr i) {
-  if (type() == ir::NodeTy::Reference) {
+  auto vars = CollectVarsFromExpr(i);
+  CHECK_EQ(vars.size(), 1UL);
+  Var *var = const_cast<Var *>(vars.front());
+  if (var->ptype() == primitive_t::unk) var->set_ptype(primitive_t::int32);
+  if (!var->is_domain_valid()) {
+    InferenceIteratorDomain(Expr(i), iterators_.size() - 1);
+  }
+
+  if (ptr() && type() == ir::NodeTy::Reference) {
     As<Reference>()->iterators.push_back(i);
     return *this;
   }
