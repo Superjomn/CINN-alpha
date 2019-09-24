@@ -1,6 +1,7 @@
 #include "cinn/core/function.h"
 #include <gtest/gtest.h>
 #include "cinn/core/stage.h"
+#include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
@@ -112,51 +113,70 @@ TEST(Snippet, test1) {
 }
 
 TEST(Function, syntax) {
-  // Param N("N", "N>10 and N < 10000");
-  // Param M("M", "M > 10");
-  int N = 1000;
-  int M = 200;
-  // LOG(INFO) << N.context();
-  // LOG(INFO) << M.context();
+  using cs = std::vector<Constant>;
+
+  Constant N(1000);
+  Constant M(1000);
 
   Function tanh_fn("tanh");
   {
-    Expr x("x");
-    Expr y("y");
+    Expr X(std::vector<Constant>({N}), primitive_t::float32);
+    Expr Out(std::vector<Constant>({N}), primitive_t::float32);
 
-    Var i("i", primitive_t::int32, 0, N);
-    Var j("j", primitive_t::int32, 0, M);
+    Var i;
 
-    tanh_fn.Inputs({x});
-    tanh_fn.Outputs({y});
-    auto s0 = tanh_fn.AddStage(y[i][j].Assign(tanh(x[i][j])));
-    auto s1 = tanh_fn.AddStage(y[i][j].Assign(y[i][j] + 0));
-    auto s2 = tanh_fn.AddStage(y[i][j].Assign(y[i][j] + 0));
-    LOG(INFO) << "s0.expr: " << ir::Dump(s0.expr());
+    tanh_fn.Inputs({X});
+    tanh_fn.Outputs({Out});
+
+    auto s0 = tanh_fn.AddStage(Out[i].Assign(ir::tanh(X[i])));
+
+    tanh_fn.EndDefinition();
   }
-  tanh_fn.EndDefinition();
 
-  Buffer input("input", {Expr(N), Expr(M)}, primitive_t::float32);
-  Buffer output("output", {Expr(N), Expr(M)}, primitive_t::float32);
+  LOG(INFO) << "tanh:\n" << ir::Dump(tanh_fn);
 
-  Function main("main");
+  Function softmax_fn("softmax");
   {
-    Expr x("x"), y("y");
+    Constant N(10);
+    Constant D(20);
+    Expr I(cs({N, D}), primitive_t::float32);
+    Expr expsum(cs({N}), primitive_t::float32);
+    Expr O(cs({N, D}), primitive_t::float32);
 
-    main.AddStage(tanh_fn({x}, {y}));
-    main.Inputs({x});
-    main.Outputs({y});
+    softmax_fn.Inputs({I});
+    softmax_fn.Outputs({expsum, O});
 
-    x.Bind(input);
-    y.Bind(output);
+    Var n, d;
+
+    auto s0 = softmax_fn.AddStage(  //
+        expsum[n].Assign(expsum[n] + ir::exp(I[n][d])));
+    auto s1 = softmax_fn.AddStage(  //
+        O[n][d].Assign(exp(I[n][d]) / expsum[n]));
+
+    softmax_fn.EndDefinition();
   }
-  main.EndDefinition();
 
-  LOG(INFO) << "function tanh_h: \n" << ir::Dump(tanh_fn);
+  LOG(INFO) << "softmax: \n" << ir::Dump(softmax_fn);
 
-  LOG(INFO) << "function main: \n" << ir::Dump(main);
+  Function matmul_fn("matmul");
+  {
+    Constant M(20);
+    Constant K(10);
+    Constant N(30);
+    Expr A(cs({M, K}), primitive_t::float32);
+    Expr B(cs({K, N}), primitive_t::float32);
+    Expr C(cs({M, N}), primitive_t::float32);
 
-  // LOG(INFO) << "function tanh: \n" << ir::Dump(tanh_fn);
+    Var m, k, n;
+
+    auto s0 = matmul_fn.AddStage(C[m][n].Assign(A[m][k] * B[k][n]));
+
+    matmul_fn.Inputs({A, B});
+    matmul_fn.Outputs({C});
+    matmul_fn.EndDefinition();
+  }
+
+  LOG(INFO) << "matmul_fn: \n" << ir::Dump(matmul_fn);
 }
 
 }  // namespace cinn

@@ -496,6 +496,20 @@ struct Minus : public ExprNode<Minus> {
   static const NodeTy node_type = NodeTy::Minus;
 };
 
+struct Exp : public ExprNode<Exp> {
+  Expr a;
+
+  static Expr make(Expr a) {
+    auto node = std::make_shared<Exp>();
+    node->a = a;
+    return Expr(node);
+  }
+
+  void Accept(IRVisitor* x) const override {}
+
+  static const NodeTy node_type = NodeTy::Exp;
+};
+
 //-------------------- Logical expressions -------------------------
 struct EQ : public ExprNode<EQ> {
   Expr a, b;

@@ -4,6 +4,7 @@
 #include "cinn/ir/ir.h"
 #include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
+#include "cinn/utils/string.h"
 #include "ir_printer.h"
 
 namespace cinn {
@@ -65,6 +66,12 @@ void IRPrinter::Visit(const Mod *op) {
 void IRPrinter::Visit(const Minus *op) {
   os_ << "(";
   os_ << "-";
+  Print(op->a);
+  os_ << ")";
+}
+
+void IRPrinter::Visit(const Exp *op) {
+  os_ << "exp(";
   Print(op->a);
   os_ << ")";
 }
@@ -228,23 +235,26 @@ void IRPrinter::Visit(const Function *op) {
   LOG_INDENT("IRPrinter::Visit Function");
   CINN_DEBUG(3) << "print function " << op->name();
   PrintIndent();
-  os_ << "def " << op->name() << "(";
-  // input arguments
-  int i;
-  for (i = 0; i < op->inputs().size(); i++) {
-    CHECK(op->inputs()[i].is_var());
-    os_ << "Buffer& " << op->inputs()[i].As<ir::Var>()->name() << ", ";
+
+  std::vector<std::string> arguments;
+  for (int i = 0; i < op->inputs().size(); i++) {
+    auto &x = op->inputs()[i];
+    CHECK(x.is_var() || x.is_tensor());
+    if (x.is_var())
+      arguments.push_back("Buffer& " + x.As<ir::Var>()->name());
+    else
+      arguments.push_back("Tensor& " + x.As<ir::Tensor>()->name());
   }
-  // output arguments
-  for (i = 0; i < op->outputs().size() - 1; i++) {
-    CHECK(op->outputs()[i].is_var());
-    os_ << "Buffer& " << op->outputs()[i].As<ir::Var>()->name() << ", ";
+  for (int i = 0; i < op->outputs().size(); i++) {
+    auto &x = op->outputs()[i];
+    CHECK(x.is_var() || x.is_tensor());
+    if (x.is_var())
+      arguments.push_back("Buffer& " + x.As<ir::Var>()->name());
+    else
+      arguments.push_back("Tensor& " + x.As<ir::Tensor>()->name());
   }
-  if (op->outputs().size() >= 1) {
-    CHECK(op->outputs()[i].is_var());
-    os_ << "Buffer& " << op->outputs()[i].As<ir::Var>()->name();
-  }
-  os_ << ") ";
+
+  os_ << StringFormat("def %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
 
   // body print with indent
   int current_indent = indent_size_;

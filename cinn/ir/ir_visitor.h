@@ -20,6 +20,7 @@ struct Mul;
 struct Mod;
 
 struct Minus;
+struct Exp;
 
 struct NE;
 struct EQ;
@@ -68,6 +69,7 @@ class IRVisitor {
   virtual void Visit(const Mod* op);
 
   virtual void Visit(const Minus* op);
+  virtual void Visit(const Exp* op);
 
   virtual void Visit(const Min* op);
   virtual void Visit(const Max* op);

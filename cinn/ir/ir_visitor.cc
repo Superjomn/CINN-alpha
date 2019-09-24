@@ -65,6 +65,10 @@ void IRVisitor::Visit(const Sigmoid *op) {
   CHECK(op->a.valid());
   Visit(&op->a);
 }
+void IRVisitor::Visit(const Exp *op) {
+  CHECK(op->a.valid());
+  Visit(&op->a);
+}
 
 }  // namespace ir
 }  // namespace cinn

@@ -23,6 +23,7 @@
   macro__(And)                      \
   macro__(Or)                       \
   macro__(Not)                      \
+  macro__(Exp)                      \
 
 #define NODETY_CONTROL_OP_FOR_EACH(macro__) \
   macro__(For)                              \
@@ -76,6 +77,7 @@
 
 #define OP_1_ARGS_FOR_EACH(macro__) \
   macro__(Minus)                    \
+  macro__(Exp)                    \
   macro__(Tanh)                     \
   macro__(Sigmoid)
 

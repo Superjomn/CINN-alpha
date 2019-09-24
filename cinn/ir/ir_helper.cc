@@ -44,6 +44,11 @@ Expr CopyExpr(const Expr& expr) {
       node->target = CopyExpr(x->target);
       return Expr(node);
     }
+    case NodeTy::Tensor: {
+      auto* x = expr.As<Tensor>();
+      auto node = Tensor::make(x->dims(), x->ptype(), x->name());
+      return Expr(node);
+    }
     case NodeTy::Var: {
       auto* x = expr.As<Var>();
       auto node = std::make_shared<Var>();

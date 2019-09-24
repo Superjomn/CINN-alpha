@@ -325,11 +325,19 @@ Generator& Generator::Global() {
     break;                                                              \
   };
 
+#define ONE_ARG_OP(op__)                                                \
+  case ir::NodeTy::op__: {                                              \
+    auto* x = root.As<ir::op__>();                                      \
+    ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, x->a); \
+    break;                                                              \
+  }
+
 void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, Expr>& indice_map, Expr& root) {
   LOG_INDENT("ReplaceCinnIndiceWithIslTransformedIndicesHelper");
   CINN_DEBUG(3) << "replacing " << ir::Dump(root);
   switch (root.type()) {
     OP_2_ARGS_FOR_EACH(TWO_ARG_OP);
+    OP_1_ARGS_FOR_EACH(ONE_ARG_OP);
     case ir::NodeTy::Var: {
       auto* var = root.As<ir::Var>();
       CINN_DEBUG(4) << "var " << var->name() << " " << var->interval().__str__();
@@ -420,6 +428,8 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
 
 void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
   LOG_INDENT("ReplaceExprWithStage");
+  CINN_DEBUG(3) << "replace " << ir::Dump(root) << ", the var " << s << " to " << ir::Dump(expr);
+
   switch (root.type()) {
     OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);
 

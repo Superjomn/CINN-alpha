@@ -42,6 +42,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const Div *op) override;
   void Visit(const Mod *op) override;
   void Visit(const Minus *op) override;
+  void Visit(const Exp *op) override;
   void Visit(const Min *op) override;
   void Visit(const Max *op) override;
   void Visit(const NE *op) override;
