@@ -202,8 +202,12 @@ class Stage {
   //! Interchange the i-th and j-th loop level.
   void Interchange(int pos0, int pos1);
 
+  //! Split the loop level having the iterator `i` into two new loop levels, the dimension of the inner level is size.
+  void Split(const ir::Var& iter, int size);
+
   // Tests
   FRIEND_TEST(Stage, Interchange);
+  FRIEND_TEST(Stage, Split);
 
   friend class Generator;
 

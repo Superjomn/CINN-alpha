@@ -8,8 +8,6 @@ namespace cinn {
 namespace backends {
 
 void CppCodeGen::Visit(const ir::For *op) {
-  PrintIndent();
-
   os_ << "for(int ";
   Print(op->iterator);
   os_ << " = ";

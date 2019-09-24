@@ -167,4 +167,40 @@ TEST(Stage, syntax) {
   LOG(INFO) << "s1.code: \n" << s1.DumpIslC();
 }
 
+TEST(Stage, Split) {
+  Constant I("I", 30);
+  Constant J("J", 40);
+  Constant M("M", 20);
+
+  Var i, j, k;
+
+  Expr A(std::vector<Constant>({I, M}), primitive_t::float32, "A");
+  Expr B(std::vector<Constant>({M, J}), primitive_t::float32, "B");
+  Expr C(std::vector<Constant>({I, J}), primitive_t::float32, "C");
+
+  Stage s0 = C[i][j].Assign(A[i * 2][k + 3] * B[k + 3][j]);
+  s0.Split(i, 4);
+
+  LOG(INFO) << "After split: \n" << s0.DumpIslC();
+  LOG(INFO) << "After split: \n" << s0.DumpAsC();
+}
+
+TEST(Stage, Tile) {
+  Constant I("I", 100);
+  Constant J("J", 200);
+  Constant M("M", 300);
+
+  Var i, j, k;
+
+  Expr A(std::vector<Constant>({I, M}), primitive_t::float32, "A");
+  Expr B(std::vector<Constant>({M, J}), primitive_t::float32, "B");
+  Expr C(std::vector<Constant>({I, J}), primitive_t::float32, "C");
+
+  Stage s0 = C[i][j].Assign(A[i][k] * B[k][j]);
+  s0.Tile(i, 4, j, 4);
+
+  LOG(INFO) << "After split: \n" << s0.DumpIslC();
+  LOG(INFO) << "After split: \n" << s0.DumpAsC();
+}
+
 }  // namespace cinn

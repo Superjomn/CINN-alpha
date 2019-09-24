@@ -19,6 +19,12 @@ isl_map *__isl_give isl_set_to_identity_map(__isl_keep isl_set *set);
 //! e.g. {A[i,j] : ...} will get "A[i,j]"
 std::string isl_set_to_statement_repr(__isl_keep isl_set *set);
 
+//! Get a representation of the tuple in the map.
+std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type type);
+
+//! Get a dimention position if it match the name. return -1 if not exists.
+int isl_map_get_dim_pos_by_name(__isl_keep isl_map *map, isl_dim_type type, const std::string &name);
+
 isl_map *isl_map_add_dim_and_eq_constraint(isl_map *map, int dim_pos, int constant);
 
 //! helper function to generate string representation for isl_set.
@@ -101,6 +107,12 @@ static std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
 isl_map *__isl_give isl_map_set_dim_names(isl_map *__isl_give map,
                                           isl_dim_type type,
                                           const std::vector<std::string> &names);
+
+//! Check whether the set has the dimension having a specific name.
+bool isl_set_has_dim_name(isl_set *__isl_keep set, const std::string &name);
+
+//! Check whether the map has the dimension having a specific name.
+bool isl_map_has_dim_name(isl_map *__isl_keep map, isl_dim_type type, const std::string &name);
 
 }  // namespace isl_utils
 }  // namespace cinn
