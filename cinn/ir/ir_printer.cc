@@ -159,7 +159,6 @@ void IRPrinter::Visit(const Or *op) {
 void IRPrinter::Visit(const Tensor *op) { os_ << op->name() << "<>"; }
 
 void IRPrinter::Visit(const For *op) {
-  PrintIndent();
   os_ << "for(";
   Print(op->iterator);
   os_ << ", ";
@@ -188,11 +187,13 @@ void IRPrinter::Visit(const Block *op) {
   os_ << "{\n";
   indent_size_++;
   for (auto expr : op->exprs) {
+    PrintIndent();
     Print(expr);
+    os_ << "\n";
   }
   indent_size_--;
   PrintIndent();
-  os_ << "}\n";
+  os_ << "}";
 }
 void IRPrinter::Visit(const Constant *op) { IRVisitor::Visit(op); }
 void IRPrinter::Visit(const Var *op) { Print(*op); }

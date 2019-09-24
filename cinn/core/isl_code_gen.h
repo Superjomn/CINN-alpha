@@ -59,7 +59,7 @@ class Generator {
   static Generator& Global();
 
   // the isl ctx accross the whole thread.
-  isl::ctx& ctx() { return ctx_; }
+  isl_ctx* ctx() { return isl_utils::global_isl_ctx(); }
 
   //! Get a stage by its name.
   Stage GetStageByName(const std::string& name);

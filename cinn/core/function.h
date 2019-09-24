@@ -85,6 +85,7 @@ class Snippet {
   //! Compute the polyhedral schedule.
   void ComputeSchedule();
 
+  //! Generate the isl ast.
   isl::ast_node GenerateIslAst() const;
 
  private:
@@ -98,6 +99,9 @@ class Snippet {
   std::unique_ptr<isl::union_map> access_writes_;
 
   std::unique_ptr<isl::union_map> memory_dependencies_;
+
+  // Config the stages that might be fuse together.
+  std::unique_ptr<isl::union_map> approxi_;
 
   std::unique_ptr<isl::schedule> schedule_;
 
@@ -186,6 +190,9 @@ struct Function : public ir::ExprNode<Function> {
   }
 
   Stage AddStage(const Stage& stage);
+
+  //! Try to fuse a and b stages, it will fuse them if possible.
+  void Fuse(const Stage& a, const Stage& b);
 
   //! Set the function's inputs.
   void Inputs(const std::vector<Expr>& xs) { data_->inputs = xs; }

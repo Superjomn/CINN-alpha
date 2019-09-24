@@ -67,7 +67,6 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
 // Eat an isl user node.
 void EatUser(const isl::ast_node& node, ir::Expr* expr) {
   CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_user);
-  VLOG(2) << "get isl ast user node";
   isl::ast_expr isl_expr = isl::manage(isl_ast_node_user_get_expr(node.get()));
   IslAstExprToCinnExpr(isl_expr, expr);
 }
@@ -75,13 +74,13 @@ void EatUser(const isl::ast_node& node, ir::Expr* expr) {
 void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   LOG_INDENT("EatFor");
   CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_for);
-  CINN_DEBUG(3) << "get isl ast for node";
+  CINN_DEBUG(5) << "get isl ast for node";
 
   // iter name
   isl::ast_expr iter = isl::manage(isl_ast_node_for_get_iterator(node.get()));
   isl::id iter_id = isl::manage(isl_ast_expr_get_id(iter.get()));
   std::string iter_name = iter_id.name();
-  CINN_DEBUG(3) << "For iter: " << iter_name;
+  CINN_DEBUG(5) << "For iter: " << iter_name;
 
   // get condition
   isl::ast_expr condition = isl::manage(isl_ast_node_for_get_cond(node.get()));
@@ -92,11 +91,11 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   ir::Expr ir_body;
   IslAstNodeToCinnExpr(body, &ir_body);
   ir_body = ir::Block::make({ir_body});
-  CINN_DEBUG(3) << "for get body " << ir::Dump(ir_body);
+  CINN_DEBUG(5) << "for get body " << ir::Dump(ir_body);
 
   ir::Expr ir_initializer;
   IslAstExprToCinnExpr(initializer, &ir_initializer);
-  CINN_DEBUG(3) << "for get initializer " << ir::Dump(ir_initializer);
+  CINN_DEBUG(5) << "for get initializer " << ir::Dump(ir_initializer);
 
   ir::Expr ir_condition;
   IslAstExprToCinnExpr(condition, &ir_condition);
@@ -104,14 +103,14 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
 
   isl::ast_expr arg = isl::manage(isl_ast_expr_get_op_arg(condition.get(), 1));
   IslAstExprToCinnExpr(arg, &tmp);
-  CINN_DEBUG(3) << "for get condition " << ir::Dump(ir_condition);
+  CINN_DEBUG(5) << "for get condition " << ir::Dump(ir_condition);
 
   ir::Expr ir_inc;
   IslAstExprToCinnExpr(incrementor, &ir_inc);
-  CINN_DEBUG(3) << "for get inc " << ir::Dump(ir_inc);
+  CINN_DEBUG(5) << "for get inc " << ir::Dump(ir_inc);
 
   ir::Var ir_iter(iter_name, primitive_t::float32);
-  CINN_DEBUG(3) << "for get iter  " << ir::Dump(ir_iter);
+  CINN_DEBUG(5) << "for get iter  " << ir::Dump(ir_iter);
 
   *expr = ir::For::make(ir_initializer, ir_condition, ir_inc, ir_body, ir_iter);
 }
@@ -434,11 +433,11 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);
 
     case ir::NodeTy::Reference: {
-      CINN_DEBUG(3) << "visit Reference";
+      CINN_DEBUG(4) << "visit Reference";
       auto* node = root.As<ir::Reference>();
       if (node->target.type() == ir::NodeTy::Var) {
         ir::Var* x = node->target.As<ir::Var>();
-        CINN_DEBUG(3) << "reference.target.name: " << x->name();
+        CINN_DEBUG(6) << "reference.target.name: " << x->name();
         if (x->name() == s) {
           root = CopyExpr(expr);
           break;
@@ -452,7 +451,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
       break;
     }
     case ir::NodeTy::Call: {
-      CINN_DEBUG(3) << "visit Call";
+      CINN_DEBUG(4) << "visit Call";
       auto* node = root.As<ir::Call>();
       if (node->caller == s) {
         root = CopyExpr(expr);
@@ -466,7 +465,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     }
 
     case ir::NodeTy::For: {
-      CINN_DEBUG(3) << "visit For";
+      CINN_DEBUG(4) << "visit For";
       auto* node = root.As<ir::For>();
       ReplaceExprWithStage(node->iter_init, s, expr);
       ReplaceExprWithStage(node->iter_cond, s, expr);
@@ -476,7 +475,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     }
 
     case ir::NodeTy::Block: {
-      CINN_DEBUG(3) << "visit Block";
+      CINN_DEBUG(4) << "visit Block";
       auto* node = root.As<ir::Block>();
       for (auto& e : node->exprs) {
         ReplaceExprWithStage(e, s, expr);

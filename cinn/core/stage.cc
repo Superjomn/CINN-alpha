@@ -238,8 +238,9 @@ std::string Stage::DumpAsC() const {
   CHECK(data_->iter_domain.get());
   isl::map schedule =
       data_->schedule.get() ? data_->schedule : isl::manage(isl_set_to_identity_map(data_->iter_domain.get()));
-  isl::union_map final =
-      isl::manage(isl_union_map_from_map(isl_map_intersect_domain(schedule.copy(), data_->iter_domain.copy())));
+  CINN_DEBUG(3) << "schedule: " << schedule;
+  CINN_DEBUG(3) << "iterator_domain: " << iterator_domain();
+  isl::union_map final = schedule.intersect_domain(data_->iter_domain);
   isl::set C(data_->ctx, "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule_map(build.get(), final.copy()));
@@ -300,7 +301,7 @@ Expr Stage::GetIndiceTransformedExpr() const {
 void Stage::InitData() {
   CHECK(!data_);
   data_ = std::make_shared<Data>();
-  data_->ctx = Generator::Global().ctx().get();
+  data_->ctx = isl_utils::global_isl_ctx();
 }
 
 isl::map Stage::GetTransformedSchedule() {
@@ -371,6 +372,66 @@ void Stage::Interchange(int pos0, int pos1) {
   CINN_DEBUG(3) << "schedule: " << data_->schedule;
   data_->schedule = isl::map(ctx(), GetStreamStr(data_->schedule));
   data_->schedule = data_->schedule.apply_range(transform);
+}
+
+void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
+  LOG_INDENT("Stage::Tile");
+  int posi = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, i.name());
+  int posj = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, j.name());
+
+  CHECK_NE(posi, -1) << "No iterator called " << i.name() << " in schedule " << schedule();
+  CHECK_NE(posj, -1) << "No iterator called " << j.name() << " in schedule " << schedule();
+  CHECK_EQ(posi + 1, posj) << "i and j should be ajacement";
+
+  Split(i, iw);
+  Split(j, jw);
+  CINN_DEBUG(3) << "final schedule: " << schedule();
+}
+
+void Stage::Split(const ir::Var& iter, int size) {
+  LOG_INDENT("Stage::Split");
+  CHECK(!schedule().is_null());
+  CHECK_GT(size, 0);
+  CHECK(isl_utils::isl_map_has_dim_name(schedule().get(), isl_dim_out, iter.name()))
+      << "iterator " << iter.name() << " not exists in the schedule of stage " << name();
+
+  std::string new_i_name = iter.name() + "_";    // if the i's name is unique, with "_" suffix is still unique.
+  std::string new_i_name1 = iter.name() + "__";  // so is the "__" suffix.
+
+  auto out_statement_repr = isl_map_get_statement_repr(schedule().get(), isl_dim_out);
+  CINN_DEBUG(3) << "schedule: " << schedule();
+  CINN_DEBUG(3) << "out statement of schedule: " << out_statement_repr;
+
+  std::vector<std::string> target_dims;
+  std::vector<std::string> target_conds;
+  for (int i = 0; i < isl_map_dim(schedule().get(), isl_dim_out); i++) {
+    const char* dim_name = isl_map_get_dim_name(schedule().get(), isl_dim_out, i);
+    if (iter.name() == dim_name) {
+      // split this iterator.
+      std::string new_i_repr = StringFormat("%s = floor(%s/%d)", new_i_name.c_str(), iter.name().c_str(), size);
+      std::string new_i_repr1 = new_i_name1 + " = " + iter.name() + " % " + std::to_string(size);
+      target_conds.push_back(new_i_repr);
+      target_conds.push_back(new_i_repr1);
+      target_dims.push_back(new_i_name);
+      target_dims.push_back(new_i_name1);
+    } else {
+      target_dims.push_back(dim_name);
+    }
+  }
+
+  std::string transform_repr = StringFormat("{ %s -> %s[%s]: %s }",
+                                            out_statement_repr.c_str(),
+                                            name().c_str(),
+                                            Concat(target_dims, ", ").c_str(),
+                                            Concat(target_conds, " and ").c_str());
+  CINN_DEBUG(3) << "transform repr: " << transform_repr;
+  isl::map transform(ctx(), transform_repr.c_str());
+  transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_out, target_dims));
+
+  CINN_DEBUG(3) << "get transform: " << transform;
+  data_->schedule = isl::map(ctx(), GetStreamStr(data_->schedule).c_str());
+  data_->schedule = data_->schedule.apply_range(transform);
+  CINN_DEBUG(3) << "get final schedule: " << data_->schedule;
 }
 
 void Stage::ScheduleNameAllDims() {

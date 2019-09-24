@@ -7,6 +7,24 @@
 
 namespace cinn {
 
+std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type type) {
+  CHECK(map);
+  auto tuple_name = isl_map_get_tuple_name(map, type);
+  std::vector<std::string> dims;
+
+  for (int i = 0; i < isl_map_dim(map, type); i++) {
+    dims.push_back(isl_map_get_dim_name(map, type, i));
+  }
+  return StringFormat("%s[%s]", tuple_name, Concat(dims, ", ").c_str());
+}
+
+int isl_map_get_dim_pos_by_name(isl_map *map, isl_dim_type type, const std::string &name) {
+  for (int i = 0; i < isl_map_dim(map, type); i++) {
+    if (isl_map_get_dim_name(map, type, i) == name) return i;
+  }
+  return -1;
+}
+
 namespace isl_utils {
 
 isl_ast_build *isl_ast_build_set_iterators(isl_ast_build *build, const std::vector<std::string> &iterators) {
@@ -19,6 +37,20 @@ isl_ast_build *isl_ast_build_set_iterators(isl_ast_build *build, const std::vect
     ids = isl_id_list_add(ids, id);
   }
   return isl_ast_build_set_iterators(build, ids);
+}
+
+bool isl_set_has_dim_name(isl_set *set, const std::string &name) {
+  for (int i = 0; i < isl_set_dim(set, isl_dim_set); i++) {
+    if (isl_set_get_dim_name(set, isl_dim_set, i) == name) return true;
+  }
+  return false;
+}
+
+bool isl_map_has_dim_name(isl_map *map, isl_dim_type type, const std::string &name) {
+  for (int i = 0; i < isl_map_dim(map, type); i++) {
+    if (isl_map_get_dim_name(map, type, i) == name) return true;
+  }
+  return false;
 }
 
 isl_union_map *__isl_give isl_calculate_dependency(__isl_take isl_union_map *s0_reads,
