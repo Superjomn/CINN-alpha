@@ -46,6 +46,15 @@ std::string isl_space_get_statement_repr(isl_space *space) {
   return ss.str();
 }
 
+isl_map *isl_map_set_dim_names(isl_map *map, isl_dim_type type, const std::vector<std::string> &names) {
+  CHECK(map);
+  CHECK_EQ(isl_map_dim(map, type), names.size());
+  for (int i = 0; i < names.size(); i++) {
+    map = isl_map_set_dim_name(map, type, i, names[i].c_str());
+  }
+  return map;
+}
+
 }  // namespace isl_utils
 
 isl_map __isl_give *isl_set_to_identity_map(__isl_keep isl_set *set) {

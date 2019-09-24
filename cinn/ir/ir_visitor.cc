@@ -27,7 +27,7 @@ void IRVisitor::Visit(const Expr *op) {
     OP_ALL_FOR_EACH(__)
 
     default:
-      LOG(FATAL) << "unsupported type: " << static_cast<int>(op->type());
+      LOG(FATAL) << "unsupported type: " << op->type();
   }
 }
 void IRVisitor::Visit(const Stmt *op) {}
@@ -62,6 +62,10 @@ void IRVisitor::Visit(const Tanh *op) {
   Visit(&op->a);
 }
 void IRVisitor::Visit(const Sigmoid *op) {
+  CHECK(op->a.valid());
+  Visit(&op->a);
+}
+void IRVisitor::Visit(const Exp *op) {
   CHECK(op->a.valid());
   Visit(&op->a);
 }

@@ -8,22 +8,35 @@
 
 namespace cinn {
 
+using cs = std::vector<ir::Constant>;
+
 TEST(cpp_code_gen, basic) {
-  Expr A("A"), B("B"), C("C");
-  ir::Var i("i", 0, 100), j("j", 0, 200), k("k", 0, 300);
-  Stage s0 = B[i + 1][j].Assign(  //
-      (A[i - 1][j] + A[i][j] + A[i + 1][j]) / 3);
+  ir::Constant M(100), N(200), K(300);
+  Expr A(cs({M, K}), primitive_t::float32, "A");
+  Expr B(cs({K, N}), primitive_t::float32, "B");
+  Expr C(cs({M, N}), primitive_t::float32, "C");
 
-  Stage s1 = C[i][j].Assign(  //
-      A[i][j] * 2 + B[i][j] / 2);
+  ir::Var i("i"), j("j"), k("k");
 
-  auto f0 = Function::make("f0", {A, B}, {C}, {s0, s1});
+  Function fn("fn");
+  {
+    Stage s0 = fn.AddStage(B[i + 1][j].Assign(  //
+        (A[i - 1][j] + A[i][j] + A[i + 1][j]) / 3));
 
-  LOG(INFO) << "f0.block:\n" << ir::Dump(f0->GetTransformedExpr());
+    Stage s1 = fn.AddStage(C[i][j].Assign(  //
+        A[i][j] * 2 + B[i][j] / 2));
+
+    fn.Inputs({A, B});
+    fn.Outputs({C});
+
+    fn.EndDefinition();
+  }
+
+  LOG(INFO) << "f0.block:\n" << ir::Dump(fn.GetTransformedExpr());
 
   std::stringstream os;
   backends::CppCodeGen code_gen(os);
-  code_gen.Print(Expr(f0));
+  code_gen.Print(Expr(fn));
 
   std::string log = os.str();
   LOG(INFO) << "generated code: \n" << log;

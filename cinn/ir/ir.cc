@@ -4,6 +4,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/logging.h"
@@ -130,7 +131,7 @@ Constant::Constant(float val) : name_(DefaultUniqueName()) {
 
 template <>
 int32_t Constant::As<int32_t>() const {
-  CHECK(primitive_type() == primitive_t::int32);
+  CHECK_EQ(primitive_type(), primitive_t::int32);
   return int32_val_;
 }
 template <>
@@ -309,7 +310,8 @@ void For::Accept(IRVisitor *x) const { LOG(ERROR) << "get a for"; }
 void Block::Accept(IRVisitor *x) const { LOG(ERROR) << "get a block"; }
 
 Var::operator Expr() {
-  auto node = std::make_shared<Var>(name_, dtype_, interval_.lower_bound(), interval_.upper_bound());
+  auto node = std::make_shared<Var>(
+      data_->name_, data_->dtype_, data_->interval_.lower_bound(), data_->interval_.upper_bound());
   return Expr(node);
 }
 
@@ -321,8 +323,10 @@ bool Var::CheckNameValid(const std::string &name) {
   return false;
 }
 
-Var::Var(const std::string &name, int32_t lower_bound, int32_t upper_bound)
-    : name_(name), interval_(lower_bound, upper_bound) {
+Var::Var(const std::string &name, int32_t lower_bound, int32_t upper_bound) {
+  InitData();
+  data_->name_ = name;
+  data_->interval_ = Interval(lower_bound, upper_bound);
   CheckNameValid(name);
 }
 
@@ -338,21 +342,15 @@ Expr Call::make(const std::string &caller, std::vector<Expr> arguments) {
 }
 
 Expr Reference::make(Expr expr, const std::vector<Expr> &iterators) {
+  CHECK(expr.valid());
   auto x = std::make_shared<Reference>();
   x->target = expr;
   for (const Expr &iterator : iterators) {
+    CHECK(iterator.valid());
     x->iterators.push_back(iterator);
   }
   return Expr(x);
 }
-
-/*
-isl::aff ExprToAff(const std::string &statement_repr, isl_ctx *ctx, const isl::set &domain, Expr e) {
-  std::string repr = StringFormat("{ %s -> [%s] }", statement_repr.c_str(), ir::Dump(e).c_str());
-  isl::aff aff(ctx, repr.c_str());
-  return aff;
-}
- */
 
 // this works only when the params are valid.
 void Reference::InferenceDimsFromIterators() {
@@ -387,35 +385,23 @@ Expr Assign::make(Expr a, Expr b) {
 
 Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
 
-Expr Expr::operator[](std::vector<Var> iters) {
-  std::vector<Expr> iterators;
-  for (auto &iter : iters) {
-    iterators.emplace_back(Expr(iter));
-  }
-  auto node = Reference::make(*this, iterators);
-  return node;
-}
-
-Expr Expr::operator[](Var i) {
-  CINN_DEBUG(4) << "get i:" << i.name();
-  if (type() == ir::NodeTy::Reference) {
-    As<Reference>()->iterators.emplace_back(Expr(i));
-    return *this;
-  }
-  return Reference::make(*this, {Expr(i)});
-}
-
 Expr Expr::operator[](Expr i) {
-  if (type() == ir::NodeTy::Reference) {
+  LOG_INDENT("Expr::operator[](Expr i)");
+  auto vars = CollectVarsFromExpr(i);
+  CHECK_EQ(vars.size(), 1UL) << "Currentlly only support one variable in a dimension";
+  Var *var = const_cast<Var *>(vars.front());
+  if (var->ptype() == primitive_t::unk) var->set_ptype(primitive_t::int32);
+
+  if (ptr() && type() == ir::NodeTy::Reference) {
     As<Reference>()->iterators.push_back(i);
+    InferenceIteratorDomain(this);
     return *this;
   }
-  return Reference::make(*this, {i});
-}
 
-Expr Expr::operator[](std::vector<Expr> iters) {
-  auto node = Reference::make(*this, iters);
-  return node;
+  auto node = Reference::make(*this, {i});
+  Expr result(node);
+  InferenceIteratorDomain(&result);
+  return result;
 }
 
 bool Expr::is_op() const {
@@ -488,6 +474,144 @@ isl::set Param::GetContext() { return isl::set(isl_utils::global_isl_ctx(), "[" 
 isl::set Param::context() const {
   return isl::set(isl_utils::global_isl_ctx(), StringFormat("[%s]->{:%s}", name().c_str(), cond().c_str()));
 }
+
+// TODO(Superjomn) Support complex expression with more than one Var.
+void Expr::InferenceIteratorDomain(Expr *expr) {
+  LOG_INDENT("Expr::InferenceIteratorDomain");
+  CINN_DEBUG(3) << "expr: " << ir::Dump(*expr);
+  isl::union_set result;
+  // extract iterator from the expr.
+  if (!expr->is_reference()) return;
+  CHECK(expr->is_reference()) << "type is " << expr->type();
+  auto *ref = expr->As<Reference>();
+  if (!ref->target.is_tensor()) return;
+  auto *tensor = ref->target.As<Tensor>();
+  CHECK_LE(ref->iterators.size(), tensor->dims().size());
+  CINN_DEBUG(6) << "Reference " << ir::Dump(ref->target) << " has " << ref->iterators.size() << " iterators";
+  if (ref->iterators.size() == tensor->dims().size()) {
+    ref->domain = BuildDomainFromExprWithDimension(ref->iterators, tensor->dims());
+    CINN_DEBUG(3) << "set reference's domain: " << ref->domain;
+  }
+}
+
+Expr Expr::operator()(const std::vector<Expr> &iters) {
+  auto node = std::make_shared<Reference>();
+  node->target = *this;
+  node->iterators = iters;
+  // inference the iterators domain
+
+  return Expr(node);
+}
+
+Expr::Expr(const std::vector<Constant> &dims, primitive_t ptype = primitive_t::float32, const std::string &name) {
+  for (auto &dim : dims) {
+    CHECK(dim.is_integer());
+  }
+
+  *this = Tensor::make(dims, ptype, name);
+}
+
+std::vector<Var> ExtractVarsFromExpr(const Expr &expr) {
+  class Collector : public IRVisitor {
+   public:
+    void Visit(const Expr *op) override { IRVisitor::Visit(op); }
+    void Visit(const Var *op) override { IRVisitor::Visit(op); }
+  };
+  return std::vector<Var>();
+}
+
+isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std::vector<std::string> &iterators) {
+  LOG_INDENT("BuildDomainFromDimensions");
+  CHECK(!dims.empty());
+
+  std::vector<std::string> constraints;
+  for (size_t i = 0; i < dims.size(); i++) {
+    // collect constraints
+    CHECK(dims[i].is_integer());
+    auto constraint = StringFormat("0<= %s <= %d", iterators[i].c_str(), dims[i].As<int32_t>());
+    constraints.push_back(constraint);
+  }
+
+  std::string repr =
+      StringFormat("{ [%s] : %s }", Concat(iterators, ", ").c_str(), Concat(constraints, " and ").c_str());
+  CINN_DEBUG(3) << "repr: " << repr;
+  isl::set result(isl_utils::global_isl_ctx(), repr);
+  CINN_DEBUG(3) << "get domain " << result;
+
+  return result;
+}
+
+namespace {
+// Replace the expression with the indexed name.
+Expr ReplaceVarWithIterator(int id, const Expr &expr) {
+  class Visitor : public IRVisitor {
+    int id_;
+    std::set<std::string> vars_;
+
+   public:
+    Visitor(int id) : id_(id) {}
+
+    void Visit(const Expr *op) override { IRVisitor::Visit(op); }
+
+    void Visit(const Var *op) override {
+      vars_.insert(op->name());
+      CHECK_EQ(vars_.size(), 1UL) << "One dimension should contains only one variable.";
+      const_cast<Var *>(op)->set_name(GenIndexedIteratorName(id_));
+    }
+  };
+
+  Expr copied = CopyExpr(expr);
+  Visitor visitor(id);
+  visitor.Visit(&expr);
+
+  return copied;
+}
+
+}  // namespace
+
+isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dims) {
+  LOG_INDENT("BuildDomainFromExprWithDimension");
+  CHECK_EQ(exprs.size(), dims.size());
+
+  std::vector<std::string> iterator_vars;
+  std::vector<std::string> dim_iters;
+  // collect var for each iterator expr.
+  for (size_t i = 0; i < exprs.size(); i++) {
+    auto vars = CollectVarsFromExpr(exprs[i]);
+    std::set<std::string> iter_names;
+    for (auto &var : vars) iter_names.insert(var->name());
+    CHECK_EQ(iter_names.size(), 1UL);
+    std::vector<std::string> sorted(iter_names.begin(), iter_names.end());
+
+    iterator_vars.push_back(sorted.front());
+    dim_iters.push_back(GenIndexedIteratorName(i));
+  }
+
+  auto domains = BuildDomainFromDimensions(dims, dim_iters);
+  isl::union_map ts;
+
+  std::vector<std::string> iterators, targets, alias, alias_eq;
+
+  for (size_t i = 0; i < dims.size(); i++) {
+    targets.push_back(ir::Dump(exprs[i]));
+    alias.push_back(dim_iters[i]);
+    alias_eq.push_back(targets[i] + "=" + dim_iters[i]);
+  }
+
+  std::string repr = StringFormat("{ [%s] -> [%s] : %s }",
+                                  Concat(alias, ", ").c_str(),
+                                  Concat(iterator_vars, ", ").c_str(),
+                                  Concat(alias_eq, " and ").c_str());
+  CINN_DEBUG(3) << "repr " << repr;
+  isl::map transforms(isl_utils::global_isl_ctx(), repr.c_str());
+
+  isl::set result = domains.apply(transforms);
+
+  CINN_DEBUG(3) << "finial domain: " << result;
+  return result;
+}
+
+std::string GenIndexedIteratorName(int id) { return StringFormat("ii%d", id); }
 
 }  // namespace ir
 }  // namespace cinn

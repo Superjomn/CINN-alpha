@@ -75,7 +75,77 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
     return x.name();
   });
+
   std::string statement = name() + "[" + Concat(iterator_names, ", ") + "]";
+  CINN_DEBUG(3) << "get statement: " << statement;
+
+  auto references = ir::CollectExprNode<ir::Reference>(x);
+
+  std::map<std::string, isl::set> iter_domain;
+  std::set<std::string> var_names;
+  for (auto& ref : references) {
+    CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
+    CINN_DEBUG(3) << "reference domain: " << ref->domain;
+
+    for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
+      var_names.insert(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
+    }
+  }
+  std::vector<std::string> var_names_in_order(var_names.begin(), var_names.end());
+  CINN_DEBUG(3) << "variable names collected from all the References: " << Concat(var_names_in_order, ", ");
+
+  // make all the reference's the same space
+  for (auto& ref : references) {
+    auto ref_domain = ref->domain;
+    int set_dim = isl_set_dim(ref->domain.get(), isl_dim_set);
+    std::vector<std::string> dim_names;
+    for (int i = 0; i < set_dim; i++) {
+      dim_names.push_back(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
+    }
+
+    std::string transform_repr =
+        StringFormat("{ [%s] -> [%s] }", Concat(dim_names, ", ").c_str(), Concat(var_names_in_order, ", ").c_str());
+    isl::map transform(isl_utils::global_isl_ctx(), transform_repr.c_str());
+    CINN_DEBUG(3) << "transform: " << transform;
+    ref_domain = ref_domain.apply(transform);
+    *const_cast<isl::set*>(&ref->domain) = ref_domain;
+    CINN_DEBUG(3) << "final domain: " << ref->domain;
+    // set to Stage's domain
+    if (iterator_domain().is_null()) {
+      data_->iter_domain = ref->domain;
+    } else {
+      data_->iter_domain = isl::manage(isl_set_intersect(data_->iter_domain.release(), ref->domain.copy()));
+    }
+  }
+
+  data_->iter_domain = isl::manage(isl_set_set_tuple_name(data_->iter_domain.release(), name().c_str()));
+  // set dim name
+  for (int i = 0; i < var_names_in_order.size(); i++) {
+    data_->iter_domain =
+        isl::manage(isl_set_set_dim_name(data_->iter_domain.release(), isl_dim_set, i, var_names_in_order[i].c_str()));
+  }
+
+  CINN_DEBUG(3) << "get Stage's domain: " << iterator_domain();
+
+  return;
+
+  // check if all the Vars has domain, and we will construct the overall domain from each var's domain.
+  bool all_var_has_domain = true;
+  for (auto& var : collector.iterators()) {
+    if (!var.is_domain_valid()) {
+      CINN_DEBUG(3) << "var " << var.name() << " not have domain";
+      all_var_has_domain = false;
+      break;
+    }
+  }
+
+  CHECK(all_var_has_domain);
+  if (all_var_has_domain) {
+    isl::union_set domain(isl_utils::global_isl_ctx(), StringFormat("{ %s : }", statement.c_str()));
+    for (auto& var : collector.iterators()) {
+      LOG(INFO) << "domain: " << var.domain();
+    }
+  }
 
   std::vector<std::string> sub_domains;
   std::transform(iterators.begin(), iterators.end(), std::back_inserter(sub_domains), [](const ir::Var& x) {
@@ -135,6 +205,10 @@ std::string Stage::DumpIslC() const {
   CHECK(data_->iter_domain.get());
   isl::map schedule;
   schedule = data_->schedule.get() ? data_->schedule : isl::manage(isl_set_to_identity_map(data_->iter_domain.copy()));
+  CINN_DEBUG(3) << "schedule: " << schedule;
+  CINN_DEBUG(3) << "iterator domain: " << iterator_domain();
+  // TODO(Superjomn) it's weried here, just rebuild the schedule and fixed space incompatible error
+  schedule = isl::map(isl_utils::global_isl_ctx(), GetStreamStr(schedule));
   isl::map t0 = isl::manage(isl_map_intersect_domain(schedule.copy(), data_->iter_domain.copy()));
   isl::set C(data_->ctx, "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
@@ -144,7 +218,6 @@ std::string Stage::DumpIslC() const {
   int transform_range_dims = isl_map_dim(t0.get(), isl_dim_out);
   CINN_DEBUG(2) << "transform: " << t0;
   for (int i = 0; i < transform_range_dims; i++) {
-    LOG(INFO) << "t0: " << t0 << isl_map_has_dim_name(t0.get(), isl_dim_out, i);
     if (isl_bool_true == isl_map_has_dim_name(t0.get(), isl_dim_out, i)) {
       iterators.push_back(isl_map_get_dim_name(t0.get(), isl_dim_out, i));
     } else {
@@ -263,6 +336,8 @@ void Stage::Interchange(int pos0, int pos1) {
   CHECK_LT(pos0, ndim);
   CHECK_LT(pos1, ndim);
 
+  CINN_DEBUG(3) << "current schedule: " << schedule();
+
   const char* dim0_name = schedule().range_dim_name(pos0);
   const char* dim1_name = schedule().range_dim_name(pos1);
 
@@ -280,20 +355,21 @@ void Stage::Interchange(int pos0, int pos1) {
   }
   CHECK_EQ(from_dims.size(), to_dims.size());
 
-  std::stringstream ss;
-  ss << "{ " << name() << "[ " << Concat(from_dims, ", ") << " ]";
-  ss << " -> ";
-  ss << name() << "[ " << Concat(to_dims, ", ") << " ]"
-     << " }";
-  isl::map transform(ctx(), ss.str());
+  std::string transform_repr = StringFormat("{ %s[%s] -> %s[%s] }",
+                                            name().c_str(),
+                                            Concat(from_dims, ", ").c_str(),
+                                            name().c_str(),
+                                            Concat(to_dims, ", ").c_str());
+  isl::map transform(ctx(), transform_repr);
 
   // set dims
-
-  for (int i = 0; i < isl_map_dim(transform.get(), isl_dim_out); i++) {
-    transform = isl::manage(isl_map_set_dim_name(transform.release(), isl_dim_out, i, to_dims[i].c_str()));
-  }
+  transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_out, to_dims));
+  // transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_in, from_dims));
 
   CINN_DEBUG(2) << "transform: " << transform;
+  CINN_DEBUG(3) << "iterator domain: " << iterator_domain();
+  CINN_DEBUG(3) << "schedule: " << data_->schedule;
+  data_->schedule = isl::map(ctx(), GetStreamStr(data_->schedule));
   data_->schedule = data_->schedule.apply_range(transform);
 }
 
@@ -318,6 +394,8 @@ class ReferenceCollector : public ir::IRPrinter {
     set_reference_braces("[]");
   }
 
+  void Visit(const ir::Tensor* op) override { ss_ << op->name(); }
+
   void Visit(const ir::Reference* op) override {
     ss_.str("");
     IRPrinter::Visit(op);
@@ -331,6 +409,9 @@ class ReferenceCollector : public ir::IRPrinter {
 }  // namespace
 
 isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) {
+  LOG_INDENT("CollectAccess");
+  CINN_DEBUG(6) << "input interator_domain: " << iterator_domain;
+  CINN_DEBUG(6) << "input expr: " << ir::Dump(expr);
   // init read access
   std::set<std::string> stmts;
   std::stringstream ss;
@@ -347,8 +428,10 @@ isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) 
   CINN_DEBUG(2) << "collected " << stmts.size() << " accesses ";
   CINN_DEBUG(4) << "repr: " << Concat(stmts, ", ");
 
+  CINN_DEBUG(3) << "iterator_domain.space: " << iterator_domain.space();
   std::vector<std::string> reprs;
   auto statement_repr = isl_utils::isl_space_get_statement_repr(iterator_domain.space().get());
+  CINN_DEBUG(3) << "statement_repr: " << statement_repr;
 
   for (auto& stmt : stmts) {
     reprs.push_back(statement_repr + " -> " + stmt);

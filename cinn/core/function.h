@@ -174,6 +174,10 @@ struct Function : public ir::ExprNode<Function> {
   std::shared_ptr<Data> data_;
 
  public:
+  Function() {
+    InitData();
+    data_->name = NameGenerator::Global().NewFuncionName();
+  }
   //! Create a function with name specified, the other member should be inferenced latter.
   Function(const std::string& name) {
     InitData();
@@ -221,8 +225,6 @@ struct Function : public ir::ExprNode<Function> {
   // const isl::union_set& iterator_domain() const { return data_->iterator_domain; }
 
   // isl::union_map GetFinalTransform() const;
-
-  Function() = default;
 
   operator Expr();
 

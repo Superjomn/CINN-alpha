@@ -24,4 +24,29 @@ int primitive_bytes(primitive_t type) {
   }
 }
 
+std::ostream &operator<<(std::ostream &os, primitive_t t) {
+  switch (t) {
+#define __(type)          \
+  case primitive_t::type: \
+    os << #type;          \
+    break;
+    __(unk);
+    __(uint8);
+    __(uint16);
+    __(uint32);
+    __(uint64);
+    __(int8);
+    __(int16);
+    __(int32);
+    __(int64);
+    __(float32);
+    __(float64);
+    __(boolean);
+#undef __
+    default:
+      LOG(FATAL) << "unsupported primitive type";
+  }
+  return os;
+}
+
 }  // namespace cinn

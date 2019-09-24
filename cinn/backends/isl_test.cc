@@ -262,6 +262,23 @@ TEST(isl, basic3) {
   LOG(INFO) << "domain2: " << isl_union_set_to_str(domain2);
 }
 
+TEST(isl, set1) {
+  auto *ctx = isl_ctx_alloc();
+  isl::union_set domain(ctx, "[N] -> { S[i,j] : 0 < i < j < N }");
+  LOG(INFO) << "space: " << domain.space();
+  LOG(INFO) << isl_set_to_str(isl_union_set_extract_set(domain.copy(), domain.space().get()));
+
+  isl::set domain1(ctx, "[N] -> { [i,j,k,z] : 0 < i < N and 0 < j <k < N and 0 <z< N }");
+  LOG(INFO) << "split set: " << isl::manage(isl_set_split_dims(domain1.copy(), isl_dim_set, 0, 2));
+
+  isl::union_set d0(ctx, "[N] -> { [i] : 0 < i < N }");
+  isl::union_set d1(ctx, "[N] -> { [j] : 0 < j < N-1 }");
+  isl::union_set d2(ctx, "[N] -> { [k] : 0 < k < N }");
+
+  LOG(INFO) << "intesect: " << isl::manage(isl_union_set_intersect(d0.copy(), d1.copy()));
+  LOG(INFO) << "intesect: " << isl::manage(isl_union_set_union(d0.copy(), d1.copy()));
+}
+
 TEST(isl, map_set_tuple_name) {
   isl_ctx *ctx = isl_ctx_alloc();
   auto *schedule = isl_map_read_from_str(ctx, "{S[i] -> T[i]}");
@@ -904,4 +921,17 @@ TEST(isl, dependency_analysis) {
   LOG(INFO) << "flow: " << isl_union_flow_to_str(flow);
   isl::union_map raw = isl::manage(isl_union_flow_get_must_dependence(flow));
   LOG(INFO) << "raw: " << raw;
+}
+
+TEST(isl, range) {
+  auto *ctx = isl_ctx_alloc();
+  isl::map access(ctx, "[N] -> { S[i,j] -> A[i+1, j-1] : 0 < 2*i+1,j < N }");
+  isl::map map(ctx, "[N] -> { A[i,j] -> [i] }");
+
+  LOG(INFO) << "map applied: " << access.apply_range(map);
+
+  LOG(INFO) << "access: " << access;
+  auto box = access.get_range_simple_fixed_box_hull();
+  LOG(INFO) << "size: " << box.get_offset().get_at(0);
+  LOG(INFO) << "box: " << box;
 }

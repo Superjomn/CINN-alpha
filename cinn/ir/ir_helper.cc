@@ -44,6 +44,11 @@ Expr CopyExpr(const Expr& expr) {
       node->target = CopyExpr(x->target);
       return Expr(node);
     }
+    case NodeTy::Tensor: {
+      auto* x = expr.As<Tensor>();
+      auto node = Tensor::make(x->dims(), x->ptype(), x->name());
+      return Expr(node);
+    }
     case NodeTy::Var: {
       auto* x = expr.As<Var>();
       auto node = std::make_shared<Var>();
@@ -71,6 +76,42 @@ Expr CopyExpr(const Expr& expr) {
 
 #undef ONE_PARAM_OP
 #undef TWO_PARAM_OP
+
+std::vector<const Var*> CollectVarsFromExpr(const Expr& expr) {
+  class Visitor : public IRVisitor {
+    int id_;
+
+   public:
+    std::set<const Var*> vars;
+
+    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
+    void Visit(const Var* op) override { vars.insert(op); }
+  };
+
+  Visitor visitor;
+  visitor.Visit(&expr);
+
+  return std::vector<const Var*>(visitor.vars.begin(), visitor.vars.end());
+}
+
+template <>
+std::vector<const Reference*> CollectExprNode<Reference>(const Expr& expr) {
+  class Visitor : public IRVisitor {
+   public:
+    std::set<const Reference*> set;
+
+    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
+    void Visit(const Reference* op) override {
+      set.insert(op);
+      IRVisitor::Visit(op);
+    }
+  };
+
+  Visitor visitor;
+  visitor.Visit(&expr);
+
+  return std::vector<const Reference*>(visitor.set.begin(), visitor.set.end());
+}
 
 }  // namespace ir
 }  // namespace cinn

@@ -1,85 +1,63 @@
 #include "cinn/core/function.h"
 #include <gtest/gtest.h>
 #include "cinn/core/stage.h"
+#include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
 using namespace ir;
 
+using cs = std::vector<Constant>;
+
 TEST(Function, basic) {
-  Var i("i", 0, 100);
-  Var j("j", 0, 150);
+  Var i("i");
+  Var j("j");
 
-  Expr A("A"), B("B"), C("C");
+  Constant N(10), M(20), K(30);
 
-  Stage s0 = C[i][j].Assign(A[i][j] * B[i][j]);
-  Stage s1 = C[i][j].Assign(C[i][j] + 1);
+  Function basic_fn("basic");
+  {
+    Expr A(cs({N, M}), primitive_t::float32, "A");
+    Expr B(cs({M, K}), primitive_t::float32, "B");
+    Expr C(cs({N, M}), primitive_t::float32, "C");
 
-  auto func0 = Function::make("func0", {B, C}, {A}, {s0, s1});
+    Stage s0 = basic_fn.AddStage(C[i][j].Assign(A[i][j] * B[i][j]));
+    Stage s1 = basic_fn.AddStage(C[i][j].Assign(C[i][j] + 1));
 
-  LOG(INFO) << "func0 " << ir::Dump(Expr(func0));
-}
+    basic_fn.Inputs({A, B});
+    basic_fn.Outputs({C});
 
-TEST(Function, GenerateIslAst) {
-  Var i("i", 0, 100);
-  Var j("j", 0, 150);
+    basic_fn.EndDefinition();
+  }
 
-  Expr A("A"), B("B"), C("C");
-
-  Stage s0 = C[i][j].Assign(A[i][j] * B[i][j]);
-  Stage s1 = C[i][j].Assign(C[i][j] + 1);
-
-  auto func0 = Function::make("func0", {B, C}, {A}, {s0, s1});
-}
-
-TEST(Function, DumpIslC) {
-  Var i("i", 0, 100);
-  Var j("j", 0, 150);
-  Var k("k", 0, 1500);
-
-  Expr A("A"), B("B"), C("C"), D("D");
-
-  Stage s0 = C[i][j].Assign(A[i][j] * B[i][j]);
-  Stage s1 = C[i][j].Assign(C[i][j] + 1);
-  Stage s2 = B[k].Assign(Expr(1));
-
-  auto func0 = Function::make("func0", {A, B, C}, {B, C}, {s0, s1, s2});
-
-  // auto final_transform = func0->GetFinalTransform();
-  // LOG(INFO) << "final_transform: " << final_transform;
-  // LOG(INFO) << "dump: \n" << func0->DumpIslC();
-}
-
-TEST(Function, Dump) {
-  Var i("i", 0, 100);
-  Var j("j", 0, 150);
-  Var k("k", 0, 1500);
-
-  Expr A("A"), B("B"), C("C"), D("D");
-
-  Stage s0 = C[i][j].Assign(A[i][j * 2] * B[i - 3][j]);
-  Stage s1 = C[i][j].Assign((C[i][j] + C[i + 1][j + 1] + C[i - 1][j - 1]) / 3);
-  Stage s2 = B[k].Assign(Expr(1));
-
-  auto func0 = Function::make("func0", {A, B, C}, {B, C}, {s0, s1, s2});
-
-  LOG(INFO) << "Dump: \n" << ir::Dump(Expr(func0));
+  LOG(INFO) << "func0 " << ir::Dump(basic_fn);
 }
 
 TEST(Function, buffer_allocate) {
-  Var i("i", 0, 100);
-  Var j("j", 0, 150);
-  Var k("k", 0, 1500);
+  Var i("i");
+  Var j("j");
+  Var k("k");
 
-  Expr A("A"), B("B"), C("C"), D("D");
+  Constant M(100);
+  Constant N(200);
+  Constant K(300);
 
-  Stage s0 = C[i][j].Assign(A[i][j * 2] * B[i - 3][j]);
-  Stage s_alloc_D = Allocate::make("D", Expr(10), primitive_t::float32);
+  Expr A(cs({M, K}), primitive_t::float32, "A");
+  Expr B(cs({K, N}), primitive_t::float32, "B");
+  Expr C(cs({M, N}), primitive_t::float32, "C");
 
-  auto func0 = Function::make("func0", {A, B}, {C}, {s_alloc_D, s0});
+  Function fn("fn");
+  {
+    auto s0 = fn.AddStage(C[i][j].Assign(A[i][j * 2] * B[i - 3][j]));
+    auto s_alloc_D = fn.AddStage(Allocate::make("D", Expr(10), primitive_t::float32));
 
-  LOG(INFO) << "func0.code : \n" << ir::Dump(Expr(func0));
+    fn.Inputs({A, B});
+    fn.Outputs({C});
+    fn.EndDefinition();
+  }
+
+  LOG(INFO) << "func0.code : \n" << ir::Dump(Expr(fn));
 }
 
 Expr tanh(Expr x) { return Max::make(Expr(0.f), x); }
@@ -87,14 +65,14 @@ Expr tanh(Expr x) { return Max::make(Expr(0.f), x); }
 TEST(Snippet, test) {
   Snippet snippet0;
 
-  int N = 1000;
-  int M = 200;
+  Constant N(200);
+  Constant M(100);
 
-  Expr x("x");
-  Expr y("y");
+  Expr x(cs({N, M}), primitive_t::float32, "x");
+  Expr y(cs({N, M}), primitive_t::float32, "y");
 
-  Var i("i", primitive_t::int32, 0, N);
-  Var j("j", primitive_t::int32, 0, M);
+  Var i("i");
+  Var j("j");
 
   Stage s0 = x[i][j].Assign(Expr(1));
   Stage s1 = y[i][j].Assign(x[i][j] + 1);
@@ -112,51 +90,70 @@ TEST(Snippet, test1) {
 }
 
 TEST(Function, syntax) {
-  // Param N("N", "N>10 and N < 10000");
-  // Param M("M", "M > 10");
-  int N = 1000;
-  int M = 200;
-  // LOG(INFO) << N.context();
-  // LOG(INFO) << M.context();
+  using cs = std::vector<Constant>;
+
+  Constant N(1000);
+  Constant M(1000);
 
   Function tanh_fn("tanh");
   {
-    Expr x("x");
-    Expr y("y");
+    Expr X(std::vector<Constant>({N}), primitive_t::float32);
+    Expr Out(std::vector<Constant>({N}), primitive_t::float32);
 
-    Var i("i", primitive_t::int32, 0, N);
-    Var j("j", primitive_t::int32, 0, M);
+    Var i;
 
-    tanh_fn.Inputs({x});
-    tanh_fn.Outputs({y});
-    auto s0 = tanh_fn.AddStage(y[i][j].Assign(tanh(x[i][j])));
-    auto s1 = tanh_fn.AddStage(y[i][j].Assign(y[i][j] + 0));
-    auto s2 = tanh_fn.AddStage(y[i][j].Assign(y[i][j] + 0));
-    LOG(INFO) << "s0.expr: " << ir::Dump(s0.expr());
+    tanh_fn.Inputs({X});
+    tanh_fn.Outputs({Out});
+
+    auto s0 = tanh_fn.AddStage(Out[i].Assign(ir::tanh(X[i])));
+
+    tanh_fn.EndDefinition();
   }
-  tanh_fn.EndDefinition();
 
-  Buffer input("input", {Expr(N), Expr(M)}, primitive_t::float32);
-  Buffer output("output", {Expr(N), Expr(M)}, primitive_t::float32);
+  LOG(INFO) << "tanh:\n" << ir::Dump(tanh_fn);
 
-  Function main("main");
+  Function softmax_fn("softmax");
   {
-    Expr x("x"), y("y");
+    Constant N(10);
+    Constant D(20);
+    Expr I(cs({N, D}), primitive_t::float32);
+    Expr expsum(cs({N}), primitive_t::float32);
+    Expr O(cs({N, D}), primitive_t::float32);
 
-    main.AddStage(tanh_fn({x}, {y}));
-    main.Inputs({x});
-    main.Outputs({y});
+    softmax_fn.Inputs({I});
+    softmax_fn.Outputs({expsum, O});
 
-    x.Bind(input);
-    y.Bind(output);
+    Var n, d;
+
+    auto s0 = softmax_fn.AddStage(  //
+        expsum[n].Assign(expsum[n] + ir::exp(I[n][d])));
+    auto s1 = softmax_fn.AddStage(  //
+        O[n][d].Assign(exp(I[n][d]) / expsum[n]));
+
+    softmax_fn.EndDefinition();
   }
-  main.EndDefinition();
 
-  LOG(INFO) << "function tanh_h: \n" << ir::Dump(tanh_fn);
+  LOG(INFO) << "softmax: \n" << ir::Dump(softmax_fn);
 
-  LOG(INFO) << "function main: \n" << ir::Dump(main);
+  Function matmul_fn("matmul");
+  {
+    Constant M(20);
+    Constant K(10);
+    Constant N(30);
+    Expr A(cs({M, K}), primitive_t::float32);
+    Expr B(cs({K, N}), primitive_t::float32);
+    Expr C(cs({M, N}), primitive_t::float32);
 
-  // LOG(INFO) << "function tanh: \n" << ir::Dump(tanh_fn);
+    Var m, k, n;
+
+    auto s0 = matmul_fn.AddStage(C[m][n].Assign(A[m][k] * B[k][n]));
+
+    matmul_fn.Inputs({A, B});
+    matmul_fn.Outputs({C});
+    matmul_fn.EndDefinition();
+  }
+
+  LOG(INFO) << "matmul_fn: \n" << ir::Dump(matmul_fn);
 }
 
 }  // namespace cinn

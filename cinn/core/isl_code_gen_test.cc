@@ -59,10 +59,11 @@ TEST(code_gen, IslAstExprToCinnExpr) {
 }
 
 TEST(code_gen, ExtractIslTransformedIndiceMap) {
-  Var i("i", 0, 100);
-  Var j("j", 0, 200);
-
-  Expr A("A"), B("B");
+  Constant M(100), N(200);
+  Expr A(std::vector<Constant>({M, N}), primitive_t::float32, "A");
+  Expr B(std::vector<Constant>({M, N}), primitive_t::float32, "B");
+  Var i("i");
+  Var j("j");
 
   Stage s0 = B[i][j].Assign(A[i][j] + 1);
 

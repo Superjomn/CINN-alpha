@@ -98,5 +98,9 @@ static std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
   return isl_printer_get_str(printer);
 }
 
+isl_map *__isl_give isl_map_set_dim_names(isl_map *__isl_give map,
+                                          isl_dim_type type,
+                                          const std::vector<std::string> &names);
+
 }  // namespace isl_utils
 }  // namespace cinn
