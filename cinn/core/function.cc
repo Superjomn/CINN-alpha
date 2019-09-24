@@ -237,14 +237,11 @@ void Snippet::ComputeSchedule() {
   CINN_DEBUG(3) << "wrie o read^-1: " << right;
 
   *memory_dependencies_ = isl::manage(isl_union_map_union(left.release(), right.release()));
-
-  // remove the identity map
-
   *memory_dependencies_ = isl::manage(isl_union_map_detect_equalities(memory_dependencies_->release()));
 
-  int num_identity = 0;
-
-  isl::union_map vality = isl::manage(isl_union_map_empty(isl_space_copy(iterator_domain().space().get())));
+  isl::union_map validity = isl::manage(isl_union_map_empty(isl_space_copy(iterator_domain().space().get())));
+  // currently, we ignore the b->a dependency.
+  // TODO(Superjomn) support full analysis for dependencies for any pairs.
   for (int i = 0; i < isl_union_map_n_map(memory_dependencies_->get()); i++) {
     auto* map_list = isl_union_map_get_map_list(memory_dependencies_->get());
     isl_map* map = isl_map_list_get_at(map_list, i);
@@ -254,17 +251,17 @@ void Snippet::ComputeSchedule() {
     const char* right_tuple = isl_map_get_tuple_name(map, isl_dim_out);
 
     if (std::strcmp(left_tuple, right_tuple) >= 0) continue;
-    // add map to vality
+
     isl::union_map union_map = isl::manage(isl_union_map_from_map(isl_map_copy(map)));
-    if (vality.is_null()) {
-      vality = union_map;
+    if (validity.is_null()) {
+      validity = union_map;
     } else {
-      vality = isl::manage(isl_union_map_union(vality.release(), union_map.release()));
+      validity = isl::manage(isl_union_map_union(validity.release(), union_map.release()));
     }
   }
 
-  CHECK(!vality.is_null());
-  CINN_DEBUG(3) << "get memory dependencies: " << vality;
+  CHECK(!validity.is_null());
+  CINN_DEBUG(3) << "get memory dependencies: " << validity;
 
   isl_ctx* ctx = isl_utils::global_isl_ctx();
 
@@ -275,7 +272,7 @@ void Snippet::ComputeSchedule() {
   CINN_DEBUG(3) << "transform: " << *transform_;
 
   isl::schedule_constraints sc = isl::manage(isl_schedule_constraints_on_domain(iterator_domain().copy()));
-  sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), vality.release()));
+  sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.release()));
   sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.copy()));
   sc = isl::manage(isl_schedule_constraints_apply(sc.release(), transform_->copy()));
 
@@ -290,8 +287,8 @@ isl::ast_node Snippet::GenerateIslAst() const {
 
   CHECK(!iterator_domain().is_null());
 
-  isl::set C(isl_utils::global_isl_ctx(), "{:}");
   // TODO(Superjomn) pass the parameters.
+  isl::set C(isl_utils::global_isl_ctx(), "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));

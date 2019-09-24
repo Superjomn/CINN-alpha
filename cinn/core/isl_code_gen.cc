@@ -434,11 +434,11 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);
 
     case ir::NodeTy::Reference: {
-      CINN_DEBUG(3) << "visit Reference";
+      CINN_DEBUG(4) << "visit Reference";
       auto* node = root.As<ir::Reference>();
       if (node->target.type() == ir::NodeTy::Var) {
         ir::Var* x = node->target.As<ir::Var>();
-        CINN_DEBUG(3) << "reference.target.name: " << x->name();
+        CINN_DEBUG(6) << "reference.target.name: " << x->name();
         if (x->name() == s) {
           root = CopyExpr(expr);
           break;
@@ -452,7 +452,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
       break;
     }
     case ir::NodeTy::Call: {
-      CINN_DEBUG(3) << "visit Call";
+      CINN_DEBUG(4) << "visit Call";
       auto* node = root.As<ir::Call>();
       if (node->caller == s) {
         root = CopyExpr(expr);
@@ -466,7 +466,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     }
 
     case ir::NodeTy::For: {
-      CINN_DEBUG(3) << "visit For";
+      CINN_DEBUG(4) << "visit For";
       auto* node = root.As<ir::For>();
       ReplaceExprWithStage(node->iter_init, s, expr);
       ReplaceExprWithStage(node->iter_cond, s, expr);
@@ -476,7 +476,7 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
     }
 
     case ir::NodeTy::Block: {
-      CINN_DEBUG(3) << "visit Block";
+      CINN_DEBUG(4) << "visit Block";
       auto* node = root.As<ir::Block>();
       for (auto& e : node->exprs) {
         ReplaceExprWithStage(e, s, expr);
