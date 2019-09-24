@@ -67,6 +67,9 @@ class Snippet {
   bool is_function_call() const { return Stage::is_function_call(type()); }
   bool is_unk() const { return Stage::is_unk(type()); }
 
+  //! Try to fuse two stages if possible.
+  void TryFuse(const std::string& stage0, const std::string& stage1);
+
   Expr GetTransformedExpr() const;
 
  private:

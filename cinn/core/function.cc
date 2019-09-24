@@ -323,4 +323,19 @@ Expr Snippet::GetTransformedExpr() const {
   return expr;
 }
 
+void Snippet::TryFuse(const std::string& stage0, const std::string& stage1) {
+    // colect a map from name to stage pointer.
+    std::map<std::string, Stage*> map;
+    for (auto& stage : stages_) {
+        map[stage.name()] = &stage;
+    }
+
+    // will try to fuse if these two stage exists in the same snippet.
+    if (map.count(stage0) && map.count(stage1)) {
+        Stage& a = *map[stage0];
+        Stage& b = *map[stage1];
+        a.iterator_domain();
+    }
+}
+
 }  // namespace cinn
