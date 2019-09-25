@@ -13,7 +13,7 @@ namespace ir {
     CHECK(op->b.valid());                 \
     Visit(&op->a);                        \
     Visit(&op->b);                        \
-  };
+  }
 
 OP_2_ARGS_FOR_EACH(OP_2_ARGS_VISIT);
 
@@ -25,6 +25,10 @@ void IRVisitor::Visit(const Expr *op) {
     break;
 
     OP_ALL_FOR_EACH(__)
+
+    case NodeTy::Parameter:
+      Visit(op->As<Constant>());
+      break;
 
     default:
       LOG(FATAL) << "unsupported type: " << op->type();

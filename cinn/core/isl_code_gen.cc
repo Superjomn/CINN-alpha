@@ -373,6 +373,11 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       CINN_DEBUG(3) << "get " << ir::Dump(root);
       break;
     }
+    case ir::NodeTy::IntImm:
+    case ir::NodeTy::Tensor:
+      // skip
+      break;
+
     default:
       LOG(ERROR) << "Unsupported op type: " << root.type();
   }
@@ -482,6 +487,11 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
       }
       break;
     }
+
+    case ir::NodeTy::IntImm:
+    case ir::NodeTy::FloatImm:
+    case ir::NodeTy::Var:
+      break;
 
     default:
       LOG(ERROR) << "not supported type: " << root.type();

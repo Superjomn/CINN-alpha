@@ -1,4 +1,5 @@
 #pragma once
+#include <glog/logging.h>
 #include <isl/aff.h>
 #include <isl/ast.h>
 #include <isl/ast_build.h>
@@ -6,9 +7,12 @@
 #include <isl/cpp.h>
 #include <isl/map.h>
 #include <isl/set.h>
+#include <isl/space.h>
 #include <isl/union_set.h>
 #include <string>
 #include <vector>
+#include "cinn/utils/isl_utils.h"
+#include "cinn/utils/string.h"
 
 namespace cinn {
 
@@ -25,6 +29,8 @@ std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type typ
 //! Get a dimention position if it match the name. return -1 if not exists.
 int isl_map_get_dim_pos_by_name(__isl_keep isl_map *map, isl_dim_type type, const std::string &name);
 
+std::vector<std::string> isl_map_get_dim_names(isl_map *map, isl_dim_type type);
+
 isl_map *isl_map_add_dim_and_eq_constraint(isl_map *map, int dim_pos, int constant);
 
 //! helper function to generate string representation for isl_set.
@@ -33,15 +39,15 @@ std::string isl_to_str(__isl_keep isl_set *);
 std::string isl_to_str(__isl_keep isl_map *);
 //! helper function to generate string representation for isl_space.
 std::string isl_to_str(__isl_keep isl_space *);
-//! helper function to generate string representation for isl_pw_aff.
-std::string isl_to_str(__isl_keep isl_pw_aff *);
-//! helper function to generate string representation for isl_union_pw_aff.
-std::string isl_to_str(__isl_keep isl_union_pw_aff *);
 
-namespace isl_utils {
+isl_map *__isl_give isl_map_set_dim_names(isl_map *__isl_give map,
+                                          isl_dim_type type,
+                                          const std::vector<std::string> &names);
 
 isl_ast_build *__isl_give isl_ast_build_set_iterators(__isl_take isl_ast_build *build,
                                                       const std::vector<std::string> &iterators);
+
+namespace isl_utils {
 
 isl_union_map *__isl_give isl_calculate_dependency(__isl_take isl_union_map *s0_reads,
                                                    __isl_take isl_union_map *s0_writes,
@@ -103,10 +109,6 @@ static std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
   printer = isl_printer_print_schedule(printer, schedule.get());
   return isl_printer_get_str(printer);
 }
-
-isl_map *__isl_give isl_map_set_dim_names(isl_map *__isl_give map,
-                                          isl_dim_type type,
-                                          const std::vector<std::string> &names);
 
 //! Check whether the set has the dimension having a specific name.
 bool isl_set_has_dim_name(isl_set *__isl_keep set, const std::string &name);

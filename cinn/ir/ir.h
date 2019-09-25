@@ -38,6 +38,8 @@ class Constant : public ExprNode<Constant> {
   template <typename T>
   Constant(T val);
 
+  operator Expr();
+
   primitive_t primitive_type() const { return primitive_type_; }
 
   bool valid() const { return primitive_type_ != primitive_t::unk; }
@@ -278,12 +280,12 @@ class Expr : public IRHandle {
 #define IS_TYPE(m__, ty__) \
   bool is_##m__() const { return type() == ir::NodeTy::ty__; }
   IS_TYPE(var, Var)
-  IS_TYPE(function, Function)
   IS_TYPE(allocate, Allocate)
   IS_TYPE(reference, Reference)
   IS_TYPE(assign, Assign)
   IS_TYPE(function_call, Call)
   IS_TYPE(tensor, Tensor)
+  IS_TYPE(function, Function)
 #undef IS_TYPE
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }

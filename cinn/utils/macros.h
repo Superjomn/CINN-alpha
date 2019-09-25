@@ -24,13 +24,13 @@
   macro__(Or)                       \
   macro__(Not)                      \
   macro__(Exp)                      \
+  macro__(Assign)                   \
 
 #define NODETY_CONTROL_OP_FOR_EACH(macro__) \
   macro__(For)                              \
   macro__(IfThenElse)                       \
   macro__(Block)                            \
   macro__(Call)                             \
-  macro__(Assign)                           \
   macro__(Function)                         \
 
 #define NODETY_DS_FOR_EACH(macro__) \
@@ -85,18 +85,23 @@
   macro__(IntImm)             \
   macro__(FloatImm)
 
-#define OP_ALL_FOR_EACH(macro__)       \
-  OP_2_ARGS_FOR_EACH(macro__)          \
-  OP_1_ARGS_FOR_EACH(macro__)          \
-  IMM_FOR_EACH(macro__)                \
-  macro__(Var)                         \
-  macro__(For)                         \
-  macro__(IfThenElse)                  \
-  macro__(Reference)                   \
-  macro__(Block)                       \
-  macro__(Tensor)                       \
-  macro__(Allocate) macro__(Call)      \
-  macro__(Function) macro__(Param)
+#define OP_ALL_WITHOUT_FUNCTION_FOR_EACH(macro__)       \
+  OP_2_ARGS_FOR_EACH(macro__)                           \
+  OP_1_ARGS_FOR_EACH(macro__)                           \
+  IMM_FOR_EACH(macro__)                                 \
+  macro__(Var)                                          \
+  macro__(For)                                          \
+  macro__(IfThenElse)                                   \
+  macro__(Reference)                                    \
+  macro__(Block)                                        \
+  macro__(Tensor)                                       \
+  macro__(Allocate) macro__(Call)                       \
+  macro__(Param)
+
+#define OP_ALL_FOR_EACH(macro__)           \
+OP_ALL_WITHOUT_FUNCTION_FOR_EACH(macro__)  \
+macro__(Function)
+
 // clang-format on
 
 #define PRIMITIVE_TYPE_FOR_EACH(macro__)                                                                     \

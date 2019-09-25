@@ -67,6 +67,9 @@ class Snippet {
   bool is_function_call() const { return Stage::is_function_call(type()); }
   bool is_unk() const { return Stage::is_unk(type()); }
 
+  //! Try to fuse two stages if possible.
+  void TryFuse(const std::string& stage0, const std::string& stage1);
+
   Expr GetTransformedExpr() const;
 
  private:
@@ -171,6 +174,9 @@ struct Function : public ir::ExprNode<Function> {
 
     std::vector<Snippet> snippets;
 
+    //! the final compiled expr.
+    Expr transformed_expr;
+
     isl_ctx* ctx{nullptr};
   };
 
@@ -223,7 +229,7 @@ struct Function : public ir::ExprNode<Function> {
   //! Tell whether this function is an inline one.
   bool is_inline() const { return data_->is_inline; }
 
-  Expr GetTransformedExpr() const;
+  const Expr& ComputeTransformedExpr() const;
 
   void Accept(ir::IRVisitor* visitor) const override;
 

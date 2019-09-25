@@ -225,7 +225,7 @@ std::string Stage::DumpIslC() const {
     }
   }
 
-  build = isl::manage(isl_utils::isl_ast_build_set_iterators(build.release(), iterators));
+  build = isl::manage(isl_ast_build_set_iterators(build.release(), iterators));
 
   isl::union_map transform = isl::manage(isl_union_map_from_map(t0.copy()));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule_map(build.get(), transform.release()));
@@ -364,7 +364,7 @@ void Stage::Interchange(int pos0, int pos1) {
   isl::map transform(ctx(), transform_repr);
 
   // set dims
-  transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_out, to_dims));
+  transform = isl::manage(isl_map_set_dim_names(transform.release(), isl_dim_out, to_dims));
   // transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_in, from_dims));
 
   CINN_DEBUG(2) << "transform: " << transform;
@@ -426,7 +426,7 @@ void Stage::Split(const ir::Var& iter, int size) {
                                             Concat(target_conds, " and ").c_str());
   CINN_DEBUG(3) << "transform repr: " << transform_repr;
   isl::map transform(ctx(), transform_repr.c_str());
-  transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_out, target_dims));
+  transform = isl::manage(isl_map_set_dim_names(transform.release(), isl_dim_out, target_dims));
 
   CINN_DEBUG(3) << "get transform: " << transform;
   data_->schedule = isl::map(ctx(), GetStreamStr(data_->schedule).c_str());

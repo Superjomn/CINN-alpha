@@ -9,3 +9,5 @@ cc_test(test_stage SRCS stage_test.cc DEPS function stage ir_printer isl_utils)
 #cc_test(test_isl_code_gen SRCS isl_code_gen_test.cc DEPS isl_code_gen ir_printer stage function)
 target_link_libraries(test_stage ${isl_lib})
 target_link_libraries(test_function ${isl_lib})
+
+add_subdirectory(optimize)

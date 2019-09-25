@@ -189,6 +189,11 @@ Constant::Constant(const Constant &other) {
   }
 }
 
+Constant::operator Expr() {
+  auto node = std::make_shared<Constant>(*this);
+  return Expr(node);
+}
+
 Expr Mul::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Mul a not defined";
   CHECK(b.valid()) << "Mul b not defined";

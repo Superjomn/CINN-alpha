@@ -1,11 +1,12 @@
 #include "cinn/ir/ir_printer.h"
+#include <string>
+#include <vector>
 #include "cinn/core/function.h"
 #include "cinn/core/stage.h"
 #include "cinn/ir/ir.h"
 #include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
 #include "cinn/utils/string.h"
-#include "ir_printer.h"
 
 namespace cinn {
 namespace ir {
@@ -52,7 +53,6 @@ void IRPrinter::Visit(const Expr *op) { IRVisitor::Visit(op); }
 
 void IRPrinter::Print(Expr op) { Visit(&op); }
 void IRPrinter::Print(Var op) { os_ << op.name(); }
-void IRPrinter::Print(Block op) { Visit(&op); }
 void IRPrinter::Print(const std::string &x) { os_ << x; }
 
 void IRPrinter::Visit(const Mod *op) {
@@ -167,8 +167,10 @@ void IRPrinter::Visit(const For *op) {
   Print(op->iter_cond);
   Print(", ");
   Print(op->iter_inc);
-  os_ << ")";
+  os_ << ") {\n";
   Print(op->body);
+  PrintIndent();
+  os_ << "}";
 }
 
 void IRPrinter::Visit(const IfThenElse *op) {
@@ -182,9 +184,8 @@ void IRPrinter::Visit(const IfThenElse *op) {
 }
 
 void IRPrinter::Visit(const Block *op) {
-  os_ << "\n";
-  PrintIndent();
-  os_ << "{\n";
+  // PrintIndent();
+  // os_ << "{\n";
   indent_size_++;
   for (auto expr : op->exprs) {
     PrintIndent();
@@ -192,10 +193,21 @@ void IRPrinter::Visit(const Block *op) {
     os_ << "\n";
   }
   indent_size_--;
-  PrintIndent();
-  os_ << "}";
+  // PrintIndent();
+  // os_ << "}\n";
 }
-void IRPrinter::Visit(const Constant *op) { IRVisitor::Visit(op); }
+void IRPrinter::Visit(const Constant *op) {
+  switch (op->primitive_type()) {
+    case primitive_t::int32:
+      os_ << op->As<int32_t>();
+      break;
+    case primitive_t::int64:
+      os_ << op->As<int64_t>();
+      break;
+    default:
+      LOG(FATAL) << "unsupported type " << op->primitive_type();
+  }
+}
 void IRPrinter::Visit(const Var *op) { Print(*op); }
 void IRPrinter::Visit(const Reference *op) {
   CHECK_EQ(reference_braces.size(), 2UL);
@@ -225,18 +237,18 @@ void IRPrinter::Visit(const Call *op) {
 }
 
 void IRPrinter::Visit(const Assign *op) {
-  PrintIndent();
+  // PrintIndent();
   Print(op->a);
   os_ << " = ";
   Print(op->b);
-  os_ << ";\n";
+  os_ << ";";
 }
 
 void IRPrinter::Visit(const Function *op) {
   LOG_INDENT("IRPrinter::Visit Function");
   CINN_DEBUG(3) << "print function " << op->name();
-  PrintIndent();
 
+  // print func definition.
   std::vector<std::string> arguments;
   for (int i = 0; i < op->inputs().size(); i++) {
     auto &x = op->inputs()[i];
@@ -258,19 +270,19 @@ void IRPrinter::Visit(const Function *op) {
   os_ << StringFormat("def %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
 
   // body print with indent
-  int current_indent = indent_size_;
   PrintIndent();
-  os_ << "{\n";
+  os_ << " {";
   indent_size_++;
 
   // print the buffer allocate.
   CINN_DEBUG(3) << "stage size: " << op->stages().size();
 
-  Print(op->GetTransformedExpr());
+  Print(op->ComputeTransformedExpr());
 
   indent_size_--;
+
   PrintIndent();
-  os_ << "}\n";
+  os_ << "}";
 }
 
 void IRPrinter::Visit(const Allocate *op) {
@@ -279,7 +291,7 @@ void IRPrinter::Visit(const Allocate *op) {
   Print(op->size);
   os_ << ", ";
   Print(op->dtype);
-  os_ << ");\n";
+  os_ << ");";
 }
 
 void IRPrinter::Print(primitive_t dtype) {

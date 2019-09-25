@@ -56,17 +56,19 @@ void Function::Accept(ir::IRVisitor* visitor) const {}
 
 // TODO(Superjomn) to make the return type from Expr to vector<Expr> to contain multiple expressions and support Call
 // and Allocate.
-Expr Function::GetTransformedExpr() const {
+const Expr& Function::ComputeTransformedExpr() const {
+  if (data_->transformed_expr.valid()) return data_->transformed_expr;
   if (snippets().size() == 1) {
-    return snippets().back().GetTransformedExpr();
+    data_->transformed_expr = snippets().back().GetTransformedExpr();
+  } else {
+    // Get a block with none or multiple expressions.
+    std::vector<Expr> exprs;
+    for (auto& snippet : data_->snippets) {
+      exprs.push_back(snippet.GetTransformedExpr());
+    }
+    data_->transformed_expr = ir::Block::make(std::move(exprs));
   }
-
-  // Get a block with none or multiple expressions.
-  std::vector<Expr> exprs;
-  for (auto& snippet : data_->snippets) {
-    exprs.push_back(snippet.GetTransformedExpr());
-  }
-  return ir::Block::make(std::move(exprs));
+  return data_->transformed_expr;
 }
 
 // This is a naive implementation which has complexity of N^2
@@ -290,6 +292,7 @@ isl::ast_node Snippet::GenerateIslAst() const {
   // TODO(Superjomn) pass the parameters.
   isl::set C(isl_utils::global_isl_ctx(), "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
+
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));
   return ast;
@@ -321,6 +324,21 @@ Expr Snippet::GetTransformedExpr() const {
     ReplaceExprWithStage(expr, stages_[i].name(), stages_[i].GetIndiceTransformedExpr());
   }
   return expr;
+}
+
+void Snippet::TryFuse(const std::string& stage0, const std::string& stage1) {
+  // colect a map from name to stage pointer.
+  std::map<std::string, Stage*> map;
+  for (auto& stage : stages_) {
+    map[stage.name()] = &stage;
+  }
+
+  // will try to fuse if these two stage exists in the same snippet.
+  if (map.count(stage0) && map.count(stage1)) {
+    Stage& a = *map[stage0];
+    Stage& b = *map[stage1];
+    a.iterator_domain();
+  }
 }
 
 }  // namespace cinn
