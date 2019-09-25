@@ -290,6 +290,7 @@ isl::ast_node Snippet::GenerateIslAst() const {
   // TODO(Superjomn) pass the parameters.
   isl::set C(isl_utils::global_isl_ctx(), "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
+
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));
   return ast;
@@ -324,18 +325,18 @@ Expr Snippet::GetTransformedExpr() const {
 }
 
 void Snippet::TryFuse(const std::string& stage0, const std::string& stage1) {
-    // colect a map from name to stage pointer.
-    std::map<std::string, Stage*> map;
-    for (auto& stage : stages_) {
-        map[stage.name()] = &stage;
-    }
+  // colect a map from name to stage pointer.
+  std::map<std::string, Stage*> map;
+  for (auto& stage : stages_) {
+    map[stage.name()] = &stage;
+  }
 
-    // will try to fuse if these two stage exists in the same snippet.
-    if (map.count(stage0) && map.count(stage1)) {
-        Stage& a = *map[stage0];
-        Stage& b = *map[stage1];
-        a.iterator_domain();
-    }
+  // will try to fuse if these two stage exists in the same snippet.
+  if (map.count(stage0) && map.count(stage1)) {
+    Stage& a = *map[stage0];
+    Stage& b = *map[stage1];
+    a.iterator_domain();
+  }
 }
 
 }  // namespace cinn

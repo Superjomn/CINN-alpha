@@ -1,4 +1,4 @@
-#include "cinn/backends/cpp_code_gen.h"
+#include "cinn/backends/code_gen_c.h"
 #include <cinn/core/function.h>
 #include <string>
 #include "cinn/ir/ir.h"
@@ -20,8 +20,12 @@ void CppCodeGen::Visit(const ir::For *op) {
   Print(op->iterator);
   os_ << " += ";
   Print(op->iter_inc);
-  os_ << ")";
+  os_ << ") {\n";
+
   Print(op->body);
+
+  PrintIndent();
+  os_ << "}";
 }
 
 void CppCodeGen::Visit(const Function *op) {
@@ -39,11 +43,9 @@ void CppCodeGen::Visit(const Function *op) {
     arguments.push_back("const char* " + (x.is_var() ? x.As<ir::Var>()->name() : x.As<ir::Tensor>()->name()));
   }
 
-  os_ << StringFormat("void %s (%s)\n", op->name().c_str(), Concat(arguments, ", ").c_str());
-
-  // body print with indent
   PrintIndent();
-  os_ << "{\n";
+  os_ << StringFormat("void %s (%s) {\n", op->name().c_str(), Concat(arguments, ", ").c_str());
+
   indent_size_++;
 
   Print(op->GetTransformedExpr());

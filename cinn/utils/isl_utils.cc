@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "cinn/utils/string.h"
+#include "isl_utils.h"
 
 namespace cinn {
 
@@ -25,21 +26,21 @@ int isl_map_get_dim_pos_by_name(isl_map *map, isl_dim_type type, const std::stri
   return -1;
 }
 
-namespace isl_utils {
-
-isl_ast_build *isl_ast_build_set_iterators(isl_ast_build *build, const std::vector<std::string> &iterators) {
-  CHECK(build);
-  CHECK(!iterators.empty());
-  auto *ctx = isl_ast_build_get_ctx(build);
-  isl_id_list *ids = isl_id_list_alloc(ctx, iterators.size());
-  for (int i = 0; i < iterators.size(); i++) {
-    isl_id *id = isl_id_alloc(ctx, iterators[i].c_str(), nullptr);
-    ids = isl_id_list_add(ids, id);
+isl_map *isl_map_set_dim_names(isl_map *map, isl_dim_type type, const std::vector<std::string> &names) {
+  CHECK(map);
+  CHECK_EQ(isl_map_dim(map, type), names.size());
+  for (int i = 0; i < names.size(); i++) {
+    map = isl_map_set_dim_name(map, type, i, names[i].c_str());
   }
-  return isl_ast_build_set_iterators(build, ids);
+  return map;
 }
 
-bool isl_set_has_dim_name(isl_set *set, const std::string &name) {
+namespace isl_utils {
+
+__isl_give
+
+    bool
+    isl_set_has_dim_name(isl_set *set, const std::string &name) {
   for (int i = 0; i < isl_set_dim(set, isl_dim_set); i++) {
     if (isl_set_get_dim_name(set, isl_dim_set, i) == name) return true;
   }
@@ -76,15 +77,6 @@ std::string isl_space_get_statement_repr(isl_space *space) {
   ss << Concat(dims, ", ");
   ss << "]";
   return ss.str();
-}
-
-isl_map *isl_map_set_dim_names(isl_map *map, isl_dim_type type, const std::vector<std::string> &names) {
-  CHECK(map);
-  CHECK_EQ(isl_map_dim(map, type), names.size());
-  for (int i = 0; i < names.size(); i++) {
-    map = isl_map_set_dim_name(map, type, i, names[i].c_str());
-  }
-  return map;
 }
 
 }  // namespace isl_utils
@@ -146,7 +138,28 @@ __isl_give isl_map *isl_map_add_dim_and_eq_constraint(__isl_take isl_map *map, i
 std::string isl_to_str(isl_set *x) { return isl_set_to_str(x); }
 std::string isl_to_str(isl_map *x) { return isl_map_to_str(x); }
 std::string isl_to_str(isl_space *x) { return isl_space_to_str(x); }
+
+std::vector<std::string> isl_map_get_dim_names(isl_map *map, isl_dim_type type) {
+  CHECK(map);
+  std::vector<std::string> result;
+  for (int i = 0; i < isl_map_dim(map, type); i++) {
+    result.push_back(isl_map_get_dim_name(map, type, i));
+  }
+  return result;
+}
+
 std::string isl_to_str(isl_pw_aff *x) { return isl_union_pw_aff_to_str(isl_union_pw_aff_from_pw_aff(x)); }
 std::string isl_to_str(isl_union_pw_aff *x) { return isl_union_pw_aff_to_str(x); }
 
+isl_ast_build *isl_ast_build_set_iterators(__isl_take isl_ast_build *build, const std::vector<std::string> &iterators) {
+  CHECK(build);
+  CHECK(!iterators.empty());
+  auto *ctx = isl_ast_build_get_ctx(build);
+  isl_id_list *ids = isl_id_list_alloc(ctx, iterators.size());
+  for (int i = 0; i < iterators.size(); i++) {
+    isl_id *id = isl_id_alloc(ctx, iterators[i].c_str(), nullptr);
+    ids = isl_id_list_add(ids, id);
+  }
+  return isl_ast_build_set_iterators(build, ids);
+}
 }  // namespace cinn
