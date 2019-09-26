@@ -24,7 +24,7 @@ struct Target {
   Bits bits_;
 
  public:
-  Target() : os_(OS::UNK), arch_(Arch::UNK), bits_(Bits::UNK) {}
+  Target(OS os = OS::linux, Arch arch = Arch::X86, Bits bits = Bits::k64) : os_(os), arch_(arch), bits_(bits) {}
 
   OS os() const { return os_; }
   Arch arch() const { return arch_; }

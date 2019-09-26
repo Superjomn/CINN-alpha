@@ -25,7 +25,15 @@ enum class primitive_t : int {
   float32,
   float64,
   boolean,
+  void_,  // control statement without primitive return, such as function, for, if, allocate and so on.
 };
+
+// TODO(Superjomn) compose this to Type.
+static bool is_integer(primitive_t ptype) {
+  return ptype == primitive_t::int32 || ptype == primitive_t::int8 || ptype == primitive_t::int16 ||
+         ptype == primitive_t::int64;
+}
+static bool is_float(primitive_t ptype) { return ptype == primitive_t::float32 || ptype == primitive_t::float64; }
 
 std::ostream& operator<<(std::ostream& os, primitive_t t);
 

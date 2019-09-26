@@ -46,8 +46,17 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
 
   NodeTy type() const { return type_; }
 
+  //! primitive type of this expr. Each expr has a type, even the operators, so that it can convert to a LLVM IR which
+  //! has type.
+  primitive_t ptype() const { return ptype_; }
+  //! Get the primitive type of this node.
+  void set_ptype(primitive_t type) { ptype_ = type; }
+  bool is_unk() const { return ptype() == primitive_t::unk; }
+  bool is_boolean() const { return ptype() == primitive_t::boolean; }
+
  protected:
   NodeTy type_{NodeTy::Var};
+  primitive_t ptype_{primitive_t::unk};
 };
 
 /// A handle to store any expression.
@@ -84,6 +93,7 @@ class IRHandle {
 };
 
 /// Base class of all the Exprs. An Expr is an expression that can return a value, such as `a+1`.
+// TODO(Superjomn) this class seems useless, drop it.
 template <typename T>
 class ExprNodeBase : public IRNode {
  public:
@@ -125,10 +135,19 @@ class IntImm : public ExprNodeBase<IntImm> {
 
  public:
   static std::shared_ptr<IntImm> make(Type type, int64_t val) {
-    auto x = std::make_shared<IntImm>();
-    x->type_ = type;
-    x->val_ = val;
-    return x;
+    auto node = std::make_shared<IntImm>();
+    node->type_ = type;
+    node->val_ = val;
+    node->set_ptype(primitive_t::int64);
+    return node;
+  }
+
+  static std::shared_ptr<IntImm> make(Type type, int32_t val) {
+    auto node = std::make_shared<IntImm>();
+    node->type_ = type;
+    node->val_ = val;
+    node->set_ptype(primitive_t::int32);
+    return node;
   }
 
   void Accept(IRVisitor* x) const override { x->Visit(this); }
@@ -146,19 +165,20 @@ class FloatImm : public ExprNodeBase<FloatImm> {
 
  public:
   static std::shared_ptr<FloatImm> make(Type type, float val) {
-    auto x = std::make_shared<FloatImm>();
-    x->type_ = type;
+    auto node = std::make_shared<FloatImm>();
+    node->set_ptype(primitive_t::float32);
+    node->type_ = type;
 
     switch (type.bits()) {
       case 16:
       case 32:
       case 64:
-        x->val_ = val;
+        node->val_ = val;
         break;
       default:
         LOG(FATAL) << "unsupported bits " << type.bits() << " for Float";
     }
-    return x;
+    return node;
   }
 
   void Accept(IRVisitor* x) const override { x->Visit(this); }

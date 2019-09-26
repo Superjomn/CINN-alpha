@@ -35,7 +35,7 @@ TEST(Stage, multiple) {
   Var i, j, k;
 
   Stage s0 = C[i][j].Assign(A[i][k] * B[k][j]);
-  Stage s1 = C[i][j].Assign(C[i][j] + 1);
+  Stage s1 = C[i][j].Assign(C[i][j] + 1.f);
 
   LOG(INFO) << "s0: " << s0.DumpIslC();
   LOG(INFO) << "s1: " << s1.DumpIslC();
@@ -52,7 +52,7 @@ TEST(Stage, DumpC) {
   Var i, j, k;
 
   Stage s0 = C[i][j].Assign(A[i][k] * B[k][j]);
-  Stage s1 = C[i][j].Assign(C[i][j] + 1);
+  Stage s1 = C[i][j].Assign(C[i][j] + 1.f);
 
   LOG(INFO) << "s0: " << s0.DumpAsC();
 }
@@ -161,7 +161,7 @@ TEST(Stage, syntax) {
 
   Stage s0 = C[i][j].Assign(A[i * 2][k + 3] * B[k + 3][j]);
   LOG(INFO) << "s0.iterator_domain: " << s0.iterator_domain();
-  Stage s1 = C[i][j].Assign(C[i][j] + 1);
+  Stage s1 = C[i][j].Assign(C[i][j] + 1.f);
   LOG(INFO) << "s1.iterator_domain: " << s1.iterator_domain();
   LOG(INFO) << "s0.code: \n" << s0.DumpIslC();
   LOG(INFO) << "s1.code: \n" << s1.DumpIslC();

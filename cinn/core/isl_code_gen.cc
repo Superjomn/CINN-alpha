@@ -160,11 +160,22 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         IslAstExprToCinnExpr(expr0, &op);
         ops.push_back(op);
       }
+
+      auto set_ops_ptype = [&](primitive_t type) {
+        for (auto& op : ops) {
+          op.set_ptype(type);
+        }
+      };
+
+      // set ops as int32 by default.
+      set_ops_ptype(primitive_t::int32);
+
       isl_ast_op_type op_type = isl_ast_expr_get_op_type(node.get());
       switch (op_type) {
-        case isl_ast_op_and:
+        case isl_ast_op_and: {
+          set_ops_ptype(primitive_t::boolean);
           *expr = ir::And::make(ops[0], ops[1]);
-          break;
+        } break;
         case isl_ast_op_or:
           *expr = ir::Or::make(ops[0], ops[1]);
           break;
@@ -190,6 +201,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           *expr = ir::Div::make(ops[0], ops[1]);
           break;
         case isl_ast_op_le:
+
           *expr = ir::LE::make(ops[0], ops[1]);
           break;
         case isl_ast_op_lt:

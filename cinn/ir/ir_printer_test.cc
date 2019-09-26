@@ -8,8 +8,8 @@ namespace cinn {
 namespace ir {
 
 TEST(IRPrinter, basic) {
-  Expr a(1);
-  Expr b(2);
+  Expr a(1.f);
+  Expr b(2.f);
   Expr d(1.2f);
 
   Expr c = (a + b);
@@ -26,8 +26,8 @@ TEST(IRPrinter, basic) {
 }
 
 TEST(IRPrinter, test1) {
-  Expr a((float)0.1);
-  Expr b((int)3);
+  Expr a(0.1f);
+  Expr b(3.f);
   auto c = a > b;
 
   std::stringstream os;
@@ -39,7 +39,7 @@ TEST(IRPrinter, test1) {
 }
 
 TEST(IRPrinter, block) {
-  Expr a((float)0.1), b((int)1);
+  Expr a(0.1f), b(1.f);
   Expr c = a > b;
   Expr c0 = a != b;
   Expr c1 = a + b;

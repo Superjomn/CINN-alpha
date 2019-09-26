@@ -22,13 +22,28 @@ TEST(LLVM, basic) {
   block->getInstList().push_back(Add);
   block->getInstList().push_back(ReturnInst::Create(Context, Add));
 
-  WriteBitcodeToFile(*M, outs());
+  WriteBitcodeToFile(M, outs());
 }
 
-TEST(x, xx) {
-  const int* a = new int(32);
-  std::shared_ptr<const int> int32;
-  int32.reset(a);
+TEST(module, test) {
+  llvm::LLVMContext context;
+  llvm::Module* module = new llvm::Module("top", context);
+  llvm::IRBuilder<> builder(context);
+
+  InitializeNativeTarget();
+  InitializeNativeTargetAsmPrinter();
+  InitializeNativeTargetAsmParser();
+
+  // module->print(llvm::errs(), nullptr);
+
+  llvm::Type::getVoidTy(context);
+
+  auto* a = ConstantFP::get(context, APFloat(1.2));
+  auto* b = ConstantFP::get(context, APFloat(1.2));
+  // a->print(llvm::errs());
+
+  auto* add = builder.CreateFAdd(a, b, "add");
+  add->print(llvm::errs());
 }
 
 }  // namespace backends

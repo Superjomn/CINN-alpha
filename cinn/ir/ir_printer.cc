@@ -197,7 +197,7 @@ void IRPrinter::Visit(const Block *op) {
   // os_ << "}\n";
 }
 void IRPrinter::Visit(const Constant *op) {
-  switch (op->primitive_type()) {
+  switch (op->ptype()) {
     case primitive_t::int32:
       os_ << op->As<int32_t>();
       break;
@@ -205,7 +205,7 @@ void IRPrinter::Visit(const Constant *op) {
       os_ << op->As<int64_t>();
       break;
     default:
-      LOG(FATAL) << "unsupported type " << op->primitive_type();
+      LOG(FATAL) << "unsupported type " << op->ptype();
   }
 }
 void IRPrinter::Visit(const Var *op) { Print(*op); }

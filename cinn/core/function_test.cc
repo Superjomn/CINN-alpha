@@ -23,7 +23,7 @@ TEST(Function, basic) {
     Expr C(cs({N, M}), primitive_t::float32, "C");
 
     Stage s0 = basic_fn.AddStage(C[i][j].Assign(A[i][j] * B[i][j]));
-    Stage s1 = basic_fn.AddStage(C[i][j].Assign(C[i][j] + 1));
+    Stage s1 = basic_fn.AddStage(C[i][j].Assign(C[i][j] + 1.f));
 
     basic_fn.Inputs({A, B});
     basic_fn.Outputs({C});
@@ -74,8 +74,8 @@ TEST(Snippet, test) {
   Var i("i");
   Var j("j");
 
-  Stage s0 = x[i][j].Assign(Expr(1));
-  Stage s1 = y[i][j].Assign(x[i][j] + 1);
+  Stage s0 = x[i][j].Assign(Expr(1.f));
+  Stage s1 = y[i][j].Assign(x[i][j] + 1.f);
 
   snippet0.AddStage(s0);
   snippet0.AddStage(s1);

@@ -1,13 +1,15 @@
 #pragma once
 
-#include <llvm/ExecutionEngine/JITEventListener.h>
-#include <llvm/ExecutionEngine/MCJIT.h>
-#include <llvm/ExecutionEngine/SectionMemoryManager.h>
+//#include <llvm/ExecutionEngine/JITEventListener.h>
+//#include <llvm/ExecutionEngine/MCJIT.h>
+//#include <llvm/ExecutionEngine/SectionMemoryManager.h>
 
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/IR/ConstantFolder.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Linker/Linker.h>

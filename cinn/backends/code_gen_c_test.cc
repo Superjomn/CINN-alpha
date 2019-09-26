@@ -22,10 +22,10 @@ TEST(cpp_code_gen, basic) {
   Function fn("fn");
   {
     Stage s0 = fn.AddStage(B[i + 1][j].Assign(  //
-        (A[i - 1][j] + A[i][j] + A[i + 1][j]) / 3));
+        (A[i - 1][j] + A[i][j] + A[i + 1][j]) / 3.f));
 
     Stage s1 = fn.AddStage(C[i][j].Assign(  //
-        A[i][j] * 2 + B[i][j] / 2));
+        A[i][j] * 2.f + B[i][j] / 2.f));
 
     fn.Inputs({A, B});
     fn.Outputs({C});

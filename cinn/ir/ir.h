@@ -18,7 +18,6 @@ namespace ir {
 
 class Constant : public ExprNode<Constant> {
   std::string name_;
-  primitive_t primitive_type_{primitive_t::unk};
   union {
     int8_t int8_val_;
     int32_t int32_val_;
@@ -29,8 +28,8 @@ class Constant : public ExprNode<Constant> {
 
  public:
   Constant() = default;
-  Constant(const std::string& name, primitive_t type) : name_(name), primitive_type_(type) {}
-  Constant(const std::string& name, int32_t val) : name_(name), primitive_type_(primitive_t::int32), int32_val_(val) {}
+  Constant(const std::string& name, primitive_t type) : name_(name) { set_ptype(type); }
+  Constant(const std::string& name, int32_t val) : name_(name), int32_val_(val) { set_ptype(primitive_t::int32); }
   Constant(const Constant& other);
 
   template <typename T>
@@ -40,18 +39,14 @@ class Constant : public ExprNode<Constant> {
 
   operator Expr();
 
-  primitive_t primitive_type() const { return primitive_type_; }
-
-  bool valid() const { return primitive_type_ != primitive_t::unk; }
+  bool valid() const { return ptype() != primitive_t::unk; }
 
   bool is_integer() const {
-    return primitive_type() == primitive_t::int32 || primitive_type() == primitive_t::int8 ||
-           primitive_type() == primitive_t::int16 || primitive_type() == primitive_t::int64;
+    return ptype() == primitive_t::int32 || ptype() == primitive_t::int8 || ptype() == primitive_t::int16 ||
+           ptype() == primitive_t::int64;
   }
 
-  bool operator==(const Constant& other) const {
-    return name_ == other.name_ && primitive_type() == other.primitive_type();
-  }
+  bool operator==(const Constant& other) const { return name_ == other.name_ && ptype() == other.ptype(); }
 
   std::string __str__() const;
 
@@ -115,10 +110,8 @@ class Interval {
 class Var : public ExprNode<Var> {
   struct Data {
     Any val_;
-    primitive_t ptype_;
     Interval interval_;
     std::string name_;
-    primitive_t dtype_{primitive_t::unk};
     std::unique_ptr<isl::set> domain_;
   };
 
@@ -130,6 +123,8 @@ class Var : public ExprNode<Var> {
  public:
   Var() {
     InitData();
+    // set as iterator by default.
+    set_ptype(primitive_t::int32);
     data_->name_ = NameGenerator::Global().NewIteratorName();
   }
 
@@ -137,21 +132,23 @@ class Var : public ExprNode<Var> {
   Var(const std::string& name) {
     InitData();
     data_->name_ = name;
+    // treat as iterator by default.
+    set_ptype(primitive_t::int32);
     CheckNameValid(name);
   }
 
   Var(const std::string& name, primitive_t dtype) {
     InitData();
     data_->name_ = name;
-    data_->dtype_ = dtype;
     CheckNameValid(name);
+    set_ptype(dtype);
   }
 
   // make a variable with name and interval set.
   Var(const std::string& name, primitive_t type, const Interval& interval) {
     InitData();
     data_->name_ = name;
-    data_->ptype_ = type;
+    set_ptype(type);
     data_->interval_ = interval;
     CheckNameValid(data_->name_);
   }
@@ -161,16 +158,17 @@ class Var : public ExprNode<Var> {
   Var(const std::string& name, primitive_t type, Constant lower_bound, Constant upper_bound) {
     InitData();
     data_->name_ = name;
-    data_->ptype_ = type;
+    set_ptype(type);
     data_->interval_ = Interval(lower_bound, upper_bound);
     CheckNameValid(name);
   }
 
-  Var(const Var& other) { data_ = other.data_; }
+  Var(const Var& other) {
+    data_ = other.data_;
+    set_ptype(other.ptype());
+  }
 
   operator Expr();
-
-  primitive_t dtype() const { return data_->dtype_; }
 
   bool operator==(const Var& other) const {
     return data_ == other.data_ || (name() == other.name() && interval() == other.interval());
@@ -184,9 +182,6 @@ class Var : public ExprNode<Var> {
   static const NodeTy node_type = NodeTy::Var;
 
   const Interval& interval() const { return data_->interval_; }
-
-  primitive_t ptype() const { return data_->ptype_; }
-  void set_ptype(primitive_t ptype) { data_->ptype_ = ptype; }
 
   bool is_domain_valid() const { return data_->domain_.get() && !data_->domain_->is_null(); }
   void set_domain(const isl::set& domain) {
@@ -218,9 +213,6 @@ class Expr : public IRHandle {
   Expr(const Expr& n) : IRHandle(n.ptr_) {}
   Expr(Expr&& other) { ptr_ = std::move(other.ptr_); }
   Expr(const std::string& name, primitive_t dtype = primitive_t::float32) { *this = Var(name, dtype); }
-
-  // reference
-  // explicit Expr(const std::vector<Var>& its) : iterators_(its) {}
 
   Expr Assign(Expr other);
 
@@ -257,6 +249,11 @@ class Expr : public IRHandle {
   // Expr operator[](std::vector<Expr> iters);
 
   Expr operator()(const std::vector<Expr>& iters);
+
+  primitive_t ptype() const { return ptr_->ptype(); }
+  void set_ptype(primitive_t type) { ptr_->set_ptype(type); }
+  bool is_unk() const { return ptr_->is_unk(); }
+  bool is_boolean() const { return ptr_->is_boolean(); }
 
   void Bind(Buffer& buffer) { buffer_ = &buffer; }
   bool buffer_binded() const { return buffer_; }
@@ -345,15 +342,14 @@ struct Reference : public ExprNode<Reference> {
  */
 class Tensor : public ExprNode<Tensor> {
   std::string name_;
-  primitive_t ptype_;
   std::vector<Constant> dims_;
 
  public:
-  Tensor(const std::string& name, primitive_t type, const std::vector<Constant>& dims)
-      : name_(name), ptype_(type), dims_(dims) {}
+  Tensor(const std::string& name, primitive_t type, const std::vector<Constant>& dims) : name_(name), dims_(dims) {
+    set_ptype(type);
+  }
 
   const std::string& name() const { return name_; }
-  primitive_t ptype() const { return ptype_; }
   const std::vector<Constant>& dims() const { return dims_; }
 
   static Expr make(const std::vector<Constant>& dims, primitive_t type, const std::string& name) {
@@ -452,8 +448,10 @@ struct Exp : public ExprNode<Exp> {
   Expr a;
 
   static Expr make(Expr a) {
+    CHECK(!a.is_unk());
     auto node = std::make_shared<Exp>();
     node->a = a;
+    node->set_ptype(a.ptype());
     return Expr(node);
   }
 

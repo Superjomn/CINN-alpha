@@ -61,7 +61,7 @@ TEST(ir, basic1) {
 
 TEST(Parameter, basic) {
   Constant x(100);
-  ASSERT_EQ(x.primitive_type(), primitive_t::int32);
+  ASSERT_EQ(x.ptype(), primitive_t::int32);
 
   Constant y = x;
   ASSERT_EQ(x.As<int32_t>(), 100);
@@ -120,6 +120,17 @@ TEST(Param, basic) {
   ss << x.GetContext();
 
   ASSERT_EQ(ss.str(), "[N] -> {  : N > 0 }");
+}
+
+TEST(ir, type_inference) {
+  Constant c(100);
+  CHECK_EQ(c.ptype(), primitive_t::int32);
+
+  Expr c0(1.f);
+  CHECK_EQ(c0.ptype(), primitive_t::float32);
+
+  auto e0 = c + 1;
+  CHECK_EQ(e0.ptype(), primitive_t::int32);
 }
 
 }  // namespace ir

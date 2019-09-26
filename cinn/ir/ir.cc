@@ -20,6 +20,9 @@ Expr Add::make(Expr a, Expr b) {
   auto node = std::make_shared<Add>();
   node->a = a;
   node->b = b;
+
+  CHECK_EQ(a.ptype(), b.ptype());
+  node->set_ptype(a.ptype());
   return Expr(node);
 }
 
@@ -27,9 +30,13 @@ Expr Add::make(Expr a, Expr b) {
 Expr EQ::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
   CHECK(b.valid()) << "Expr b not defined";
+  CHECK(!b.is_unk());
   auto node = std::make_shared<EQ>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -37,8 +44,11 @@ Expr NE::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
   CHECK(b.valid()) << "Expr b not defined";
   auto node = std::make_shared<NE>();
+  CHECK_EQ(a.ptype(), b.ptype());
+  CHECK(!a.is_unk());
   node->a = std::move(a);
   node->b = std::move(b);
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -48,11 +58,15 @@ Expr For::make(Expr iter_init, Expr iter_cond, Expr iter_inc, Expr body, Var ite
   CHECK(iter_inc.valid());
   CHECK(body.valid());
   auto node = std::make_shared<For>();
+  CHECK(!iter_init.is_unk());
+  CHECK(!iter_cond.is_unk());
+  CHECK(!iter_inc.is_unk());
   node->iter_init = std::move(iter_init);
   node->iter_cond = std::move(iter_cond);
   node->iter_inc = std::move(iter_inc);
   node->body = std::move(body);
   node->iterator = std::move(iterator);
+  node->set_ptype(primitive_t::void_);
   return Expr(node);
 }
 
@@ -62,6 +76,9 @@ Expr Mod::make(Expr a, Expr b) {
   auto node = std::make_shared<Mod>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(a.ptype(), b.ptype());
+  CHECK(!a.is_unk());
+  node->set_ptype(node->a.ptype());
   return Expr(node);
 }
 
@@ -71,6 +88,9 @@ Expr Sub::make(Expr a, Expr b) {
   auto node = std::make_shared<Sub>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(node->a.ptype());
   return Expr(node);
 }
 
@@ -80,6 +100,9 @@ Expr Min::make(Expr a, Expr b) {
   auto node = std::make_shared<Min>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(a.ptype());
   return Expr(node);
 }
 
@@ -89,6 +112,9 @@ Expr Max::make(Expr a, Expr b) {
   auto node = std::make_shared<Max>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(node->a.ptype());
   return Expr(node);
 }
 
@@ -96,6 +122,8 @@ Expr Minus::make(Expr a) {
   CHECK(a.valid());
   auto node = std::make_shared<Minus>();
   node->a = a;
+  CHECK(!node->a.is_unk());
+  node->set_ptype(a.ptype());
   return Expr(node);
 }
 
@@ -103,52 +131,52 @@ size_t Var::counter_ = 0;
 
 template <>
 Constant::Constant(const std::string &name, int32_t val) : name_(name) {
-  primitive_type_ = primitive_t::int32;
+  set_ptype(primitive_t::int32);
   int32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Constant::Constant(const std::string &name, float val) : name_(name) {
-  primitive_type_ = primitive_t::float32;
+  set_ptype(primitive_t::float32);
   fp32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Constant::Constant(int32_t val) : name_(DefaultUniqueName()) {
-  primitive_type_ = primitive_t::int32;
+  set_ptype(primitive_t::int32);
   int32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 Constant::Constant(float val) : name_(DefaultUniqueName()) {
-  primitive_type_ = primitive_t::float32;
+  set_ptype(primitive_t::float32);
   fp32_val_ = val;
   name_ = NameGenerator::Global().NewParameterName();
 }
 
 template <>
 int32_t Constant::As<int32_t>() const {
-  CHECK_EQ(primitive_type(), primitive_t::int32);
+  CHECK_EQ(ptype(), primitive_t::int32);
   return int32_val_;
 }
 template <>
 float Constant::As<float>() const {
-  CHECK(primitive_type() == primitive_t::float32);
+  CHECK(ptype() == primitive_t::float32);
   return fp32_val_;
 }
 template <>
 int64_t Constant::As<int64_t>() const {
-  CHECK(primitive_type() == primitive_t::int64);
+  CHECK(ptype() == primitive_t::int64);
   return int64_val_;
 }
 
 unsigned int Constant::counter = 0;
 
 std::string Constant::__str__() const {
-  switch (primitive_type()) {
+  switch (ptype()) {
     case primitive_t::float32:
       return std::to_string(As<float>()) + "fp32";
     case primitive_t::int8:
@@ -158,15 +186,15 @@ std::string Constant::__str__() const {
     case primitive_t::int64:
       return std::to_string(As<int64_t>()) + "i64";
     default:
-      LOG(FATAL) << "not supported type " << static_cast<int>(primitive_type());
+      LOG(FATAL) << "not supported type " << static_cast<int>(ptype());
   }
   return "Parameter-UNK";
 }
 
 Constant::Constant(const Constant &other) {
   name_ = other.name_;
-  primitive_type_ = other.primitive_type_;
-  switch (primitive_type()) {
+  set_ptype(other.ptype());
+  switch (ptype()) {
     case primitive_t::int8:
       int8_val_ = other.int8_val_;
       break;
@@ -185,7 +213,7 @@ Constant::Constant(const Constant &other) {
     case primitive_t::unk:
       break;
     default:
-      LOG(FATAL) << "unsupported type " << static_cast<int>(primitive_type());
+      LOG(FATAL) << "unsupported type " << static_cast<int>(ptype());
   }
 }
 
@@ -201,6 +229,9 @@ Expr Mul::make(Expr a, Expr b) {
   auto node = std::make_shared<Mul>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(node->a.ptype());
   return Expr(node);
 }
 
@@ -208,10 +239,13 @@ Expr Div::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Div a not defined";
   CHECK(b.valid()) << "Div b not defined";
 
-  auto x = std::make_shared<Div>();
-  x->a = std::move(a);
-  x->b = std::move(b);
-  return Expr(x);
+  auto node = std::make_shared<Div>();
+  node->a = std::move(a);
+  node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(node->a.ptype());
+  return Expr(node);
 }
 
 Expr LT::make(Expr a, Expr b) {
@@ -220,6 +254,9 @@ Expr LT::make(Expr a, Expr b) {
   auto node = std::make_shared<LT>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -229,6 +266,9 @@ Expr LE::make(Expr a, Expr b) {
   auto node = std::make_shared<LE>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -238,6 +278,9 @@ Expr GT::make(Expr a, Expr b) {
   auto node = std::make_shared<GT>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -247,6 +290,9 @@ Expr GE::make(Expr a, Expr b) {
   auto node = std::make_shared<GE>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(!node->a.is_unk());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -258,6 +304,7 @@ Expr Block::make(std::vector<Expr> &&list) {
   }
   auto node = std::make_shared<Block>();
   node->exprs = std::move(list);
+  node->set_ptype(primitive_t::void_);
   return Expr(node);
 }
 
@@ -267,6 +314,9 @@ Expr And::make(Expr a, Expr b) {
   auto node = std::make_shared<And>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(node->a.is_boolean());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -276,6 +326,9 @@ Expr Or::make(Expr a, Expr b) {
   auto node = std::make_shared<Or>();
   node->a = std::move(a);
   node->b = std::move(b);
+  CHECK_EQ(node->a.ptype(), node->b.ptype());
+  CHECK(node->a.is_boolean());
+  node->set_ptype(primitive_t::boolean);
   return Expr(node);
 }
 
@@ -283,6 +336,7 @@ Expr IfThenElse::make(Expr condition, Expr true_block) {
   auto node = std::make_shared<IfThenElse>();
   node->condition = condition;
   node->true_block = true_block;
+  node->set_ptype(primitive_t::void_);
   return Expr(node);
 }
 
@@ -291,6 +345,7 @@ Expr IfThenElse::make(Expr condition, Expr true_block, Expr false_block) {
   node->condition = condition;
   node->true_block = true_block;
   node->false_block = false_block;
+  node->set_ptype(primitive_t::void_);
   return Expr(node);
 }
 
@@ -315,8 +370,8 @@ void For::Accept(IRVisitor *x) const { LOG(ERROR) << "get a for"; }
 void Block::Accept(IRVisitor *x) const { LOG(ERROR) << "get a block"; }
 
 Var::operator Expr() {
-  auto node = std::make_shared<Var>(
-      data_->name_, data_->dtype_, data_->interval_.lower_bound(), data_->interval_.upper_bound());
+  auto node =
+      std::make_shared<Var>(data_->name_, ptype(), data_->interval_.lower_bound(), data_->interval_.upper_bound());
   return Expr(node);
 }
 
@@ -332,17 +387,20 @@ Var::Var(const std::string &name, int32_t lower_bound, int32_t upper_bound) {
   InitData();
   data_->name_ = name;
   data_->interval_ = Interval(lower_bound, upper_bound);
+  set_ptype(primitive_t::int32);
   CheckNameValid(name);
 }
 
 Expr Call::make(const std::string &caller, std::vector<Expr> arguments) {
   for (auto &v : arguments) {
     CHECK(v.valid());
+    CHECK(!v.is_unk());
   }
 
   auto node = std::make_shared<Call>();
   node->caller = caller;
   node->arguments = arguments;
+  node->set_ptype(primitive_t::void_);
   return Expr(node);
 }
 
@@ -350,10 +408,14 @@ Expr Reference::make(Expr expr, const std::vector<Expr> &iterators) {
   CHECK(expr.valid());
   auto x = std::make_shared<Reference>();
   x->target = expr;
+  CHECK(!expr.is_unk());
   for (const Expr &iterator : iterators) {
     CHECK(iterator.valid());
     x->iterators.push_back(iterator);
+    CHECK(!iterator.is_unk());
   }
+
+  x->set_ptype(expr.ptype());
   return Expr(x);
 }
 
@@ -385,6 +447,9 @@ Expr Assign::make(Expr a, Expr b) {
   auto node = std::make_shared<Assign>();
   node->a = a;
   node->b = b;
+  CHECK(!node->b.is_unk());
+  node->a.set_ptype(node->b.ptype());
+  node->set_ptype(node->b.ptype());
   return Expr(node);
 }
 
@@ -425,8 +490,8 @@ class IntervalExtractor : public IRVisitor {
   void Visit(const Expr *op) override { IRVisitor::Visit(op); }
 
   void Visit(const Var *op) override {
-    CHECK(op->interval().lower_bound().primitive_type() == primitive_t::int32);
-    CHECK(op->interval().upper_bound().primitive_type() == primitive_t::int32);
+    CHECK(op->interval().lower_bound().ptype() == primitive_t::int32);
+    CHECK(op->interval().upper_bound().ptype() == primitive_t::int32);
     auto it = std::find_if(intervals_->begin(), intervals_->end(), [&](const Reference::interval_tuple_t &x) {
       return std::get<0>(x) == op->name();
     });
@@ -452,9 +517,11 @@ std::vector<Reference::interval_tuple_t> Reference::ExtractIntervals() {
 
 Expr Allocate::make(const std::string &buffer_name, Expr size, primitive_t dtype) {
   auto node = std::make_shared<Allocate>();
+  CHECK_EQ(size.ptype(), primitive_t::int32);
   node->buffer_name = buffer_name;
   node->size = size;
   node->dtype = dtype;
+  node->set_ptype(primitive_t::void_);
   return Expr(node);
 }
 
@@ -483,7 +550,7 @@ isl::set Param::context() const {
 // TODO(Superjomn) Support complex expression with more than one Var.
 void Expr::InferenceIteratorDomain(Expr *expr) {
   LOG_INDENT("Expr::InferenceIteratorDomain");
-  CINN_DEBUG(3) << "expr: " << ir::Dump(*expr);
+  // CINN_DEBUG(3) << "expr: " << ir::Dump(*expr);
   isl::union_set result;
   // extract iterator from the expr.
   if (!expr->is_reference()) return;
@@ -492,7 +559,7 @@ void Expr::InferenceIteratorDomain(Expr *expr) {
   if (!ref->target.is_tensor()) return;
   auto *tensor = ref->target.As<Tensor>();
   CHECK_LE(ref->iterators.size(), tensor->dims().size());
-  CINN_DEBUG(6) << "Reference " << ir::Dump(ref->target) << " has " << ref->iterators.size() << " iterators";
+  // CINN_DEBUG(6) << "Reference " << ir::Dump(ref->target) << " has " << ref->iterators.size() << " iterators";
   if (ref->iterators.size() == tensor->dims().size()) {
     ref->domain = BuildDomainFromExprWithDimension(ref->iterators, tensor->dims());
     CINN_DEBUG(3) << "set reference's domain: " << ref->domain;
