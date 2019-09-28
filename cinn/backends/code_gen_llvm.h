@@ -1,4 +1,5 @@
 #include <glog/logging.h>
+#include <gtest/gtest_prod.h>
 #include <iostream>
 #include <memory>
 #include "cinn/backends/llvm_headers.h"
@@ -82,7 +83,7 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void Visit(const ir::Tensor *op) override { IRPrinter::Visit(op); }
 
-  void Visit(const ir::Constant *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::Constant *op) override;
 
   void Visit(const ir::Var *op) override { IRPrinter::Visit(op); }
 
@@ -90,9 +91,9 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void Visit(const ir::Call *op) override { IRPrinter::Visit(op); }
 
-  void Visit(const ir::Assign *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::Assign *op) override;
 
-  void Visit(const Function *op) override { IRPrinter::Visit(op); }
+  void Visit(const Function *op) override;
 
   void Visit(const ir::Allocate *op) override { IRPrinter::Visit(op); }
 
@@ -107,6 +108,8 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void ResetValue() { value_ = nullptr; }
 
+  llvm::Function *CreateFunctionPrototype(const Function *op);
+
  private:
   Target target_;
 
@@ -115,6 +118,8 @@ class CodeGenLLVM : public ir::IRPrinter {
   llvm::LLVMContext *context_;
   llvm::IRBuilder<llvm::ConstantFolder, llvm::IRBuilderDefaultInserter> *builder_;
   llvm::Value *value_;
+
+  FRIEND_TEST(code_gen_llvm, basic);
 };
 
 }  // namespace backends

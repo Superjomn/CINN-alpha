@@ -1,4 +1,5 @@
 #include "cinn/backends/code_gen_llvm.h"
+#include "cinn/core/function.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_printer.h"
 
@@ -154,6 +155,56 @@ llvm::Value *CodeGenLLVM::Codegen(const ir::Expr &e) {
   ResetValue();
   Visit(&e);
   return value_;
+}
+
+llvm::Function *CodeGenLLVM::CreateFunctionPrototype(const Function *op) {
+  // collect arguments
+  std::vector<llvm::Type *> args(op->inputs().size() + op->outputs().size(), llvm::Type::getFloatPtrTy(*ctx_));
+  std::vector<Expr> _args;
+  for (size_t i = 0; i < args.size(); i++) {
+    _args[i] = (i < op->inputs().size()) ? op->inputs()[i] : op->outputs()[i];
+  }
+
+  // void fn(float* a, float* b...)
+  llvm::FunctionType *function_type = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx_), args, false);
+  llvm::Function *function =
+      llvm::Function::Create(function_type, llvm::Function::ExternalLinkage, op->name(), module_.get());
+
+  function->setName(op->name());
+
+  int i = 0;
+  for (auto &f_arg : function->args()) {
+    auto &arg = _args[i];
+    CHECK(arg.is_tensor());
+    auto name = arg.As<ir::Tensor>()->name();
+
+    f_arg.setName(name);
+  }
+
+  return function;
+}
+
+void CodeGenLLVM::Visit(const Function *op) {
+  llvm::Function *function = module_->getFunction(op->name());
+  if (!function) function = CreateFunctionPrototype(op);
+  CHECK(function);
+  CHECK(function->empty()) << "function " << op->name() << " is redefined";
+
+  llvm::BasicBlock *bb = llvm::BasicBlock::Create(*ctx_, "entry", function);
+  builder_->SetInsertPoint(bb);
+}
+
+void CodeGenLLVM::Visit(const ir::Assign *op) { CHECK(op->is_store()); }
+
+void CodeGenLLVM::Visit(const ir::Constant *op) {
+  // TODO(Superjomn) consider the i8, i16, and i64, so is the float points.
+  if (op->is_integer()) {
+    value_ = llvm::ConstantInt::getSigned(i32_t, op->As<int>());
+  } else if (op->is_float()) {
+    value_ = llvm::ConstantInt::getSigned(f32_t, op->As<float>());
+  } else if (op->is_boolean()) {
+    LOG(FATAL) << "not supported type " << op->ptype();
+  }
 }
 
 }  // namespace backends

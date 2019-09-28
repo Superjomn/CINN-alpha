@@ -46,6 +46,8 @@ class Constant : public ExprNode<Constant> {
            ptype() == primitive_t::int64;
   }
 
+  bool is_float() const { return ptype() == primitive_t::float32 || ptype() == primitive_t::float64; }
+
   bool operator==(const Constant& other) const { return name_ == other.name_ && ptype() == other.ptype(); }
 
   std::string __str__() const;
@@ -595,6 +597,8 @@ struct Call : public ExprNode<Call> {
 struct Assign : public ExprNode<Assign> {
   Expr a;
   Expr b;
+
+  bool is_store() const { return a.is_reference(); }
 
   static Expr make(Expr a, Expr b);
 
