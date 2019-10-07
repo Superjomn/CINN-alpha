@@ -85,7 +85,7 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   std::set<std::string> var_names;
   for (auto& ref : references) {
     CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
-    CINN_DEBUG(3) << "reference domain: " << ref->domain;
+    CINN_DEBUG(6) << "reference domain: " << ref->domain;
 
     for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
       var_names.insert(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));

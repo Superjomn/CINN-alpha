@@ -50,3 +50,5 @@ add_subdirectory(backends)
 add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(core)
+
+cc_library(cinn_lib DEPS ir ir_printer code_gen_c code_gen_llvm ${llvm_libs})

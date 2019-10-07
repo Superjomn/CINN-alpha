@@ -14,6 +14,8 @@
 #ifndef LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
 #define LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
 
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Transforms/Scalar.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -28,11 +30,13 @@
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 
 namespace llvm {
 namespace orc {
@@ -53,38 +57,14 @@ class KaleidoscopeJIT {
 
   TargetMachine &getTargetMachine() { return *TM; }
 
-  ModuleHandleT addModule(std::unique_ptr<Module> M) {
-    // We need a memory manager to allocate memory and resolve symbols for this
-    // new module. Create one that resolves symbols by looking back into the
-    // JIT.
-    auto Resolver = createLambdaResolver(
-        [&](const std::string &Name) {
-          if (auto Sym = findMangledSymbol(Name)) return Sym;
-          return JITSymbol(nullptr);
-        },
-        [](const std::string &S) { return nullptr; });
-    auto H = cantFail(CompileLayer.addModule(std::move(M), std::move(Resolver)));
+  ModuleHandleT addModule(std::unique_ptr<Module> M);
 
-    ModuleHandles.push_back(H);
-    return H;
-  }
-
-  void removeModule(ModuleHandleT H) {
-    ModuleHandles.erase(find(ModuleHandles, H));
-    cantFail(CompileLayer.removeModule(H));
-  }
+  void removeModule(ModuleHandleT H);
 
   JITSymbol findSymbol(const std::string Name) { return findMangledSymbol(mangle(Name)); }
 
  private:
-  std::string mangle(const std::string &Name) {
-    std::string MangledName;
-    {
-      raw_string_ostream MangledNameStream(MangledName);
-      Mangler::getNameWithPrefix(MangledNameStream, Name, DL);
-    }
-    return MangledName;
-  }
+  std::string mangle(const std::string &Name);
 
   JITSymbol findMangledSymbol(const std::string &Name) {
 #ifdef LLVM_ON_WIN32
@@ -131,5 +111,14 @@ class KaleidoscopeJIT {
 
 }  // end namespace orc
 }  // end namespace llvm
+
+namespace cinn {
+namespace backends {
+
+std::unique_ptr<llvm::orc::KaleidoscopeJIT> CreateJIT(llvm::Module *module);
+
+}  // namespace backends
+
+}  // namespace cinn
 
 #endif  // LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H

@@ -17,6 +17,8 @@ namespace ir {
 Expr Add::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
   CHECK(b.valid()) << "Expr b not defined";
+  CHECK(!a.is_unk());
+  CHECK(!b.is_unk());
   auto node = std::make_shared<Add>();
   node->a = a;
   node->b = b;
@@ -600,7 +602,7 @@ isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std:
   for (size_t i = 0; i < dims.size(); i++) {
     // collect constraints
     CHECK(dims[i].is_integer());
-    auto constraint = StringFormat("0<= %s <= %d", iterators[i].c_str(), dims[i].As<int32_t>());
+    auto constraint = StringFormat("0<= %s < %d", iterators[i].c_str(), dims[i].As<int32_t>());
     constraints.push_back(constraint);
   }
 

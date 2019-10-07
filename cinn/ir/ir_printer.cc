@@ -159,6 +159,7 @@ void IRPrinter::Visit(const Or *op) {
 void IRPrinter::Visit(const Tensor *op) { os_ << op->name() << "<>"; }
 
 void IRPrinter::Visit(const For *op) {
+  //@{
   os_ << "for(";
   Print(op->iterator);
   os_ << ", ";
@@ -168,9 +169,16 @@ void IRPrinter::Visit(const For *op) {
   Print(", ");
   Print(op->iter_inc);
   os_ << ") {\n";
+  //@}
+
+  // print a block
+  CHECK(op->body.is_block());
   Print(op->body);
+
+  //@{
   PrintIndent();
   os_ << "}";
+  //@}
 }
 
 void IRPrinter::Visit(const IfThenElse *op) {
@@ -185,16 +193,19 @@ void IRPrinter::Visit(const IfThenElse *op) {
 
 void IRPrinter::Visit(const Block *op) {
   // PrintIndent();
-  // os_ << "{\n";
-  indent_size_++;
-  for (auto expr : op->exprs) {
+  os_ << "{%_B" << indent_size_ << "\n";
+  indent_right();
+
+  for (size_t i = 0; i < op->exprs.size(); i++) {
+    auto &expr = op->exprs[i];
     PrintIndent();
     Print(expr);
-    os_ << "\n";
+    if (i != op->exprs.size() - 1) os_ << "\n";
   }
-  indent_size_--;
-  // PrintIndent();
-  // os_ << "}\n";
+
+  indent_left();
+  PrintIndent();
+  os_ << "}%_B" << indent_size_;
 }
 void IRPrinter::Visit(const Constant *op) {
   switch (op->ptype()) {
@@ -278,6 +289,7 @@ void IRPrinter::Visit(const Function *op) {
   CINN_DEBUG(3) << "stage size: " << op->stages().size();
 
   Print(op->ComputeTransformedExpr());
+  os_ << '\n';
 
   indent_size_--;
 

@@ -11,6 +11,7 @@ namespace ir {
     auto node = std::make_shared<op__>(); \
     node->a = CopyExpr(add->a);           \
     node->b = CopyExpr(add->b);           \
+    node->set_ptype(add->ptype());        \
     return Expr(node);                    \
   }
 
@@ -19,6 +20,7 @@ namespace ir {
     auto* x = expr.As<op__>();            \
     auto node = std::make_shared<op__>(); \
     node->a = CopyExpr(x->a);             \
+    node->set_ptype(x->ptype());          \
     return Expr(node);                    \
   }
 
@@ -33,6 +35,7 @@ Expr CopyExpr(const Expr& expr) {
         node->arguments.push_back(CopyExpr(arg));
       }
       node->caller = x->caller;
+      node->set_ptype(x->ptype());
       return Expr(node);
     }
     case NodeTy::Reference: {
@@ -42,23 +45,27 @@ Expr CopyExpr(const Expr& expr) {
         node->iterators.push_back(iterator);  // copied
       }
       node->target = CopyExpr(x->target);
+      node->set_ptype(x->ptype());
       return Expr(node);
     }
     case NodeTy::Tensor: {
       auto* x = expr.As<Tensor>();
       auto node = Tensor::make(x->dims(), x->ptype(), x->name());
+      node.set_ptype(x->ptype());
       return Expr(node);
     }
     case NodeTy::Var: {
       auto* x = expr.As<Var>();
       auto node = std::make_shared<Var>();
       *node = *x;
+      node->set_ptype(x->ptype());
       return Expr(node);
     }
     case NodeTy::IntImm: {
       auto* x = expr.As<IntImm>();
       auto node = std::make_shared<IntImm>();
       *node = *x;
+      node->set_ptype(x->ptype());
       return Expr(node);
     }
 
@@ -66,6 +73,7 @@ Expr CopyExpr(const Expr& expr) {
       auto* x = expr.As<FloatImm>();
       auto node = std::make_shared<FloatImm>();
       *node = *x;
+      node->set_ptype(x->ptype());
       return Expr(node);
     }
 

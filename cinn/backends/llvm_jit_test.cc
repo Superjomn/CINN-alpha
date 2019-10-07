@@ -11,11 +11,6 @@ using namespace llvm::orc;
 
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
-static std::unique_ptr<Module> TheModule;
-static std::map<std::string, Value*> NamedValues;
-static std::unique_ptr<legacy::FunctionPassManager> TheFPM;
-static std::unique_ptr<KaleidoscopeJIT> TheJIT;
-static std::unique_ptr<DIBuilder> DBuilder;
 
 struct DebugInfo {
   DICompileUnit* TheCU;
@@ -25,75 +20,12 @@ struct DebugInfo {
   DIType* getDoubleTy();
 } KSDbgInfo;
 
-static void InitializeModuleAndPassManager() {
-  // Open a new module.
-  TheModule = llvm::make_unique<Module>("my cool jit", TheContext);
-  TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
-
-  // Create a new pass manager attached to it.
-  TheFPM = llvm::make_unique<legacy::FunctionPassManager>(TheModule.get());
-
-  // Do simple "peephole" optimizations and bit-twiddling optzns.
-  TheFPM->add(createInstructionCombiningPass());
-  // Reassociate expressions.
-  TheFPM->add(createReassociatePass());
-  // Eliminate Common SubExpressions.
-  TheFPM->add(createGVNPass());
-  // Simplify the control flow graph (deleting unreachable blocks, etc).
-  TheFPM->add(createCFGSimplificationPass());
-
-  TheFPM->doInitialization();
-}
-
-llvm::Function* getFunction(std::string Name) {
-  // First, see if the function has already been added to the current module.
-  if (auto* F = TheModule->getFunction(Name)) return F;
-}
-
 TEST(jit, basic) {
-  InitializeNativeTarget();
-  InitializeNativeTargetAsmPrinter();
-  InitializeNativeTargetAsmParser();
+  llvm::LLVMContext context;
+  std::unique_ptr<llvm::Module> module(new llvm::Module("my model", context));
+  auto* M = module.get();
 
-  std::unique_ptr<KaleidoscopeJIT> TheJIT(new KaleidoscopeJIT);
-
-  // initialize module
-  std::unique_ptr<llvm::Module> TheModule(new llvm::Module("my module", TheContext));
-  TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
-  TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
-
-  // Create a new pass manager attached to it.
-  TheFPM = llvm::make_unique<legacy::FunctionPassManager>(TheModule.get());
-
-  // Do simple "peephole" optimizations and bit-twiddling optzns.
-  TheFPM->add(createInstructionCombiningPass());
-  // Reassociate expressions.
-  TheFPM->add(createReassociatePass());
-  // Eliminate Common SubExpressions.
-  TheFPM->add(createGVNPass());
-  // Simplify the control flow graph (deleting unreachable blocks, etc).
-  TheFPM->add(createCFGSimplificationPass());
-
-  TheFPM->doInitialization();
-
-  auto* M = TheModule.get();
-
-  // Add the current debug info version into the module.
-  TheModule->addModuleFlag(Module::Warning, "Debug Info Version", DEBUG_METADATA_VERSION);
-
-  // Darwin only supports dwarf2.
-  if (Triple(sys::getProcessTriple()).isOSDarwin()) TheModule->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 2);
-
-  // Construct the DIBuilder, we do this here because we need the module.
-  DBuilder = llvm::make_unique<DIBuilder>(*TheModule);
-
-  // Create the compile unit for the module.
-  // Currently down as "fib.ks" as a filename since we're redirecting stdin
-  // but we'd like actual source locations.
-  KSDbgInfo.TheCU = DBuilder->createCompileUnit(
-      dwarf::DW_LANG_C, DBuilder->createFile("fib.ks", "."), "Kaleidoscope Compiler", 0, "", 0);
-
-  TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
+  auto jit = cinn::backends::CreateJIT(M);
 
   // main function
   // @{
@@ -111,18 +43,122 @@ TEST(jit, basic) {
   block->getInstList().push_back(ReturnInst::Create(TheContext, Add));
   //@}
 
-  auto* main_fn = TheModule->getFunction("abs");
+  auto* main_fn = M->getFunction("abs");
   LOG(INFO) << "main_fn ";
   main_fn->print(errs());
 
-  TheJIT->addModule(std::move(TheModule));
-  // InitializeModuleAndPassManager();
+  jit->addModule(std::move(module));
 
-  auto symbol = TheJIT->findSymbol("abs");
+  auto symbol = jit->findSymbol("abs");
 
   typedef int (*fn_t)();
 
   auto address = reinterpret_cast<fn_t>(symbol.getAddress().get());
   LOG(INFO) << "address: " << address;
   outs() << address();
+}
+
+TEST(llvm, function_with_loop) {
+  LLVMContext context;
+  std::unique_ptr<Module> module(new Module("test", context));
+  auto* M = module.get();
+
+  FunctionType* ft = FunctionType::get(Type::getInt32Ty(context), /*not vararg*/ false);
+
+  Function* f = Function::Create(ft, Function::ExternalLinkage, "foo", M);
+
+  // int a = 0;
+  // for (int i = 0; i < 100; i ++) {
+  //  a += 1;
+  //}
+  // forloop @{
+  // @}
+  auto* int_ty = llvm::Type::getInt32Ty(context);
+
+  auto* entry_bb = BasicBlock::Create(context, "entry", f);
+  auto* cond_bb = BasicBlock::Create(context, "cond", f);
+  auto* loop_bb = BasicBlock::Create(context, "loop", f);
+  auto* inc_bb = BasicBlock::Create(context, "loop", f);
+  auto* after_loop_bb = BasicBlock::Create(context, "after_loop_bb", f);
+
+  IRBuilder<> builder(context);
+  builder.SetInsertPoint(entry_bb);
+  // declare a and i
+  auto* a_ptr = builder.CreateAlloca(int_ty);
+  auto* i_ptr = builder.CreateAlloca(int_ty);
+  builder.CreateStore(ConstantInt::get(int_ty, 0), a_ptr, false);  // a = 0
+  builder.CreateStore(ConstantInt::get(int_ty, 0), i_ptr, false);  // i = 0
+
+  builder.CreateBr(cond_bb);
+
+  // cond: bb i < 100
+  builder.SetInsertPoint(cond_bb);
+  auto* int_100 = ConstantInt::get(int_ty, 100);
+  auto* int_1 = ConstantInt::get(int_ty, 1);
+  auto* i = builder.CreateLoad(i_ptr, "i");
+  auto* cond = builder.CreateICmpSLT(i, int_100);
+  builder.CreateCondBr(cond, loop_bb, after_loop_bb);
+
+  // loop br: a += i
+  builder.SetInsertPoint(loop_bb);
+  auto* a = builder.CreateLoad(a_ptr, "a");
+  auto* ii = builder.CreateLoad(i_ptr, "i");
+  auto* add = builder.CreateAdd(a, ii);
+  builder.CreateStore(add, a_ptr);
+  builder.CreateBr(inc_bb);
+
+  // inc bb
+  builder.SetInsertPoint(inc_bb);
+  auto* iii = builder.CreateLoad(i_ptr, "i");
+  auto* add1 = builder.CreateAdd(iii, int_1);
+  builder.CreateStore(add1, i_ptr);
+  builder.CreateBr(cond_bb);
+
+  // after loop
+  builder.SetInsertPoint(after_loop_bb);
+  auto* aa = builder.CreateLoad(a_ptr, "a");
+  builder.CreateRet(aa);
+
+  verifyFunction(*f, &outs());
+  verifyModule(*M, &outs());
+
+  auto jit = cinn::backends::CreateJIT(M);
+  jit->addModule(std::move(module));
+
+  typedef int (*fn_t)();
+  auto symbol = jit->findSymbol("foo");
+  auto* foo = reinterpret_cast<fn_t>(symbol.getAddress().get());
+  LOG(INFO) << "get result: " << foo();
+}
+
+TEST(llvm, external_call) {
+  Target target;
+  llvm::LLVMContext context;
+  std::unique_ptr<llvm::Module> module(new llvm::Module("test", context));
+
+  llvm::IRBuilder<> builder(context);
+
+  llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(context), /*not vararg*/ false);
+  auto* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "foo", module.get());
+  llvm::BasicBlock* block = llvm::BasicBlock::Create(context, "EntryBlock", f);
+  builder.SetInsertPoint(block);
+
+  llvm::kprintf(module.get(), &builder, "printf works: %s\n", "world");
+  llvm::kprintf(module.get(), &builder, "haha works: %s\n", "Superjomn");
+  llvm::kprintf(module.get(), &builder, "haha %d", llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), 1));
+
+  builder.CreateRet(nullptr);
+
+  std::error_code EC;
+  llvm::raw_fd_ostream OS("file.ll", EC, llvm::sys::fs::F_None);
+  llvm::WriteBitcodeToFile(module.get(), OS);
+  OS.flush();
+
+  auto jit = cinn::backends::CreateJIT(module.get());
+  jit->addModule(std::move(module));
+  auto symbol = jit->findSymbol("foo");
+
+  typedef void (*fn_t)();
+  fn_t fn = reinterpret_cast<fn_t>(symbol.getAddress().get());
+  fn();
 }

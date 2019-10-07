@@ -253,9 +253,9 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& 
   isl::space model = index_aff.space();
   CINN_DEBUG(2) << "model: " << model;
   iterator_map = isl::manage(isl_pw_multi_aff_align_params(iterator_map.copy(), model.copy()));
-  CINN_DEBUG(2) << "iterator_map: " << iterator_map;
+  CINN_DEBUG(2) << "iterator_map1: " << iterator_map;
   iterator_map = isl::manage(isl_pw_multi_aff_pullback_pw_multi_aff(index_aff.copy(), iterator_map.copy()));
-  CINN_DEBUG(2) << "iterator_map: " << iterator_map;
+  CINN_DEBUG(2) << "iterator_map2: " << iterator_map;
 
   isl::ast_expr index_expr = isl::manage(isl_ast_build_access_from_pw_multi_aff(build, iterator_map.copy()));
   return index_expr;

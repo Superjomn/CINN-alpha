@@ -27,7 +27,6 @@ std::shared_ptr<Function> cinn::Function::make(const std::string& name,
   for (auto& stage : stages) {
     node->AddStage(stage);
   }
-  // node->data_->stages = stages;
   CHECK(node->data_->ctx);
 
   node->EndDefinition();
@@ -58,9 +57,10 @@ void Function::Accept(ir::IRVisitor* visitor) const {}
 // and Allocate.
 const Expr& Function::ComputeTransformedExpr() const {
   if (data_->transformed_expr.valid()) return data_->transformed_expr;
-  if (snippets().size() == 1) {
-    data_->transformed_expr = snippets().back().GetTransformedExpr();
-  } else {
+  data_->transformed_expr = snippets().back().GetTransformedExpr();
+
+  // Only create a new block if there is more than one expressions, to avoid unnecessary block indents.
+  if (snippets().size() > 1UL) {
     // Get a block with none or multiple expressions.
     std::vector<Expr> exprs;
     for (auto& snippet : data_->snippets) {
@@ -68,6 +68,7 @@ const Expr& Function::ComputeTransformedExpr() const {
     }
     data_->transformed_expr = ir::Block::make(std::move(exprs));
   }
+
   return data_->transformed_expr;
 }
 
@@ -100,9 +101,9 @@ void Function::BuildSnippets() {
   LOG_INDENT("Function::BuildSnippets, function " + name());
   auto& snippets = data_->snippets;
   for (auto& stage : data_->stages) {
-    LOG(INFO) << "add stage: " << stage.name() << " " << ir::Dump(stage.expr());
-    LOG(INFO) << "stage.type: " << stage.type();
-    LOG(INFO) << "snippets.size: " << snippets.size();
+    CINN_DEBUG(3) << "add stage: " << stage.name() << " " << ir::Dump(stage.expr());
+    CINN_DEBUG(4) << "stage.type: " << stage.type();
+    CINN_DEBUG(6) << "snippets.size: " << snippets.size();
     // add to snippets
     if (snippets.empty() || snippets.back().is_unk()) {
       snippets.emplace_back();
@@ -305,16 +306,16 @@ Expr Snippet::GetTransformedExpr() const {
   if (!is_polyhedral()) {
     if (stages_.size() == 1) {
       return stages_.back().expr();
+    } else {
+      // collect none or multiple stages.
+      std::vector<Expr> exprs;
+      for (auto& stage : stages_) {
+        // TODO need CopyExpr here ?
+        CINN_DEBUG(3) << "collect non-polyhedral expr " << ir::Dump(stage.expr());
+        exprs.emplace_back(stage.expr());
+      }
+      return ir::Block::make(std::move(exprs));
     }
-
-    // collect none or multiple stages.
-    std::vector<Expr> exprs;
-    for (auto& stage : stages_) {
-      // TODO need CopyExpr here ?
-      CINN_DEBUG(3) << "collect non-polyhedral expr " << ir::Dump(stage.expr());
-      exprs.emplace_back(stage.expr());
-    }
-    return ir::Block::make(std::move(exprs));
   }
 
   isl::ast_node ast = GenerateIslAst();

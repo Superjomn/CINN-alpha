@@ -16,7 +16,7 @@ void Module::Lower() {
 
 void Module::Dump() {}
 
-Module Module::LinkModules(const std::string &name, const std::vector<Module> &modules) {}
+// Module Module::LinkModules(const std::string &name, const std::vector<Module> &modules) {}
 
 class AssignTargetNameCollector : public ir::IRVisitor {
  public:

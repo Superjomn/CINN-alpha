@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 
-add_definitions(-std=c++11)
+project(CINN)
+
+set(CMAKE_CXX_STANDARD 11)
+
 
 option(WITH_TESTING         "Compile with Unittests"          ON)
 
@@ -14,3 +17,4 @@ include(cmake/external/glog.cmake)
 include(cmake/external/gtest.cmake)
 
 add_subdirectory(cinn)
+add_subdirectory(exe_tests)

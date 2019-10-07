@@ -67,6 +67,9 @@ class IRPrinter : public IRVisitor {
   void Visit(const Function *op) override;
   void Visit(const Allocate *op) override;
 
+  void indent_left() { indent_size_--; }
+  void indent_right() { indent_size_++; }
+
   void set_reference_braces(const std::string &x) { reference_braces = x; }
 
   virtual ~IRPrinter() = default;

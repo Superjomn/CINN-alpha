@@ -22,7 +22,6 @@
 namespace cinn {
 
 class PassRegistry {
-  std::vector<std::string> passes_in_order_;
   std::map<std::string, std::unique_ptr<Pass>> data_;
 
  public:
@@ -31,15 +30,16 @@ class PassRegistry {
     return x;
   }
 
-  Pass* RegisterPass(const std::string& name, std::unique_ptr<Pass>&& x) { data_[name] = std::move(x); }
+  Pass* RegisterPass(const std::string& name, std::unique_ptr<Pass>&& x) {
+    data_[name] = std::move(x);
+    return data_[name].get();
+  }
 
   Pass* GetPass(const std::string& name) {
     auto it = data_.find(name);
     if (it != data_.end()) return it->second.get();
     return nullptr;
   }
-
- private:
 };
 
 template <typename T>

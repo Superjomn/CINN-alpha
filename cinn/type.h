@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include "cinn/utils/macros.h"
 
 namespace cinn {
 
@@ -27,6 +28,27 @@ enum class primitive_t : int {
   boolean,
   void_,  // control statement without primitive return, such as function, for, if, allocate and so on.
 };
+
+//! Get a string representation of a primitive type.
+static std::string ptype_to_str(primitive_t type) {
+  switch (type) {
+#define __(type__)           \
+  case primitive_t ::type__: \
+    return #type__;
+
+    PRIMITIVE_TYPE_FOR_EACH(__)
+
+    case primitive_t ::void_:
+      return "void";
+    case primitive_t ::unk:
+      return "unk";
+
+#undef __
+  }
+}
+
+//! Get a string representation for a primitive_t represented pointer type.
+static std::string ptype_to_pointer_type_repr(primitive_t type) { return ptype_to_str(type) + "*"; }
 
 // TODO(Superjomn) compose this to Type.
 static bool is_integer(primitive_t ptype) {

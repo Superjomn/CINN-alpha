@@ -1,55 +1,38 @@
 #include "cinn/backends/code_gen_c.h"
+#include <fstream>
 #include <string>
 #include <vector>
 #include "cinn/core/function.h"
 #include "cinn/core/optimize/optimizer.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
+#include "cinn/utils/logging.h"
 #include "cinn/utils/string.h"
 
 namespace cinn {
 namespace backends {
 
-void CppCodeGen::PrintHeader() {
+void C_CodeGen::PrintHeader() {
   os_ << "#include <stdio.h>\n";
   os_ << "\n";
-  os_ << "typedef char int8_t;\n";
-  os_ << "typedef long long int64_t;\n";
-  os_ << "typedef unsigned char uint8_t;\n";
-  os_ << "typedef unsigned int uint32_t;\n";
-  os_ << "typedef unsigned long long uint64_t;\n";
+  os_ << "typedef char cinn_int8_t;\n";
+  os_ << "typedef long long cinn_int64_t;\n";
+  os_ << "typedef unsigned char cinn_uint8_t;\n";
+  os_ << "typedef unsigned int cinn_uint32_t;\n";
+  os_ << "typedef unsigned long long cinn_uint64_t;\n";
+  os_ << "typedef float cinn_float32_t;\n";
   os_ << "\n\n";
 }
 
-void CppCodeGen::PrintType(primitive_t ptype) {
-  switch (ptype) {
-#define __(ptype, repr)    \
-  case primitive_t::ptype: \
-    os_ << #repr;          \
-    break;
-
-    __(int64, int64_t)
-    __(int32, int)
-    __(float32, float)
-    __(float64, double)
-    __(boolean, bool)
-    __(uint8, uint8_t)
-    __(uint32, uint32_t)
-    __(uint64, uint64_t)
-
-#undef __
-  }
-}
-
-void CppCodeGen::PrintFileGuardHeader() {
+void C_CodeGen::PrintFileGuardHeader() {
   os_ << "#ifndef " << file_guard << "\n";
   os_ << "#define " << file_guard << "\n";
 }
 
-void CppCodeGen::PrintFileGuardFooter() { os_ << "\n\n#endif  // " << file_guard << "\n"; }
+void C_CodeGen::PrintFileGuardFooter() { os_ << "\n\n#endif  // " << file_guard << "\n"; }
 
-void CppCodeGen::Visit(const ir::For *op) {
-  os_ << "for(int ";
+void C_CodeGen::Visit(const ir::For *op) {
+  os_ << "for (int ";
   Print(op->iterator);
   os_ << " = ";
   Print(op->iter_init);
@@ -63,42 +46,64 @@ void CppCodeGen::Visit(const ir::For *op) {
   Print(op->iter_inc);
   os_ << ") {\n";
 
+  //@{ a block
   Print(op->body);
+  os_ << "\n";
+  //@}
 
   PrintIndent();
   os_ << "}";
 }
 
-void CppCodeGen::Visit(const Function *op) {
+void C_CodeGen::Visit(const Function *op) {
   // input arguments
   std::vector<std::string> arguments;
+
+  auto collect_argument = [&](Expr &x) {
+    CHECK(x.is_var() || x.is_tensor());
+    auto name = x.is_var() ? x.As<ir::Var>()->name() : x.As<ir::Tensor>()->name();
+    arguments.push_back(StringFormat("cinn_%s_t* %s", ptype_to_str(x.ptype()).c_str(), name.c_str()));
+  };
+
   for (int i = 0; i < op->inputs().size(); i++) {
     auto x = op->inputs()[i];
-    CHECK(x.is_var() || x.is_tensor());
-    arguments.push_back("const char* " + (x.is_var() ? x.As<ir::Var>()->name() : x.As<ir::Tensor>()->name()));
-    // os_ << "char* " << op->inputs()[i].As<ir::Var>()->name() << ", ";
+    collect_argument(x);
   }
-  for (int i = 0; i < op->outputs().size() - 1; i++) {
-    auto x = op->inputs()[i];
-    CHECK(x.is_var() || x.is_tensor());
-    arguments.push_back("const char* " + (x.is_var() ? x.As<ir::Var>()->name() : x.As<ir::Tensor>()->name()));
+  for (int i = 0; i < op->outputs().size(); i++) {
+    auto x = op->outputs()[i];
+    collect_argument(x);
   }
+
+  CHECK(!arguments.empty()) << "no function argument is provided";
 
   PrintIndent();
-  os_ << StringFormat("void %s (%s) {\n", op->name().c_str(), Concat(arguments, ", ").c_str());
+  auto definition = StringFormat("void %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
 
-  indent_size_++;
+  if (compile_mode_ == Mode::source) {
+    os_ << definition << " {\n";
 
-  auto expr = op->ComputeTransformedExpr();
-  optimizer(&expr);
+    auto expr = op->ComputeTransformedExpr();
 
-  Print(expr);
+    if (!expr.is_block()) indent_right();
+    //@{ a block
+    PrintIndent();
+    Print(expr);
+    //@}
+    if (!expr.is_block()) indent_left();
 
-  indent_size_--;
-  os_ << "}";
+    // indent_size_--;
+    Println();
+    PrintIndent();
+    os_ << "}";
+
+  } else if (compile_mode_ == Mode::header) {
+    os_ << definition << ";\n";
+  } else {
+    LOG(FATAL) << "not supported compile mode";
+  }
 }
 
-void CppCodeGen::Visit(const ir::Reference *op) {
+void C_CodeGen::Visit(const ir::Reference *op) {
   Print(op->target);
   os_ << "[";
   std::vector<std::string> iterators;
@@ -109,15 +114,68 @@ void CppCodeGen::Visit(const ir::Reference *op) {
   os_ << "]";
 }
 
-void CppCodeGen::Visit(const ir::Tensor *op) { os_ << op->name(); }
+void C_CodeGen::Visit(const ir::Tensor *op) { os_ << op->name(); }
 
-void CppCodeGen::operator()(const ir::Expr &expr) {
+void C_CodeGen::operator()(const ir::Expr &expr) {
   optimizer(const_cast<Expr *>(&expr));
 
   PrintFileGuardHeader();
   PrintHeader();
   Print(expr);
   PrintFileGuardFooter();
+}
+
+void C_CodeGen::WriteToFile(const std::string &path) const {
+  CINN_DEBUG(0) << "Write " << path;
+  std::ofstream file(path);
+  CHECK(file.is_open()) << "failed to open file " << path;
+  file << compiled_code();
+  file.close();
+}
+
+void C_CodeGen::Println(bool force) {
+  std::string str = ss_.str();
+  ss_.str("");
+  if (!force) {
+    if (str.empty() || str.back() != '\n') {
+      ss_ << str << '\n';
+    } else {
+      ss_ << str;
+    }
+  } else {
+    ss_ << str;
+  }
+}
+
+void C_CodeGen::Visit(const ir::Block *op) {
+  indent_right();
+  for (size_t i = 0; i < op->exprs.size(); i++) {
+    auto &expr = op->exprs[i];
+    PrintIndent();
+    Print(expr);
+    if (i != op->exprs.size() - 1) os_ << "\n";
+  }
+
+  indent_left();
+  // PrintIndent();
+  // os_ << "}%_B" << indent_size_;
+}
+
+void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std::string &source_file) {
+  CHECK(!header_file.empty()) << "header file path is empty";
+  CHECK(!source_file.empty()) << "source file path is empty";
+  {  // write source file
+    C_CodeGen gen(/*is source*/ true);
+    gen(expr);
+    gen.WriteToFile(source_file);
+  }
+
+  {  // write header file
+    C_CodeGen gen(/*is source*/ false);
+    gen(expr);
+
+    gen.WriteToFile(header_file);
+  }
 }
 
 }  // namespace backends

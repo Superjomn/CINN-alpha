@@ -1,3 +1,4 @@
+#pragma once
 #include <glog/logging.h>
 #include <gtest/gtest_prod.h>
 #include <iostream>
@@ -10,28 +11,13 @@ namespace cinn {
 namespace backends {
 
 /**
- * Code generator for LLVM.
+ * @brief Code generator for LLVM.
  */
 class CodeGenLLVM : public ir::IRPrinter {
   llvm::LLVMContext *ctx_{};
 
  public:
-  explicit CodeGenLLVM(Target target, llvm::LLVMContext &ctx) : target_(target), ctx_(&ctx), IRPrinter(std::cerr) {
-    CHECK(ctx_);
-
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
-
-    void_t = llvm::Type::getVoidTy(*ctx_);
-    i8_t = llvm::Type::getInt8Ty(*ctx_);
-    i16_t = llvm::Type::getInt16Ty(*ctx_);
-    i32_t = llvm::Type::getInt32Ty(*ctx_);
-    i64_t = llvm::Type::getInt64Ty(*ctx_);
-    f16_t = llvm::Type::getHalfTy(*ctx_);
-    f32_t = llvm::Type::getFloatTy(*ctx_);
-    f64_t = llvm::Type::getDoubleTy(*ctx_);
-  }
+  explicit CodeGenLLVM(Target target, llvm::LLVMContext &ctx, llvm::Module *module);
 
  public:
   void Visit(const ir::Expr *op) override { IRPrinter::Visit(op); }
@@ -59,7 +45,7 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void Visit(const ir::EQ *op) override;
 
-  void Visit(const ir::For *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::For *op) override;
 
   void Visit(const ir::IfThenElse *op) override { IRPrinter::Visit(op); }
 
@@ -75,19 +61,19 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void Visit(const ir::Or *op) override;
 
-  void Visit(const ir::Block *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::Block *op) override;
 
   void Visit(const ir::IntImm *op) override;
 
   void Visit(const ir::FloatImm *op) override;
 
-  void Visit(const ir::Tensor *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::Tensor *op) override;
 
   void Visit(const ir::Constant *op) override;
 
-  void Visit(const ir::Var *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::Var *op) override;
 
-  void Visit(const ir::Reference *op) override { IRPrinter::Visit(op); }
+  void Visit(const ir::Reference *op) override;
 
   void Visit(const ir::Call *op) override { IRPrinter::Visit(op); }
 
@@ -101,6 +87,7 @@ class CodeGenLLVM : public ir::IRPrinter {
   /** Some useful llvm types */
   // @{
   llvm::Type *void_t, *i8_t, *i16_t, *i32_t, *i64_t, *f16_t, *f32_t, *f64_t;
+  llvm::Type *f16ptr_t, *f32ptr_t, *f64ptr_t, *i32ptr_t;
   // @}
 
   //! Emit code that evaluates an expression, and return the llvm IR value.
@@ -110,16 +97,27 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   llvm::Function *CreateFunctionPrototype(const Function *op);
 
- private:
-  Target target_;
+  llvm::Module &module() { return *module_; }
 
-  std::unique_ptr<llvm::Module> module_;
-  llvm::Function *function_;
-  llvm::LLVMContext *context_;
-  llvm::IRBuilder<llvm::ConstantFolder, llvm::IRBuilderDefaultInserter> *builder_;
-  llvm::Value *value_;
+  void ReadTensorElement(const ir::Reference &ref);
+
+ private:
+  Target target_{};
+
+  llvm::Module *module_{};
+  llvm::Function *function_{};
+  llvm::IRBuilder<llvm::ConstantFolder, llvm::IRBuilderDefaultInserter> *builder_{};
+  llvm::Value *value_{};
+
+  // function arguments.
+  std::map<std::string, llvm::Argument *> fn_args_;
+  // name to llvm pointer.
+  std::map<std::string, llvm::Value *> for_iterator_vars_;
 
   FRIEND_TEST(code_gen_llvm, basic);
+  FRIEND_TEST(code_gen_llvm, array);
+  FRIEND_TEST(code_gen_llvm, forloop);
+  FRIEND_TEST(code_gen_llvm, array_ref);
 };
 
 }  // namespace backends

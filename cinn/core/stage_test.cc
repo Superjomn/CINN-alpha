@@ -74,7 +74,7 @@ TEST(Stage, Interchange) {
     auto repr = GetStreamStr(s0.schedule());
     ASSERT_EQ(
         repr,
-        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 99 and 0 <= j <= 300 and 0 < k <= 200 }",
+        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 98 and 0 <= j <= 299 and 0 < k <= 199 }",
                      s0.name().c_str(),
                      s0.name().c_str()));
     LOG(INFO) << "schedule: " << s0.schedule();
@@ -86,14 +86,14 @@ TEST(Stage, Interchange) {
     auto repr = GetStreamStr(s0.schedule());
     ASSERT_EQ(
         repr,
-        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 99 and 0 <= j <= 300 and 0 < k <= 200 }",
+        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 98 and 0 <= j <= 299 and 0 < k <= 199 }",
                      s0.name().c_str(),
                      s0.name().c_str()));
     LOG(INFO) << "schedule: " << s0.schedule();
     LOG(INFO) << s0.DumpIslC();
     ASSERT_EQ(s0.DumpIslC(),
-              StringFormat("for (int j = 0; j <= 300; j += 1)\n  for (int i = 0; i <= 99; i += 1)\n    for (int k = 1; "
-                           "k <= 200; k += 1)\n      %s(i, j, k);\n",
+              StringFormat("for (int j = 0; j <= 299; j += 1)\n  for (int i = 0; i <= 98; i += 1)\n    for (int k = 1; "
+                           "k <= 199; k += 1)\n      %s(i, j, k);\n",
                            s0.name().c_str()));
   }
 }
@@ -128,7 +128,7 @@ TEST(Stage, BuildDomainFromDimensions) {
 
   auto domains = BuildDomainFromDimensions({I, J, M}, {"ii0", "ii1", "ii2"});
   LOG(INFO) << "domains: " << domains;
-  ASSERT_EQ(GetStreamStr(domains), "{ [ii0, ii1, ii2] : 0 <= ii0 <= 30 and 0 <= ii1 <= 40 and 0 <= ii2 <= 20 }");
+  ASSERT_EQ(GetStreamStr(domains), "{ [ii0, ii1, ii2] : 0 <= ii0 <= 29 and 0 <= ii1 <= 39 and 0 <= ii2 <= 19 }");
 }
 
 TEST(Stage, BuildDomainFromExprWithDimension) {
@@ -145,7 +145,7 @@ TEST(Stage, BuildDomainFromExprWithDimension) {
 
   auto domain = BuildDomainFromExprWithDimension(iterators, {I, J, M});
   LOG(INFO) << "domain " << domain;
-  ASSERT_EQ(GetStreamStr(domain), "{ [i0, i1, i2] : 0 <= i0 <= 15 and -3 <= i1 <= 37 and 2 <= i2 <= 22 }");
+  ASSERT_EQ(GetStreamStr(domain), "{ [i0, i1, i2] : 0 <= i0 <= 14 and -3 <= i1 <= 36 and 2 <= i2 <= 21 }");
 }
 
 TEST(Stage, syntax) {

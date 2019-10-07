@@ -285,6 +285,7 @@ class Expr : public IRHandle {
   IS_TYPE(function_call, Call)
   IS_TYPE(tensor, Tensor)
   IS_TYPE(function, Function)
+  IS_TYPE(block, Block)
 #undef IS_TYPE
 
   virtual void Accept(IRVisitor* visitor) const { ptr_->Accept(visitor); }

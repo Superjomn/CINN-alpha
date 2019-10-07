@@ -1,9 +1,5 @@
 #pragma once
 
-//#include <llvm/ExecutionEngine/JITEventListener.h>
-//#include <llvm/ExecutionEngine/MCJIT.h>
-//#include <llvm/ExecutionEngine/SectionMemoryManager.h>
-
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -28,4 +24,50 @@
 #include <llvm/Transforms/Instrumentation.h>
 #include <llvm/Transforms/Utils/ModuleUtils.h>
 #include <llvm/Transforms/Utils/SymbolRewriter.h>
+#include <cstdarg>
 #include "llvm/Support/ErrorHandling.h"
+
+namespace llvm {
+
+static void kprintf(llvm::Module* module, llvm::IRBuilder<>* builder, const char* format, ...) {
+  using namespace llvm;
+  llvm::Function* func_printf = module->getFunction("printf");
+  if (!func_printf) {
+    auto* pty = llvm::PointerType::get(IntegerType::get(module->getContext(), 8), 0);
+    FunctionType* func_ty = FunctionType::get(IntegerType::get(module->getContext(), 32), true);
+
+    func_printf = llvm::Function::Create(func_ty, GlobalValue::ExternalLinkage, "printf", module);
+  }
+
+  Value* str = builder->CreateGlobalStringPtr(format);
+  std::vector<Value*> int32_call_params;
+  int32_call_params.push_back(str);
+
+  va_list ap;
+  va_start(ap, format);
+
+  char* str_ptr = va_arg(ap, char*);
+  Value* format_ptr = builder->CreateGlobalStringPtr(str_ptr);
+  int32_call_params.push_back(format_ptr);
+
+  builder->CreateCall(func_printf, int32_call_params, "");
+}
+
+static void kprintf(llvm::Module* module, llvm::IRBuilder<>* builder, const char* format, llvm::Value* i) {
+  using namespace llvm;
+  llvm::Function* func_printf = module->getFunction("printf");
+  if (!func_printf) {
+    auto* pty = llvm::PointerType::get(IntegerType::get(module->getContext(), 8), 0);
+    FunctionType* func_ty = FunctionType::get(IntegerType::get(module->getContext(), 32), true);
+
+    func_printf = llvm::Function::Create(func_ty, GlobalValue::ExternalLinkage, "printf", module);
+  }
+
+  Value* str = builder->CreateGlobalStringPtr(format);
+  std::vector<Value*> int32_call_params;
+  int32_call_params.push_back(str);
+  int32_call_params.push_back(i);
+
+  builder->CreateCall(func_printf, int32_call_params, "");
+}
+}  // namespace llvm

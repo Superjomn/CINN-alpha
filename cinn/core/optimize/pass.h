@@ -8,6 +8,9 @@
 
 namespace cinn {
 
+/**
+ * @brief Pass is the basic module of optimizer. One can implement the Impl method to create a new pass.
+ */
 class Pass {
   std::string name_;
 
@@ -22,7 +25,10 @@ class Pass {
   //! The implementation of this pass.
   virtual void Impl(ir::Expr* expr) = 0;
 
+  //! The name of this pass.
   const std::string& name() const { return name_; }
+
+  virtual ~Pass() = default;
 };
 
 }  // namespace cinn

@@ -64,7 +64,7 @@ void IRMutator::Mutate(For* op, Expr* expr) {
 }
 void IRMutator::Mutate(IfThenElse* op, Expr* expr) {}
 void IRMutator::Mutate(Block* op, Expr* expr) {
-  CINN_DEBUG(0) << "mutating block ";
+  CINN_DEBUG(5) << "mutating block ";
   for (auto& expr : op->exprs) {
     Mutate(&expr, &expr);
   }

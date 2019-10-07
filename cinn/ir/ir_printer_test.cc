@@ -51,7 +51,25 @@ TEST(IRPrinter, block) {
   printer.Print(block);
 
   auto log = os.str();
-  LOG(INFO) << log;
+  LOG(INFO) << "\n" << log;
+}
+
+TEST(IRPrinter, block1) {
+  Expr a(0.1f), b(1.f);
+  Expr c = a > b;
+  Expr c0 = a != b;
+  Expr c1 = a + b;
+
+  auto block = Block::make(std::vector<Expr>({c, c0, c1}));
+
+  auto block1 = Block::make(std::vector<Expr>({block}));
+
+  std::stringstream os;
+  IRPrinter printer(os);
+  printer.Print(block1);
+
+  auto log = os.str();
+  LOG(INFO) << "\n" << log;
 }
 
 TEST(IRPrinter, IfThenElse) {

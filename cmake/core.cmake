@@ -38,7 +38,7 @@ function(cc_library TARGET_NAME)
   if (NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
     message(STATUS "xxxxx target:${TARGET_NAME}")
     target_link_libraries(${TARGET_NAME} ${isl_lib})
-  endif()
+  endif(NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
 endfunction(cc_library)
 
 

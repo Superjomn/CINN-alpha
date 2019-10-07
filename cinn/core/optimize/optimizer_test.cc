@@ -18,7 +18,8 @@ TEST(Optimizer_pass, indices_to_absolute_offset) {
   auto log = ir::Dump(expr);
   LOG(INFO) << "ir: " << log;
 
-  ASSERT_EQ(log, "A<>[((((i0 * 30) + i1) * 40) + i2)]");
+  auto target = "A<>[((((((i0 * 40) * 60) + i1) * 40) * 60) + i2)]";
+  ASSERT_EQ(log, target);
 }
 
 }  // namespace cinn

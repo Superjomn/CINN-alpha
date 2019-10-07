@@ -9,13 +9,27 @@ namespace cinn {
 struct Mutator : public ir::IRMutator {
   void Mutate(ir::Expr *op, ir::Expr *expr) { ir::IRMutator::Mutate(op, expr); }
 
+  /**
+   * @brief Replace the index with absolute offset.
+   * @param op the tensor reference.
+   * @param expr the root expression.
+   *
+   * e.g.
+   *
+   * Tensor t({M,N});
+   *
+   * t[t0][t1] will be transformed to t[t0*N+t1]
+   *
+   */
   void Mutate(ir::Reference *op, ir::Expr *expr) override {
     CHECK(op->target.is_tensor());
     auto *tensor = op->target.As<ir::Tensor>();
 
     ir::Expr new_iterator = op->iterators.front();
     for (size_t i = 1; i < op->iterators.size(); i++) {
-      new_iterator = new_iterator * tensor->dims()[i - 1];
+      for (size_t j = 1; j < op->iterators.size(); j++) {
+        new_iterator = new_iterator * tensor->dims()[j];
+      }
       new_iterator = new_iterator + op->iterators[i];
     }
 

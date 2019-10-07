@@ -54,6 +54,8 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
   bool is_unk() const { return ptype() == primitive_t::unk; }
   bool is_boolean() const { return ptype() == primitive_t::boolean; }
 
+  virtual ~IRNode() = default;
+
  protected:
   NodeTy type_{NodeTy::Var};
   primitive_t ptype_{primitive_t::unk};
