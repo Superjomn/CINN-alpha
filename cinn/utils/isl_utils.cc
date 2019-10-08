@@ -19,6 +19,17 @@ std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type typ
   return StringFormat("%s[%s]", tuple_name, Concat(dims, ", ").c_str());
 }
 
+std::string isl_set_get_statement_repr(isl_set *set) {
+  CHECK(set);
+  auto tuple_name = isl_set_get_tuple_name(set);
+  std::vector<std::string> dims;
+
+  for (int i = 0; i < isl_set_dim(set, isl_dim_set); i++) {
+    dims.push_back(isl_set_get_dim_name(set, isl_dim_set, i));
+  }
+  return StringFormat("%s[%s]", tuple_name, Concat(dims, ", ").c_str());
+}
+
 int isl_map_get_dim_pos_by_name(isl_map *map, isl_dim_type type, const std::string &name) {
   for (int i = 0; i < isl_map_dim(map, type); i++) {
     if (isl_map_get_dim_name(map, type, i) == name) return i;
@@ -164,10 +175,12 @@ isl_ast_build *isl_ast_build_set_iterators(__isl_take isl_ast_build *build, cons
 }
 
 std::string UpdateGlobalFilter(isl_schedule_node *node) {
+  CHECK(node);
   CHECK(isl_schedule_node_get_type(node) == isl_schedule_node_band);
   auto *parent = isl_schedule_node_parent(isl_schedule_node_copy(node));
   switch (isl_schedule_node_get_type(parent)) {
     case isl_schedule_node_filter: {
+      LOG(INFO) << "get a filter";
       isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(parent));
       isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
       if (isl_set_list_size(set_list) == 1) {
@@ -179,6 +192,7 @@ std::string UpdateGlobalFilter(isl_schedule_node *node) {
       isl_set_list_free(set_list);
     } break;
     case isl_schedule_node_domain: {
+      LOG(INFO) << "get a domain";
       isl::union_set filter = isl::manage(isl_schedule_node_domain_get_domain(parent));
       isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
       if (isl_set_list_size(set_list) == 1) {
@@ -198,7 +212,6 @@ std::string UpdateGlobalFilter(isl_schedule_node *node) {
 isl_schedule_node *node_tiler(isl_schedule_node *node, void *user) {
   CHECK(node);
   auto ntype = isl_schedule_node_get_type(node);
-  isl_ctx *ctx = isl_schedule_node_get_ctx(node);
   // value to be returned
   switch (ntype) {
     case isl_schedule_node_band: {
@@ -212,7 +225,7 @@ isl_schedule_node *node_tiler(isl_schedule_node *node, void *user) {
       LOG(INFO) << "space: " << isl_space_to_str(space);
       // LOG(INFO) << "relation: " <<
       // isl_union_map_to_str(isl_schedule_node_band_get_partial_schedule_union_map(node));
-      std::string node_name = isl_space_get_tuple_name(space, isl_dim_in);
+      // std::string node_name = isl_space_get_tuple_name(space, isl_dim_in);
 
       UpdateGlobalFilter(node);
       CHECK(node);
@@ -239,38 +252,39 @@ isl_schedule_node *node_tiler(isl_schedule_node *node, void *user) {
       return tiled_node;
     }
 
-    // Collect the filter that has only one isl_set, and record the latest tuple name to treat as the statement's name.
-    /*
-case isl_schedule_node_filter: {
-  LOG(INFO) << "xx get filter";
-  isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node));
-  isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
-  if (isl_set_list_size(set_list) == 1) {
-    isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
-    auto tuple_name = isl_set_get_tuple_name(first.get());
-    LOG(INFO) << "collect filter tuple " << tuple_name;
-    IslTileGenerator::Global().set_schedule_filter(first);
+      // Collect the filter that has only one isl_set, and record the latest tuple name to treat as the statement's
+      // name.
+      /*
+  case isl_schedule_node_filter: {
+    LOG(INFO) << "xx get filter";
+    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node));
+    isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
+    if (isl_set_list_size(set_list) == 1) {
+      isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
+      auto tuple_name = isl_set_get_tuple_name(first.get());
+      LOG(INFO) << "collect filter tuple " << tuple_name;
+      IslTileGenerator::Global().set_schedule_filter(first);
+    }
+    isl_set_list_free(set_list);
+    return node;
   }
-  isl_set_list_free(set_list);
-  return node;
-}
 
-// In case there is only one set in the domain and no filter exists.
-case isl_schedule_node_domain: {
-  LOG(INFO) << "xx get domain";
-  LOG(INFO) << isl_schedule_node_to_str(node);
-  isl::union_set domain = isl::manage(isl_schedule_node_domain_get_domain(node));
-  isl_set_list *set_list = isl_union_set_get_set_list(domain.get());
-  if (isl_set_list_size(set_list) == 1) {
-    isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
-    auto tuple_name = isl_set_get_tuple_name(first.get());
-    LOG(INFO) << "collect filter tuple " << tuple_name;
-    IslTileGenerator::Global().set_schedule_filter(first);
+  // In case there is only one set in the domain and no filter exists.
+  case isl_schedule_node_domain: {
+    LOG(INFO) << "xx get domain";
+    LOG(INFO) << isl_schedule_node_to_str(node);
+    isl::union_set domain = isl::manage(isl_schedule_node_domain_get_domain(node));
+    isl_set_list *set_list = isl_union_set_get_set_list(domain.get());
+    if (isl_set_list_size(set_list) == 1) {
+      isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
+      auto tuple_name = isl_set_get_tuple_name(first.get());
+      LOG(INFO) << "collect filter tuple " << tuple_name;
+      IslTileGenerator::Global().set_schedule_filter(first);
+    }
+    isl_set_list_free(set_list);
+    return node;
   }
-  isl_set_list_free(set_list);
-  return node;
-}
-     */
+       */
 
     default:
       return node;
@@ -300,5 +314,4 @@ isl_schedule_node *tile_band(isl_schedule_node *node, isl_multi_val *sizes) {
 
   return node;
 }
-
 }  // namespace cinn

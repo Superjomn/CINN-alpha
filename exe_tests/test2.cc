@@ -19,7 +19,7 @@ TEST(cinn, mat_mul) {
 
     auto s0 = fn.AddStage(  //
         C[m][n].Assign(C[m][n] + A[m][k] * B[k][n]));
-    // s0.Interchange(m, n);
+
     std::map<std::string, int> tiles;
     s0.Tile(m, 4);
     s0.Tile(n, 4);

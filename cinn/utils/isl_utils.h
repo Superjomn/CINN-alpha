@@ -27,6 +27,9 @@ std::string isl_set_to_statement_repr(__isl_keep isl_set *set);
 //! Get a representation of the tuple in the map.
 std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type type);
 
+//! Get a representation of the tuple in the set.
+std::string isl_set_get_statement_repr(__isl_keep isl_set *set);
+
 //! Get a dimension position if it match the name. return -1 if not exists.
 int isl_map_get_dim_pos_by_name(__isl_keep isl_map *map, isl_dim_type type, const std::string &name);
 
