@@ -162,4 +162,143 @@ isl_ast_build *isl_ast_build_set_iterators(__isl_take isl_ast_build *build, cons
   }
   return isl_ast_build_set_iterators(build, ids);
 }
+
+std::string UpdateGlobalFilter(isl_schedule_node *node) {
+  CHECK(isl_schedule_node_get_type(node) == isl_schedule_node_band);
+  auto *parent = isl_schedule_node_parent(isl_schedule_node_copy(node));
+  switch (isl_schedule_node_get_type(parent)) {
+    case isl_schedule_node_filter: {
+      isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(parent));
+      isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
+      if (isl_set_list_size(set_list) == 1) {
+        isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
+        auto tuple_name = isl_set_get_tuple_name(first.get());
+        LOG(INFO) << "collect filter tuple " << tuple_name;
+        IslTileGenerator::Global().set_schedule_filter(first);
+      }
+      isl_set_list_free(set_list);
+    } break;
+    case isl_schedule_node_domain: {
+      isl::union_set filter = isl::manage(isl_schedule_node_domain_get_domain(parent));
+      isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
+      if (isl_set_list_size(set_list) == 1) {
+        isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
+        auto tuple_name = isl_set_get_tuple_name(first.get());
+        LOG(INFO) << "collect filter tuple " << tuple_name;
+        IslTileGenerator::Global().set_schedule_filter(first);
+      }
+      isl_set_list_free(set_list);
+    } break;
+
+    default:
+      break;
+  }
+}
+
+isl_schedule_node *node_tiler(isl_schedule_node *node, void *user) {
+  CHECK(node);
+  auto ntype = isl_schedule_node_get_type(node);
+  isl_ctx *ctx = isl_schedule_node_get_ctx(node);
+  // value to be returned
+  switch (ntype) {
+    case isl_schedule_node_band: {
+      LOG(INFO) << "xx get band";
+      LOG(INFO) << isl_schedule_node_to_str(node);
+      if (isl_schedule_node_has_children(node) != isl_bool_true) return node;
+      isl_schedule_node *tiled_node;
+      isl_space *space = isl_schedule_node_band_get_space(node);
+      LOG(INFO) << "latest filter: " << IslTileGenerator::Global().schedule_filter_tuple();
+      LOG(INFO) << "target stage: " << IslTileGenerator::Global().stage_name();
+      LOG(INFO) << "space: " << isl_space_to_str(space);
+      // LOG(INFO) << "relation: " <<
+      // isl_union_map_to_str(isl_schedule_node_band_get_partial_schedule_union_map(node));
+      std::string node_name = isl_space_get_tuple_name(space, isl_dim_in);
+
+      UpdateGlobalFilter(node);
+      CHECK(node);
+
+      // check whether the node name matches the target stage's name.
+      if (!IslTileGenerator::Global().schedule_filter_match_stage()) {
+        LOG(INFO) << "skip unmatched stage: " << IslTileGenerator::Global().schedule_filter_tuple();
+        return node;
+      }
+      LOG(INFO) << "get matched node: " << IslTileGenerator::Global().stage_name();
+      // This is the only way I found to initialize correctly
+      // a multi_val
+      // tile_sizes = tile_sizes.add(32);
+      auto tile_sizes = IslTileGenerator::Global().GetTileSizes(space);
+      LOG(INFO) << "tile_size: " << tile_sizes;
+
+      tiled_node = tile_band(node, tile_sizes.release());
+      CHECK(tiled_node);
+      // tiled_node = isl_schedule_node_band_set_ast_build_options(tiled_node, isl_union_set_read_from_str(ctx,
+      // "{unroll[x]}"));
+
+      // Reset the global schedule_filter_tuple to avoid duplicate process.
+      IslTileGenerator::Global().ResetScheduleFilter();
+      return tiled_node;
+    }
+
+    // Collect the filter that has only one isl_set, and record the latest tuple name to treat as the statement's name.
+    /*
+case isl_schedule_node_filter: {
+  LOG(INFO) << "xx get filter";
+  isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node));
+  isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
+  if (isl_set_list_size(set_list) == 1) {
+    isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
+    auto tuple_name = isl_set_get_tuple_name(first.get());
+    LOG(INFO) << "collect filter tuple " << tuple_name;
+    IslTileGenerator::Global().set_schedule_filter(first);
+  }
+  isl_set_list_free(set_list);
+  return node;
+}
+
+// In case there is only one set in the domain and no filter exists.
+case isl_schedule_node_domain: {
+  LOG(INFO) << "xx get domain";
+  LOG(INFO) << isl_schedule_node_to_str(node);
+  isl::union_set domain = isl::manage(isl_schedule_node_domain_get_domain(node));
+  isl_set_list *set_list = isl_union_set_get_set_list(domain.get());
+  if (isl_set_list_size(set_list) == 1) {
+    isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
+    auto tuple_name = isl_set_get_tuple_name(first.get());
+    LOG(INFO) << "collect filter tuple " << tuple_name;
+    IslTileGenerator::Global().set_schedule_filter(first);
+  }
+  isl_set_list_free(set_list);
+  return node;
+}
+     */
+
+    default:
+      return node;
+  }
+  return node;
+}
+
+isl_schedule_node *tile_band(isl_schedule_node *node, isl_multi_val *sizes) {
+  CHECK(isl_schedule_node_get_type(node) == isl_schedule_node_band);
+  isl_ctx *ctx = isl_schedule_node_get_ctx(node);
+  int scale_tile;
+  int shift_point;
+
+  scale_tile = isl_options_get_tile_scale_tile_loops(ctx);
+  isl_options_set_tile_scale_tile_loops(ctx, 1);
+  shift_point = isl_options_get_tile_shift_point_loops(ctx);
+  isl_options_set_tile_shift_point_loops(ctx, 1);
+
+  CHECK(node);
+  LOG(INFO) << "space: " << isl_schedule_node_band_get_space(node);
+  LOG(INFO) << "sizes: " << isl_multi_val_to_str(sizes);
+  node = isl_schedule_node_band_tile(node, sizes);
+  CHECK(node);
+
+  isl_options_set_tile_scale_tile_loops(ctx, scale_tile);
+  isl_options_set_tile_shift_point_loops(ctx, shift_point);
+
+  return node;
+}
+
 }  // namespace cinn

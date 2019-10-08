@@ -18,7 +18,7 @@ cc_test(test_llvm_headers_ SRCS llvm_headers_test.cc DEPS ${llvm_libs})
 cc_test(test_code_gen_llvm SRCS code_gen_llvm_test.cc DEPS code_gen_llvm llvm_jit)
 target_link_libraries(test_code_gen_llvm ir_printer)
 
-cc_test(test_isl SRCS isl_test.cc)
+cc_test(test_isl SRCS isl_test.cc DEPS isl_utils)
 target_link_libraries(test_isl ${isl_lib})
 
 cc_library(code_gen_c SRCS code_gen_c.cc DEPS ir_printer ir optimizer)

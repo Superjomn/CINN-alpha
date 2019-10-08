@@ -1,0 +1,40 @@
+/**
+ * @brief This file includes the test for matrix muplication.
+ */
+#include <gtest/gtest.h>
+#include "cinn/cinn.h"
+
+namespace cinn {
+
+TEST(cinn, mat_mul) {
+  ir::Constant M(100), N(200), K(150);
+
+  Function fn("mat_mul");
+  {
+    Expr A({M, K}, primitive_t::float32, "A");
+    Expr B({K, N}, primitive_t::float32, "B");
+    Expr C({M, N}, primitive_t::float32, "C");
+
+    Var m, n, k;
+
+    auto s0 = fn.AddStage(  //
+        C[m][n].Assign(C[m][n] + A[m][k] * B[k][n]));
+    // s0.Interchange(m, n);
+    std::map<std::string, int> tiles;
+    s0.Tile(m, 4);
+    s0.Tile(n, 4);
+
+    fn.Inputs({A, B});
+    fn.Outputs({C});
+
+    fn.EndDefinition();
+  }
+
+  LOG(INFO) << "generated expr:\n" << ir::Dump(Expr(fn));
+
+  backends::CompileAsC(Expr(fn), "exe_test2.h", "exe_test2.cc");
+}
+
+}  // namespace cinn
+
+USE_PASS(indices_to_absolute_offset);

@@ -73,6 +73,9 @@ typedef unsigned int cinn_uint32_t;
 typedef unsigned long long cinn_uint64_t;
 typedef float cinn_float32_t;
 
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#define max(a,b) ((a)>(b) ? (a) : (b))
+
 
 void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
   for (int c0 = 1; (c0 <= 98); c0 += 1) {
@@ -111,6 +114,9 @@ typedef unsigned char cinn_uint8_t;
 typedef unsigned int cinn_uint32_t;
 typedef unsigned long long cinn_uint64_t;
 typedef float cinn_float32_t;
+
+#define min(a,b) ((a)<(b) ? (a) : (b))
+#define max(a,b) ((a)>(b) ? (a) : (b))
 
 
 void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C);

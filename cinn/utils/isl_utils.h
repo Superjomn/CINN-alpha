@@ -9,6 +9,7 @@
 #include <isl/set.h>
 #include <isl/space.h>
 #include <isl/union_set.h>
+#include <map>
 #include <string>
 #include <vector>
 #include "cinn/utils/isl_utils.h"
@@ -26,7 +27,7 @@ std::string isl_set_to_statement_repr(__isl_keep isl_set *set);
 //! Get a representation of the tuple in the map.
 std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type type);
 
-//! Get a dimention position if it match the name. return -1 if not exists.
+//! Get a dimension position if it match the name. return -1 if not exists.
 int isl_map_get_dim_pos_by_name(__isl_keep isl_map *map, isl_dim_type type, const std::string &name);
 
 std::vector<std::string> isl_map_get_dim_names(isl_map *map, isl_dim_type type);
@@ -46,6 +47,69 @@ isl_map *__isl_give isl_map_set_dim_names(isl_map *__isl_give map,
 
 isl_ast_build *__isl_give isl_ast_build_set_iterators(__isl_take isl_ast_build *build,
                                                       const std::vector<std::string> &iterators);
+
+__isl_give isl_schedule_node *tile_band(__isl_take isl_schedule_node *node, __isl_take isl_multi_val *sizes);
+
+/**
+ * A helper to pass argument to caller functions in traversing schedule tree.
+ */
+struct IslTileGenerator {
+  static IslTileGenerator &Global() {
+    static std::unique_ptr<IslTileGenerator> x(new IslTileGenerator);
+    return *x;
+  }
+
+  void set_stage_name(const std::string &name) { stage_name_ = name; }
+  const std::string &stage_name() const { return stage_name_; }
+
+  void ResetScheduleFilter() { schedule_filter_.reset(nullptr); }
+
+  void set_schedule_filter(const isl::set &x) { schedule_filter_.reset(new isl::set(x)); }
+
+  std::string schedule_filter_tuple() const {
+    return schedule_filter_ ? isl_set_get_tuple_name(schedule_filter_->get()) : "";
+  }
+
+  bool schedule_filter_match_stage() const { return stage_name() == schedule_filter_tuple(); }
+
+  void set_tiles(const std::map<std::string, int> &tiles) { tiles_ = tiles; }
+
+  // TODO(Superjomn) many bugs.
+  //! Get the tile block size for the current stage.
+  isl::multi_val GetTileSizes(isl_space *space) {
+    CHECK(schedule_filter_);
+    LOG(INFO) << "filter: " << *schedule_filter_;
+    LOG(INFO) << "space: " << isl_space_to_str(space);
+    // get multi_val initialization from filter set.
+    isl::multi_val sizes = isl::manage(isl_multi_val_zero(isl_space_copy(space)));
+    sizes = sizes.add(32);
+    LOG(INFO) << "sizes: " << sizes;
+
+    /*
+    for (int i = 0; i < isl_space_dim(space, isl_dim_set); i++) {
+      auto *dim_name = isl_space_get_dim_name(space, isl_dim_set, i);
+      auto it = tiles_.find(dim_name);
+      if (it != tiles_.end()) {
+        isl_val *val = isl_val_int_from_si(isl_space_get_ctx(space), it->second);
+        sizes = isl::manage(isl_multi_val_set_at(sizes.release(), i, val));
+      }
+    }
+     */
+    return sizes;
+  }
+
+  isl_set *schedule_filter() const { return schedule_filter_ ? schedule_filter_->get() : nullptr; }
+
+ private:
+  IslTileGenerator() = default;
+  std::map<std::string, int> tiles_;
+  std::string stage_name_;
+  std::unique_ptr<isl::set> schedule_filter_;
+};
+
+// A callback for tile a schedule node.
+// TODO(Superjomn) it is weak, enhance it.
+isl_schedule_node *node_tiler(__isl_take isl_schedule_node *node, void *user);
 
 namespace isl_utils {
 

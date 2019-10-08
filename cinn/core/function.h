@@ -91,6 +91,12 @@ class Snippet {
   //! Generate the isl ast.
   isl::ast_node GenerateIslAst() const;
 
+  //! Tile the stages.
+  void BuildTiles();
+
+  //! Tile a stage at the position of var with size.
+  void TileStage(const std::string& stage_name, const std::map<std::string, int>& tile_sizes);
+
  private:
   //! stages in order.
   std::vector<Stage> stages_;

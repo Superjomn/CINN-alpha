@@ -280,8 +280,27 @@ void Snippet::ComputeSchedule() {
   sc = isl::manage(isl_schedule_constraints_apply(sc.release(), transform_->copy()));
 
   *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.copy()));
+  BuildTiles();
   CINN_DEBUG(3) << "schedule:\n" << isl_utils::DumpSchedule(ctx, *schedule_);
 }
+
+void Snippet::BuildTiles() {
+  LOG(INFO) << "******** build tiles";
+  if (!is_polyhedral()) return;
+
+  CHECK(schedule_) << "schedule tree should be build first before tile";
+
+  for (auto& stage : stages_) {
+    if (stage.tiles().empty()) continue;
+    IslTileGenerator::Global().set_stage_name(stage.name());
+
+    isl_schedule_node* root =
+        isl_schedule_node_map_descendant_bottom_up(isl_schedule_get_root(schedule_->get()), cinn::node_tiler, nullptr);
+    schedule_.reset(new isl::schedule(isl::manage(isl_schedule_node_get_schedule(root))));
+  }
+}
+
+void Snippet::TileStage(const std::string& stage_name, const std::map<std::string, int>& tile_sizes) {}
 
 isl::ast_node Snippet::GenerateIslAst() const {
   LOG_INDENT("Snippet::GenerateIslAst");
@@ -296,6 +315,8 @@ isl::ast_node Snippet::GenerateIslAst() const {
 
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));
+
+  CINN_DEBUG(3) << "schedule tree get C code:\n" << isl_ast_node_to_C_str(ast.get());
   return ast;
 }
 
@@ -318,6 +339,7 @@ Expr Snippet::GetTransformedExpr() const {
     }
   }
 
+  // a polyhedral snippet
   isl::ast_node ast = GenerateIslAst();
   Expr expr;
   IslAstNodeToCinnExpr(ast, &expr);

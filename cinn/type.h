@@ -32,15 +32,15 @@ enum class primitive_t : int {
 //! Get a string representation of a primitive type.
 static std::string ptype_to_str(primitive_t type) {
   switch (type) {
-#define __(type__)           \
-  case primitive_t ::type__: \
+#define __(type__)          \
+  case primitive_t::type__: \
     return #type__;
 
     PRIMITIVE_TYPE_FOR_EACH(__)
 
-    case primitive_t ::void_:
+    case primitive_t::void_:
       return "void";
-    case primitive_t ::unk:
+    case primitive_t::unk:
       return "unk";
 
 #undef __

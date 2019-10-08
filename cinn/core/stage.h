@@ -59,6 +59,9 @@ class Stage {
     std::map<std::string, Expr> indice_map_;
 
     static std::set<std::string> names;
+
+    // Var name to tile size.
+    std::map<std::string, int> tiles;
   };
 
  public:
@@ -127,6 +130,8 @@ class Stage {
 
   const isl_utils::map& schedule() const { return data_->schedule; }
 
+  const std::map<std::string, int> tiles() const { return data_->tiles; }
+
   // Some basic polyhedral transformations
 
   //! Interchange two loop levels `i` and `j`.
@@ -136,7 +141,8 @@ class Stage {
   void Interchange(const std::string& dim0, const std::string& dim1);
 
   //! Tile in `i` iterator by `iw` stride, `j` iterator by `jw` stride.
-  void Tile(ir::Var i, size_t iw, ir::Var j, size_t jw);
+  // void Tile(ir::Var i, size_t iw, ir::Var j, size_t jw);
+  void Tile(ir::Var i, size_t w);
 
   //! Skew in the loop level `i`.
   void Skew(ir::Var i);

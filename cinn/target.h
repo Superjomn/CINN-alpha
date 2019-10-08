@@ -1,10 +1,7 @@
 namespace cinn {
 
 struct Target {
-  enum class OS {
-    UNK = 0,
-    linux,
-  };
+  enum class OS { UNK = 0, Linux = 1 };
 
   enum class Arch {
     UNK = 0,
@@ -24,7 +21,7 @@ struct Target {
   Bits bits_;
 
  public:
-  Target(OS os = OS::linux, Arch arch = Arch::X86, Bits bits = Bits::k64) : os_(os), arch_(arch), bits_(bits) {}
+  Target(OS os = OS::UNK, Arch arch = Arch::X86, Bits bits = Bits::k64) : os_(os), arch_(arch), bits_(bits) {}
 
   OS os() const { return os_; }
   Arch arch() const { return arch_; }

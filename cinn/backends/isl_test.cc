@@ -855,6 +855,47 @@ TEST(isl, schedule_tree) {
   }
 }
 
+void DisplayScheduleC(isl_schedule *schedule) {
+  isl::set C(isl_schedule_get_ctx(schedule), "{:}");
+  isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
+
+  isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), isl_schedule_copy(schedule)));
+
+  LOG(INFO) << "schedule tree get C code:\n\n" << isl_ast_node_to_C_str(ast.get());
+}
+
+TEST(isl, schedule_tile) {
+  isl_ctx *ctx = isl_ctx_alloc();
+
+  LOG(INFO) << "compute schedule";
+  isl::union_set domain(ctx, "[N,M,K] -> {  S1[i,j]: 0<=i,j<=N; S2[i,j,k]: 0 <i,j,k<N }");
+  // S0 << S1
+  isl::union_map validity(ctx, "[N] -> {  S1[b,c]->S2[b,c,k] }");
+  isl::union_map proximity(ctx, "[N]->{ }");
+  isl::schedule_constraints sc = isl::manage(isl_schedule_constraints_on_domain(domain.copy()));
+  sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.copy()));
+  sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.copy()));
+  isl::schedule schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc.copy()));
+  DisplayScheduleC(schedule.get());
+
+  // Add some transformation
+  isl::schedule_constraints sc1 = isl::manage(sc.copy());
+  schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc1.release()));
+  auto *root = isl_schedule_get_root(schedule.get());
+  cinn::IslTileGenerator::Global().set_stage_name("S1");
+  std::map<std::string, int> tiles;
+  tiles["i"] = 32;
+  tiles["j"] = 8;
+  cinn::IslTileGenerator::Global().set_tiles(tiles);
+  DisplayScheduleC(schedule.get());
+  LOG(INFO) << "schedule:\n" << cinn::isl_utils::DumpSchedule(schedule.ctx().get(), schedule);
+  root = isl_schedule_node_map_descendant_bottom_up(root, cinn::node_tiler, nullptr);
+  schedule = isl::manage(isl_schedule_node_get_schedule(root));
+  // LOG(INFO) << "schedule:\n" << cinn::isl_utils::DumpSchedule(schedule.ctx().get(), schedule);
+
+  DisplayScheduleC(schedule.get());
+}
+
 TEST(isl, align) {
   isl_ctx *ctx = isl_ctx_alloc();
 

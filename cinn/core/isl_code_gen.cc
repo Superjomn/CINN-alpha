@@ -232,11 +232,19 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
 
 void ReplaceUseridWithExpr(ir::Expr root, const std::string& userid, ir::Expr e) {}
 
+// TODO(Superjomn) to remove the access argument
 isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& access) {
   CHECK(build);
   LOG_INDENT("CreateIslAstIndexExpression");
   isl::map schedule = isl::manage(isl_map_from_union_map(isl_ast_build_get_schedule(build)));
+
+  // get identity access from schedule.
   CINN_DEBUG(2) << "schedule: " << schedule;
+  auto statement = isl_map_get_statement_repr(schedule.get(), isl_dim_in);
+  auto statement_set = isl::manage(
+      isl_set_read_from_str(isl_map_get_ctx(schedule.get()), StringFormat("{ %s : }", statement.c_str()).c_str()));
+  auto identity_access = isl::manage(isl_set_identity(statement_set.release()));
+  LOG(INFO) << "identity_access: " << identity_access;
 
   isl::map map = isl::manage(isl_map_reverse(schedule.copy()));
   CINN_DEBUG(2) << "schedule reversed: " << map;
@@ -244,7 +252,7 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& 
   isl::pw_multi_aff iterator_map = isl::manage(isl_pw_multi_aff_from_map(map.copy()));
   CINN_DEBUG(2) << "iterator_map: " << iterator_map;
 
-  isl::pw_multi_aff index_aff = isl::manage(isl_pw_multi_aff_from_map(access.copy()));
+  isl::pw_multi_aff index_aff = isl::manage(isl_pw_multi_aff_from_map(identity_access.copy()));
   CINN_DEBUG(2) << "index_aff: " << index_aff;
 
   isl::space model2 = iterator_map.space();

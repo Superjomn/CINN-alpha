@@ -374,6 +374,7 @@ void Stage::Interchange(int pos0, int pos1) {
   data_->schedule = data_->schedule.apply_range(transform);
 }
 
+/*
 void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
   LOG_INDENT("Stage::Tile");
   int posi = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, i.name());
@@ -386,7 +387,12 @@ void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
   Split(i, iw);
   Split(j, jw);
   CINN_DEBUG(3) << "final schedule: " << schedule();
+
+  CINN_DEBUG(3) << "ISL C: \n" << DumpIslC();
 }
+ */
+
+void Stage::Tile(ir::Var i, size_t w) { data_->tiles[i.name()] = w; }
 
 void Stage::Split(const ir::Var& iter, int size) {
   LOG_INDENT("Stage::Split");

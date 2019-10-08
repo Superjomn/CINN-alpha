@@ -197,7 +197,7 @@ TEST(Stage, Tile) {
   Expr C(std::vector<Constant>({I, J}), primitive_t::float32, "C");
 
   Stage s0 = C[i][j].Assign(A[i][k] * B[k][j]);
-  s0.Tile(i, 4, j, 4);
+  s0.Tile(i, 4);
 
   LOG(INFO) << "After split: \n" << s0.DumpIslC();
   LOG(INFO) << "After split: \n" << s0.DumpAsC();

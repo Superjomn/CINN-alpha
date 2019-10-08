@@ -1,9 +1,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <memory>
 #include <vector>
 #include "cinn/utils/math.h"
-#include "exe_tests/exe_test1.h"
+#include "exe_tests/exe_test1.cc"
 
 TEST(exe_tests, test1) {
   const int M = 100;
