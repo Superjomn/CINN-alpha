@@ -130,7 +130,7 @@ std::string isl_set_to_statement_repr(isl_set *set) {
 
 __isl_give isl_map *isl_map_add_dim_and_eq_constraint(__isl_take isl_map *map, int dim_pos, int constant) {
   CHECK(map != NULL);
-  CHECK(dim_pos >= 0);
+  CHECK_GE(dim_pos, 0);
   CHECK(dim_pos <= (signed int)isl_map_dim(map, isl_dim_out));
 
   map = isl_map_insert_dims(map, isl_dim_out, dim_pos, 1);
@@ -280,4 +280,24 @@ isl_schedule_node *tile_band(isl_schedule_node *node, isl_multi_val *sizes) {
 
   return node;
 }
+
+isl_set *isl_set_append_cond(isl_set *set, const char *cond) {
+  if (!cond) return set;
+
+  std::string set_repr = isl_set_to_str(set);
+  isl_ctx *ctx = isl_set_get_ctx(set);
+
+  // ugly append the cond
+  set_repr = set_repr.substr(0, set_repr.size() - 2);
+  LOG(INFO) << "set_repr: " << set_repr;
+
+  if (set_repr.find("and") == std::string::npos) {
+    set_repr = StringFormat("%s %s }", set_repr.c_str(), cond);
+  } else {
+    set_repr = StringFormat("%s and %s }", set_repr.c_str(), cond);
+  }
+  LOG(INFO) << "repr " << set_repr;
+  return isl_set_read_from_str(ctx, set_repr.c_str());
+}
+
 }  // namespace cinn

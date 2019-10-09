@@ -10,6 +10,7 @@
 #include <isl/space.h>
 #include <isl/union_set.h>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 #include "cinn/utils/isl_utils.h"
@@ -107,18 +108,6 @@ struct IslTileGenerator {
     // get multi_val initialization from filter set.
     isl::multi_val sizes = isl::manage(isl_multi_val_zero(isl_space_copy(space)));
     sizes = sizes.add(32);
-    LOG(INFO) << "sizes: " << sizes;
-
-    /*
-    for (int i = 0; i < isl_space_dim(space, isl_dim_set); i++) {
-      auto *dim_name = isl_space_get_dim_name(space, isl_dim_set, i);
-      auto it = tiles_.find(dim_name);
-      if (it != tiles_.end()) {
-        isl_val *val = isl_val_int_from_si(isl_space_get_ctx(space), it->second);
-        sizes = isl::manage(isl_multi_val_set_at(sizes.release(), i, val));
-      }
-    }
-     */
     return sizes;
   }
 
@@ -130,6 +119,8 @@ struct IslTileGenerator {
   std::string stage_name_;
   std::unique_ptr<isl::set> schedule_filter_;
 };
+
+__isl_give isl_set *isl_set_append_cond(__isl_give isl_set *set, const char *cond);
 
 // A callback for tile a schedule node.
 // TODO(Superjomn) it is weak, enhance it.

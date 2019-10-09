@@ -1,5 +1,6 @@
 #include "cinn/core/stage.h"
 #include <gtest/gtest.h>
+#include <vector>
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 #include "cinn/utils/string.h"
@@ -201,6 +202,45 @@ TEST(Stage, Tile) {
 
   LOG(INFO) << "After split: \n" << s0.DumpIslC();
   LOG(INFO) << "After split: \n" << s0.DumpAsC();
+}
+
+TEST(Stage, cond) {
+  Constant I("I", 100);
+  Constant J("J", 200);
+  Constant M("M", 300);
+
+  Var i, j, k;
+
+  Expr A(std::vector<Constant>({I, M}), primitive_t::float32, "A");
+  Expr B(std::vector<Constant>({M, J}), primitive_t::float32, "B");
+  Expr C(std::vector<Constant>({I, J}), primitive_t::float32, "C");
+
+  Stage s0 = C[i][j].Assign(A[i][k] * B[k][j]);
+  s0.SetCond(i, "% 2 = 0");
+
+  auto log = s0.DumpIslC();
+  LOG(INFO) << "code gen: \n" << log;
+
+  auto target = StringFormat(R"ROC(for (int %s = 0; %s <= 99; %s += 2)
+  for (int %s = 0; %s <= 199; %s += 1)
+    for (int %s = 0; %s <= 299; %s += 1)
+      %s(%s, %s, %s);
+)ROC",
+                             i.name().c_str(),
+                             i.name().c_str(),
+                             i.name().c_str(),
+                             j.name().c_str(),
+                             j.name().c_str(),
+                             j.name().c_str(),
+                             k.name().c_str(),
+                             k.name().c_str(),
+                             k.name().c_str(),
+                             s0.name().c_str(),
+                             i.name().c_str(),
+                             j.name().c_str(),
+                             k.name().c_str());
+
+  EXPECT_EQ(log, target);
 }
 
 }  // namespace cinn

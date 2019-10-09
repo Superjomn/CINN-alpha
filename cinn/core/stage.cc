@@ -19,6 +19,13 @@
 namespace cinn {
 using interval_tuple_t = ir::Reference::interval_tuple_t;
 
+// Compose the iterator domain with the extra condition.
+isl::set BuildWithCond(__isl_give isl_set* domain, const std::string& cond) {
+  CINN_DEBUG(3) << "get extra cond " << cond;
+  if (cond.empty()) return isl::manage(domain);
+  return isl::manage(isl_set_append_cond(domain, cond.c_str()));
+}
+
 void Stage::ExtractDomainFromExpr(Expr x) {
   LOG_INDENT("Stage::ExtractDomainFromExpr");
   CINN_DEBUG(3) << "expr.type: " << ir::GetNodeTyRepr(x.type());
@@ -34,7 +41,6 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 
     void Visit(const Expr* op) override { IRVisitor::Visit(op); }
     void Visit(const ir::Var* var) override {
-      LOG_INDENT("Collector::Visit Var");
       if (!in_reference_) return;
       // check if exists
       auto it = std::find_if(iterators_.begin(), iterators_.end(), [&](const ir::Var& o) { return o == *var; });
@@ -43,7 +49,6 @@ void Stage::ExtractDomainFromExpr(Expr x) {
       }
     }
     void Visit(const ir::Reference* op) override {
-      LOG_INDENT("Collector::Visit Reference");
       in_reference_ = true;
       for (auto& x : op->iterators) {
         Visit(&x);
@@ -51,7 +56,6 @@ void Stage::ExtractDomainFromExpr(Expr x) {
       in_reference_ = false;
     }
     void Visit(const Function* op) override {
-      LOG_INDENT("Collector::Visit Function");
       for (auto& x : op->inputs()) {
         Visit(&x);
       }
@@ -126,40 +130,6 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   }
 
   CINN_DEBUG(3) << "get Stage's domain: " << iterator_domain();
-
-  return;
-
-  // check if all the Vars has domain, and we will construct the overall domain from each var's domain.
-  bool all_var_has_domain = true;
-  for (auto& var : collector.iterators()) {
-    if (!var.is_domain_valid()) {
-      CINN_DEBUG(3) << "var " << var.name() << " not have domain";
-      all_var_has_domain = false;
-      break;
-    }
-  }
-
-  CHECK(all_var_has_domain);
-  if (all_var_has_domain) {
-    isl::union_set domain(isl_utils::global_isl_ctx(), StringFormat("{ %s : }", statement.c_str()));
-    for (auto& var : collector.iterators()) {
-      LOG(INFO) << "domain: " << var.domain();
-    }
-  }
-
-  std::vector<std::string> sub_domains;
-  std::transform(iterators.begin(), iterators.end(), std::back_inserter(sub_domains), [](const ir::Var& x) {
-    std::stringstream ss;
-    ss << x.interval().lower_bound().As<int32_t>() << " <= " << x.name() << " < "
-       << x.interval().upper_bound().As<int32_t>();
-    return ss.str();
-  });
-
-  std::stringstream repr;
-  repr << "{ " << statement << ": " << Concat(sub_domains, " and ") << " }";
-  std::string format = repr.str();
-  CINN_DEBUG(2) << "constructs iterator domain repr: " << format;
-  data_->iter_domain = isl::manage(isl_set_read_from_str(ctx(), format.c_str()));
 }
 
 Stage::Stage(Expr expr) {
@@ -536,6 +506,11 @@ void Stage::InitWriteDependencies() {
   auto* assign_expr = expr().As<ir::Assign>();
   set_write_access(CollectAccess(iterator_domain(), assign_expr->a));
   CINN_DEBUG(2) << "get write dependency: " << isl_union_map_to_str(write_access());
+}
+
+void Stage::SetCond(const ir::Var& iterator, const std::string& cond) {
+  data_->iter_domain =
+      BuildWithCond(data_->iter_domain.release(), StringFormat("%s %s", iterator.name().c_str(), cond.c_str()));
 }
 
 std::ostream& operator<<(std::ostream& os, Stage::Type t) {

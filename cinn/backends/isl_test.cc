@@ -56,8 +56,8 @@ isl_stat extract_static_dim_value_from_bmap(__isl_take isl_basic_map *bmap, void
   for (int i = 0; i < n_constraints; i++) {
     isl_constraint *cst = isl_constraint_list_get_constraint(list, i);
     isl_val *val = isl_constraint_get_coefficient_val(cst, isl_dim_out, data->in_dim);
-    if (isl_val_is_one(val))  // i.e., the coefficient of the dimension data->in_dim is 1
-    {
+    // i.e., the coefficient of the dimension data->in_dim is 1
+    if (isl_val_is_one(val)) {
       isl_val *val2 = isl_constraint_get_constant_val(cst);
       int const_val = (-1) * isl_val_get_num_si(val2);
       data->out_constant = const_val;
@@ -1005,4 +1005,10 @@ TEST(isl, range) {
   auto box = access.get_range_simple_fixed_box_hull();
   LOG(INFO) << "size: " << box.get_offset().get_at(0);
   LOG(INFO) << "box: " << box;
+}
+
+TEST(isl, concat_cond) {
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::set set(ctx.get(), "{ A[i,j] : 0 < i < j < 100 }");
+  set = isl::manage(cinn::isl_set_append_cond(set.release(), "i % 2 = 0"));
 }

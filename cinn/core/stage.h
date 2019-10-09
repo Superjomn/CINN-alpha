@@ -1,5 +1,4 @@
 #pragma once
-#include <cinn/ir/ir.h>
 #include <gtest/gtest_prod.h>
 #include <isl/aff.h>
 #include <isl/ast_build.h>
@@ -15,7 +14,9 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <string>
 #include <utility>
+#include "cinn/ir/ir.h"
 
 #include "cinn/core/buffer.h"
 
@@ -63,6 +64,7 @@ class Stage {
     // Var name to tile size.
     std::map<std::string, int> tiles;
 
+    // The names of the stages try to fuse with.
     std::set<std::string> stages_fuse_with;
   };
 
@@ -107,6 +109,18 @@ class Stage {
     }
   }
 
+  /**
+   * Set extra condition to the iteration domain.
+   * @param iterator the iterator to set the condition.
+   * @param cond the string represented condition of this iterator.
+   *
+   *
+   * Such as
+   *
+   * s0.SetCond(i, " %2 = 0"); // means the condition is "i % 2 = 0".
+   */
+  void SetCond(const ir::Var& iterator, const std::string& cond);
+
   //! Tell whether this stage is an Assign stage.
   bool is_assign() const;
   //! Tell whether this stage is an Allocate stage.
@@ -136,7 +150,10 @@ class Stage {
 
   const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
 
-  // Some basic polyhedral transformations
+  //! Set the extra condition of the iterators.
+  void SetCond(const std::string& x);
+
+  // Some basic polyhedral transformations --------------------------------------------------------
 
   void FuseWith(const Stage& o) { data_->stages_fuse_with.insert(o.name()); }
 
