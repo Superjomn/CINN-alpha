@@ -24,12 +24,15 @@ void C_CodeGen::PrintHeader() {
   os_ << "\n";
   os_ << "#define min(a,b) ((a)<(b) ? (a) : (b))\n";
   os_ << "#define max(a,b) ((a)>(b) ? (a) : (b))\n";
-  os_ << "\n\n";
+  Println();
+  Println();
 }
 
 void C_CodeGen::PrintFileGuardHeader() {
-  os_ << "#ifndef " << file_guard << "\n";
-  os_ << "#define " << file_guard << "\n";
+  os_ << "#ifndef " << file_guard;
+  Println();
+  os_ << "#define " << file_guard;
+  Println();
 }
 
 void C_CodeGen::PrintFileGuardFooter() { os_ << "\n\n#endif  // " << file_guard << "\n"; }
@@ -47,12 +50,15 @@ void C_CodeGen::Visit(const ir::For *op) {
   Print(op->iterator);
   os_ << " += ";
   Print(op->iter_inc);
-  os_ << ") {\n";
+  os_ << ") {";
+  Println();
 
+  indent_right();
   //@{ a block
   Print(op->body);
-  os_ << "\n";
+  Println();
   //@}
+  indent_left();
 
   PrintIndent();
   os_ << "}";
@@ -83,24 +89,25 @@ void C_CodeGen::Visit(const Function *op) {
   auto definition = StringFormat("void %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
 
   if (compile_mode_ == Mode::source) {
-    os_ << definition << " {\n";
+    os_ << definition << " {";
+    Println();
 
     auto expr = op->ComputeTransformedExpr();
 
-    if (!expr.is_block()) indent_right();
+    indent_right();
     //@{ a block
     PrintIndent();
     Print(expr);
     //@}
-    if (!expr.is_block()) indent_left();
+    indent_left();
 
-    // indent_size_--;
     Println();
     PrintIndent();
     os_ << "}";
 
   } else if (compile_mode_ == Mode::header) {
-    os_ << definition << ";\n";
+    os_ << definition << ";";
+    Println();
   } else {
     LOG(FATAL) << "not supported compile mode";
   }
@@ -136,32 +143,14 @@ void C_CodeGen::WriteToFile(const std::string &path) const {
   file.close();
 }
 
-void C_CodeGen::Println(bool force) {
-  std::string str = ss_.str();
-  ss_.str("");
-  if (!force) {
-    if (str.empty() || str.back() != '\n') {
-      ss_ << str << '\n';
-    } else {
-      ss_ << str;
-    }
-  } else {
-    ss_ << str;
-  }
-}
-
 void C_CodeGen::Visit(const ir::Block *op) {
-  indent_right();
   for (size_t i = 0; i < op->exprs.size(); i++) {
     auto &expr = op->exprs[i];
     PrintIndent();
     Print(expr);
-    if (i != op->exprs.size() - 1) os_ << "\n";
-  }
 
-  indent_left();
-  // PrintIndent();
-  // os_ << "}%_B" << indent_size_;
+    if (i != op->exprs.size() - 1) Println();
+  }
 }
 
 void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std::string &source_file) {

@@ -62,6 +62,8 @@ class Stage {
 
     // Var name to tile size.
     std::map<std::string, int> tiles;
+
+    std::set<std::string> stages_fuse_with;
   };
 
  public:
@@ -132,7 +134,11 @@ class Stage {
 
   const std::map<std::string, int> tiles() const { return data_->tiles; }
 
+  const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
+
   // Some basic polyhedral transformations
+
+  void FuseWith(const Stage& o) { data_->stages_fuse_with.insert(o.name()); }
 
   //! Interchange two loop levels `i` and `j`.
   void Interchange(ir::Var i, ir::Var j);

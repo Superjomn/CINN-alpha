@@ -318,7 +318,12 @@ void IRPrinter::Print(primitive_t dtype) {
   }
 }
 
-void IRPrinter::PrintIndent(int diff) { os_ << std::string(indent_block_ * (indent_size_ + diff), ' '); }
+void IRPrinter::PrintIndent(bool avoid_continuous_indent) {
+  if (avoid_continuous_indent && !avoid_continuous_indent_flag_) {
+    os_ << std::string(indent_block_ * indent_size_, ' ');
+    avoid_continuous_indent_flag_ = true;
+  }
+}
 
 }  // namespace ir
 }  // namespace cinn

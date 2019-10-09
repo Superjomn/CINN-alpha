@@ -1,5 +1,7 @@
 #include "cinn/backends/code_gen_c.h"
 #include <gtest/gtest.h>
+#include <string>
+#include <vector>
 #include "cinn/core/function.h"
 #include "cinn/core/isl_code_gen.h"
 #include "cinn/core/optimize/pass_registry.h"
@@ -93,6 +95,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 #endif  // CINN_FILE_
 )ROC";
 
+    LOG(INFO) << "gen code:\n" << log;
     EXPECT_EQ(log, target);
   }
 

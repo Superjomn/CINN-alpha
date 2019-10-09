@@ -252,40 +252,6 @@ isl_schedule_node *node_tiler(isl_schedule_node *node, void *user) {
       return tiled_node;
     }
 
-      // Collect the filter that has only one isl_set, and record the latest tuple name to treat as the statement's
-      // name.
-      /*
-  case isl_schedule_node_filter: {
-    LOG(INFO) << "xx get filter";
-    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node));
-    isl_set_list *set_list = isl_union_set_get_set_list(filter.get());
-    if (isl_set_list_size(set_list) == 1) {
-      isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
-      auto tuple_name = isl_set_get_tuple_name(first.get());
-      LOG(INFO) << "collect filter tuple " << tuple_name;
-      IslTileGenerator::Global().set_schedule_filter(first);
-    }
-    isl_set_list_free(set_list);
-    return node;
-  }
-
-  // In case there is only one set in the domain and no filter exists.
-  case isl_schedule_node_domain: {
-    LOG(INFO) << "xx get domain";
-    LOG(INFO) << isl_schedule_node_to_str(node);
-    isl::union_set domain = isl::manage(isl_schedule_node_domain_get_domain(node));
-    isl_set_list *set_list = isl_union_set_get_set_list(domain.get());
-    if (isl_set_list_size(set_list) == 1) {
-      isl::set first = isl::manage(isl_set_list_get_at(set_list, 0));
-      auto tuple_name = isl_set_get_tuple_name(first.get());
-      LOG(INFO) << "collect filter tuple " << tuple_name;
-      IslTileGenerator::Global().set_schedule_filter(first);
-    }
-    isl_set_list_free(set_list);
-    return node;
-  }
-       */
-
     default:
       return node;
   }

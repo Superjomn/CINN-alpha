@@ -20,6 +20,7 @@ class IRPrinter : public IRVisitor {
   std::ostream &os_;
   const int indent_block_;
   int indent_size_{0};
+  bool avoid_continuous_indent_flag_{false};
 
   std::string reference_braces{"[]"};
 
@@ -27,7 +28,11 @@ class IRPrinter : public IRVisitor {
   IRPrinter(std::ostream &os, int indent_num = 2) : os_(os), indent_block_(indent_num) {}
 
   //! Add indent to the current line.
-  void PrintIndent(int diff = 0);
+  void PrintIndent(bool avoid_continuous_indent = true);
+  void Println() {
+    os_ << "\n";
+    avoid_continuous_indent_flag_ = false;
+  }
 
   void Print(Expr);
   void Print(Block);

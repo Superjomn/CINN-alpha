@@ -53,9 +53,6 @@ class C_CodeGen : public ir::IRPrinter {
   //! Insert the C include header.
   void PrintHeader();
 
-  //! Append a \n in the tail if the tail is not a \n, will force to append a \n if @force is true.
-  void Println(bool force = false);
-
   //! Insert file guard
   //    #ifndef CINN_FILE_
   //    #define CINN_FILE_

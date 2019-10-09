@@ -609,6 +609,7 @@ isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std:
   std::string repr =
       StringFormat("{ [%s] : %s }", Concat(iterators, ", ").c_str(), Concat(constraints, " and ").c_str());
   CINN_DEBUG(3) << "repr: " << repr;
+
   isl::set result(isl_utils::global_isl_ctx(), repr);
   CINN_DEBUG(3) << "get domain " << result;
 

@@ -855,6 +855,36 @@ TEST(isl, schedule_tree) {
   }
 }
 
+TEST(isl, schedule_tree2) {
+  isl_ctx *ctx = isl_ctx_alloc();
+  // isl_union_set *domain =
+  // isl_union_set_read_from_str(ctx, "[N,M,K] -> { S0[i,j]: 0<i<N and 0<j<M; S1[i,j,k]: 0<i<N and 0<j<M and 0<k<K;
+  // S2[i,j]: 0<i<N and 0<j<M }");
+  isl_union_set *domain =
+      isl_union_set_read_from_str(ctx,
+                                  "{ S5[i0, i1] : 0 <= i0 <= 99 and 0 <= i1 <= 199; S3[i0, i1, i2] : 0 <= i0 <= 99 and "
+                                  "0 <= i1 <= 199 and 0 <= i2 <= 149; S4[i0, i1] : 0 <= i0 <= 99 and 0 <= i1 <= 199 }");
+  // isl_union_map *proximity = isl_union_map_read_from_str(ctx, "[N,M] -> { S0[i,j] -> S1[i,j,k] }");
+  // isl_union_map *proximity = isl_union_map_read_from_str(ctx, "{ S3[i0,i1,i2] -> S4[i0,i1]; S4[i0,i1]->S5[i0,i1] }");
+  isl_union_map *proximity = isl_union_map_read_from_str(ctx, "{ S4[i0,i1] -> S5[i0,i1] }");
+
+  isl_schedule_constraints *sc = isl_schedule_constraints_on_domain(domain);
+  sc = isl_schedule_constraints_set_proximity(sc, proximity);
+
+  isl_schedule *schedule = isl_schedule_constraints_compute_schedule(sc);
+
+  // Dump schedule.
+  isl_printer *printer = isl_printer_to_str(ctx);
+  printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
+  printer = isl_printer_print_schedule(printer, schedule);
+  std::cout << isl_printer_get_str(printer) << std::endl;
+
+  // Dump C like code.
+  auto *build = isl_ast_build_from_context(isl_set_read_from_str(ctx, "[N, M, K]->{:N = 10 and  M = 20 and K = 30}"));
+  auto *ast = isl_ast_build_node_from_schedule(build, schedule);
+  std::cout << "C like code:\n" << isl_ast_node_to_C_str(ast) << std::endl;
+}
+
 void DisplayScheduleC(isl_schedule *schedule) {
   isl::set C(isl_schedule_get_ctx(schedule), "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));

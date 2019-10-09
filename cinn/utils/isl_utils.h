@@ -53,6 +53,27 @@ isl_ast_build *__isl_give isl_ast_build_set_iterators(__isl_take isl_ast_build *
 
 __isl_give isl_schedule_node *tile_band(__isl_take isl_schedule_node *node, __isl_take isl_multi_val *sizes);
 
+struct isl_map_list_guard {
+ private:
+  isl_map_list *x{};
+
+ public:
+  isl_map_list_guard(isl_map_list *x) : x(x) {}
+
+  isl_map_list *get() { return x; }
+  isl_map_list *release() {
+    auto copied = x;
+    x = nullptr;
+    return copied;
+  }
+
+  ~isl_map_list_guard() {
+    if (x) {
+      isl_map_list_free(x);
+    }
+  }
+};
+
 /**
  * A helper to pass argument to caller functions in traversing schedule tree.
  */

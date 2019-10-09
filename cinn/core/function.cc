@@ -217,17 +217,11 @@ void Snippet::CollectWriteAccess() {
   CINN_DEBUG(3) << "collect read access: " << *access_writes_;
 }
 
-void Snippet::ComputeSchedule() {
-  LOG_INDENT("Snippet::ComputeSchedule");
-  CHECK(Stage::is_polyhedral(type()));
-  CHECK(!access_reads_->is_null());
-  CHECK(!access_writes_->is_null());
-  CHECK(!transform_->is_null());
+isl::union_map ComputeDeps(const isl::union_set& domain, const isl::union_map& reads, const isl::union_map& writes) {
+  isl_ctx* ctx = domain.ctx().get();
 
-  isl::union_map access_reads_with_domain =
-      isl::manage(isl_union_map_intersect_domain(access_reads_->copy(), iterator_domain().copy()));
-  isl::union_map access_writes_with_domain =
-      isl::manage(isl_union_map_intersect_domain(access_writes_->copy(), iterator_domain().copy()));
+  isl::union_map access_reads_with_domain = isl::manage(isl_union_map_intersect_domain(reads.copy(), domain.copy()));
+  isl::union_map access_writes_with_domain = isl::manage(isl_union_map_intersect_domain(writes.copy(), domain.copy()));
 
   isl::union_map reads_writes = access_reads_with_domain;
   reads_writes = isl::manage(isl_union_map_union(reads_writes.release(), access_writes_with_domain.copy()));
@@ -239,23 +233,26 @@ void Snippet::ComputeSchedule() {
                                                                isl_union_map_reverse(access_reads_with_domain.copy())));
   CINN_DEBUG(3) << "wrie o read^-1: " << right;
 
-  *memory_dependencies_ = isl::manage(isl_union_map_union(left.release(), right.release()));
-  *memory_dependencies_ = isl::manage(isl_union_map_detect_equalities(memory_dependencies_->release()));
+  isl::union_map deps = isl::manage(isl_union_map_union(left.release(), right.release()));
+  deps = isl::manage(isl_union_map_detect_equalities(deps.release()));
+  return deps;
+}
 
-  isl::union_map validity = isl::manage(isl_union_map_empty(isl_space_copy(iterator_domain().space().get())));
+isl::union_map ComputeScheduleValidity(const isl::union_set& domain, const isl::union_map& deps) {
+  isl::union_map validity = isl::manage(isl_union_map_empty(isl_space_copy(domain.space().get())));
   // currently, we ignore the b->a dependency.
   // TODO(Superjomn) support full analysis for dependencies for any pairs.
-  for (int i = 0; i < isl_union_map_n_map(memory_dependencies_->get()); i++) {
-    auto* map_list = isl_union_map_get_map_list(memory_dependencies_->get());
-    isl_map* map = isl_map_list_get_at(map_list, i);
-    if (isl_map_is_identity(map)) continue;
+  for (int i = 0; i < isl_union_map_n_map(deps.get()); i++) {
+    isl_map_list_guard map_list(isl_union_map_get_map_list(deps.get()));
+    isl::map map = isl::manage(isl_map_list_get_at(map_list.get(), i));
+    if (isl_map_is_identity(map.get())) continue;
 
-    const char* left_tuple = isl_map_get_tuple_name(map, isl_dim_in);
-    const char* right_tuple = isl_map_get_tuple_name(map, isl_dim_out);
+    const char* left_tuple = isl_map_get_tuple_name(map.get(), isl_dim_in);
+    const char* right_tuple = isl_map_get_tuple_name(map.get(), isl_dim_out);
 
     if (std::strcmp(left_tuple, right_tuple) >= 0) continue;
 
-    isl::union_map union_map = isl::manage(isl_union_map_from_map(isl_map_copy(map)));
+    isl::union_map union_map = isl::manage(isl_union_map_from_map(map.copy()));
     if (validity.is_null()) {
       validity = union_map;
     } else {
@@ -263,25 +260,41 @@ void Snippet::ComputeSchedule() {
     }
   }
 
+  return validity;
+}
+
+void Snippet::ComputeSchedule() {
+  // Use a unique ctx to avoid obstruction.
+  LOG_INDENT("Snippet::ComputeSchedule");
+  CHECK(Stage::is_polyhedral(type()));
+  CHECK(!access_reads_->is_null());
+  CHECK(!access_writes_->is_null());
+  CHECK(!transform_->is_null());
+
+  auto domain = isl::union_set(ctx_, GetStreamStr(iterator_domain()));
+  auto reads = isl::union_map(ctx_, GetStreamStr(access_reads()));
+  auto writes = isl::union_map(ctx_, GetStreamStr(access_writes()));
+  auto deps = ComputeDeps(domain, reads, writes);
+  auto validity = ComputeScheduleValidity(domain, deps);
   CHECK(!validity.is_null());
+
   CINN_DEBUG(3) << "get memory dependencies: " << validity;
 
-  isl_ctx* ctx = isl_utils::global_isl_ctx();
+  BuildFusion();
+  isl::union_map proximity;
+  if (approxi_) proximity = isl::union_map(ctx_, GetStreamStr(*approxi_));
 
-  // Create a identity schedule.
-  isl::union_map proximity = isl::manage(isl_union_map_empty(isl_space_copy(iterator_domain().space().get())));
-  CINN_DEBUG(3) << "proximity: " << proximity;
-  CINN_DEBUG(3) << "vality: " << *memory_dependencies_;
-  CINN_DEBUG(3) << "transform: " << *transform_;
-
-  isl::schedule_constraints sc = isl::manage(isl_schedule_constraints_on_domain(iterator_domain().copy()));
+  isl::schedule_constraints sc = isl::manage(isl_schedule_constraints_on_domain(domain.release()));
   sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.release()));
-  sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.copy()));
-  sc = isl::manage(isl_schedule_constraints_apply(sc.release(), transform_->copy()));
+  if (!proximity.is_null()) sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.release()));
+  // sc = isl::manage(isl_schedule_constraints_apply(sc.release(), transform_->copy()));
 
-  *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.copy()));
+  CINN_DEBUG(3) << "schedule constraints:\n" << sc;
+
+  *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.release()));
+  CINN_DEBUG(3) << "schedule:\n" << isl_utils::DumpSchedule(ctx_.get(), *schedule_);
+
   BuildTiles();
-  CINN_DEBUG(3) << "schedule:\n" << isl_utils::DumpSchedule(ctx, *schedule_);
 }
 
 void Snippet::BuildTiles() {
@@ -300,7 +313,27 @@ void Snippet::BuildTiles() {
   }
 }
 
-void Snippet::TileStage(const std::string& stage_name, const std::map<std::string, int>& tile_sizes) {}
+void Snippet::BuildFusion() {
+  for (auto& stage : stages_) {
+    std::string this_stage = stage.name();
+    for (auto& target : stage.stages_fuse_with()) {
+      auto it = std::find_if(stages_.begin(), stages_.end(), [&](const Stage& o) { return o.name() == target; });
+      CHECK(it != stages_.end());
+
+      auto this_statement = isl_set_get_statement_repr(stage.iterator_domain().get());
+      auto target_statement = isl_set_get_statement_repr(it->iterator_domain().get());
+
+      isl::union_map map(isl_utils::global_isl_ctx(),
+                         StringFormat("{ %s -> %s }", this_statement.c_str(), target_statement.c_str()).c_str());
+      if (!approxi_) {
+        approxi_.reset(new isl::union_map);
+        *approxi_ = isl::manage(map.release());
+      } else {
+        *approxi_ = isl::manage(isl_union_map_union(approxi_->release(), map.release()));
+      }
+    }
+  }
+}
 
 isl::ast_node Snippet::GenerateIslAst() const {
   LOG_INDENT("Snippet::GenerateIslAst");

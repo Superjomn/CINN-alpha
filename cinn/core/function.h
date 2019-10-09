@@ -40,7 +40,8 @@ class Snippet {
         access_reads_(new isl::union_map),
         access_writes_(new isl::union_map),
         memory_dependencies_(new isl::union_map),
-        schedule_(new isl::schedule) {}
+        schedule_(new isl::schedule),
+        ctx_(isl_ctx_alloc()) {}
   //! Add a stage to snippet.
   void AddStage(const Stage& stage);
 
@@ -94,6 +95,9 @@ class Snippet {
   //! Tile the stages.
   void BuildTiles();
 
+  //! Fuse the stages if set with Stage::FuseWith.
+  void BuildFusion();
+
   //! Tile a stage at the position of var with size.
   void TileStage(const std::string& stage_name, const std::map<std::string, int>& tile_sizes);
 
@@ -115,6 +119,8 @@ class Snippet {
   std::unique_ptr<isl::schedule> schedule_;
 
   Stage::Type type_{Stage::Type::unk};
+
+  isl::ctx ctx_;
 
   mutable bool is_end_{false};
 };
