@@ -59,6 +59,7 @@ inline Expr operator!=(Expr a, T b) {
 }  // namespace ir
 
 ir::Expr Tanh(const ir::Expr &e);
+ir::Expr Exp(const ir::Expr &e);
 ir::Expr Sigmoid(const ir::Expr &e);
 ir::Expr Max(const ir::Expr &a, const ir::Expr &b);
 ir::Expr Min(const ir::Expr &a, const ir::Expr &b);

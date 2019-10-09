@@ -88,7 +88,10 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   std::map<std::string, isl::set> iter_domain;
   std::set<std::string> var_names;
   for (auto& ref : references) {
-    CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
+    // CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
+    // get constant iterator
+    if (ref->domain.is_null()) continue;
+
     CINN_DEBUG(6) << "reference domain: " << ref->domain;
 
     for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
@@ -100,6 +103,7 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 
   // make all the reference's the same space
   for (auto& ref : references) {
+    if (ref->domain.is_null()) continue;  // skip constant iterators.
     auto ref_domain = ref->domain;
     int set_dim = isl_set_dim(ref->domain.get(), isl_dim_set);
     std::vector<std::string> dim_names;

@@ -460,19 +460,27 @@ Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
 Expr Expr::operator[](Expr i) {
   LOG_INDENT("Expr::operator[](Expr i)");
   auto vars = CollectVarsFromExpr(i);
-  CHECK_EQ(vars.size(), 1UL) << "Currentlly only support one variable in a dimension";
-  Var *var = const_cast<Var *>(vars.front());
-  if (var->ptype() == primitive_t::unk) var->set_ptype(primitive_t::int32);
+  CHECK_LE(vars.size(), 1UL) << "Currently only support at most one variable in a dimension";
 
+  const bool is_var_iterator = !vars.empty();
+
+  if (is_var_iterator) {
+    Var *var = const_cast<Var *>(vars.front());
+    if (var->ptype() == primitive_t::unk) var->set_ptype(primitive_t::int32);
+  }
+
+  // The reference node is initialized and has at least one iterator, append the new vars.
   if (ptr() && type() == ir::NodeTy::Reference) {
     As<Reference>()->iterators.push_back(i);
-    InferenceIteratorDomain(this);
+    if (is_var_iterator) InferenceIteratorDomain(this);
     return *this;
   }
 
   auto node = Reference::make(*this, {i});
   Expr result(node);
-  InferenceIteratorDomain(&result);
+
+  if (!vars.empty()) InferenceIteratorDomain(&result);
+
   return result;
 }
 

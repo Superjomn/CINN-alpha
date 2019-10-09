@@ -393,6 +393,18 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       CINN_DEBUG(3) << "get " << ir::Dump(root);
       break;
     }
+
+    case ir::NodeTy::IfThenElse: {
+      LOG_INDENT("visit IfThenElse");
+      auto* if_then_else = root.As<ir::IfThenElse>();
+      ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, if_then_else->condition);
+      if (if_then_else->true_block.valid()) {
+        ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, if_then_else->true_block);
+      }
+      if (if_then_else->false_block.valid()) {
+        ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, if_then_else->false_block);
+      }
+    }
     case ir::NodeTy::IntImm:
     case ir::NodeTy::Tensor:
       // skip
@@ -496,6 +508,15 @@ void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
       ReplaceExprWithStage(node->iter_cond, s, expr);
       ReplaceExprWithStage(node->iter_inc, s, expr);
       ReplaceExprWithStage(node->body, s, expr);
+      break;
+    }
+
+    case ir::NodeTy::IfThenElse: {
+      CINN_DEBUG(4) << "visit if";
+      auto* node = root.As<ir::IfThenElse>();
+      ReplaceExprWithStage(node->condition, s, expr);
+      ReplaceExprWithStage(node->true_block, s, expr);
+      if (node->false_block.valid()) ReplaceExprWithStage(node->false_block, s, expr);
       break;
     }
 

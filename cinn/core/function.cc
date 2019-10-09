@@ -238,6 +238,17 @@ isl::union_map ComputeDeps(const isl::union_set& domain, const isl::union_map& r
   return deps;
 }
 
+//! Compare two stage names by numeraic values.
+int CompareStageName(const std::string& s0, const std::string& s1) {
+  auto s0_ = s0.substr(1);
+  auto s1_ = s1.substr(1);
+  int s0_val = std::stoi(s0_);
+  int s1_val = std::stoi(s1_);
+  if (s0_val < s1_val) return -1;
+  if (s0_val < s1_val) return 1;
+  return 0;
+}
+
 isl::union_map ComputeScheduleValidity(const isl::union_set& domain, const isl::union_map& deps) {
   isl::union_map validity = isl::manage(isl_union_map_empty(isl_space_copy(domain.space().get())));
   // currently, we ignore the b->a dependency.
@@ -250,7 +261,7 @@ isl::union_map ComputeScheduleValidity(const isl::union_set& domain, const isl::
     const char* left_tuple = isl_map_get_tuple_name(map.get(), isl_dim_in);
     const char* right_tuple = isl_map_get_tuple_name(map.get(), isl_dim_out);
 
-    if (std::strcmp(left_tuple, right_tuple) >= 0) continue;
+    if (CompareStageName(left_tuple, right_tuple) >= 0) continue;
 
     isl::union_map union_map = isl::manage(isl_union_map_from_map(map.copy()));
     if (validity.is_null()) {

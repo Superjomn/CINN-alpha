@@ -185,10 +185,35 @@ void IRPrinter::Visit(const IfThenElse *op) {
   PrintIndent();
   Print("if(");
   Print(op->condition);
-  Print(")");
+  Print(") {");
+  Println();
+
+  indent_right();
+  PrintIndent();
   Print(op->true_block);
-  Print("else");
-  Print(op->false_block);
+  indent_left();
+
+  Println();
+
+  PrintIndent();
+  os_ << "}";
+  Println();
+
+  if (op->false_block.valid()) {
+    Print("else");
+    Println();
+
+    PrintIndent();
+    os_ << "{";
+    Println();
+    indent_right();
+
+    Print(op->false_block);
+
+    indent_left();
+    os_ << "}";
+    Println();
+  }
 }
 
 void IRPrinter::Visit(const Block *op) {
