@@ -323,7 +323,7 @@ void Snippet::BuildTiles() {
       *schedule_ = tiler.Visit(*schedule_).get_schedule();
     }
 
-    LOG(INFO) << "final schedule: " << *schedule_;
+    LOG(INFO) << "final schedule: " << schedule_->get_root();
   }
 }
 

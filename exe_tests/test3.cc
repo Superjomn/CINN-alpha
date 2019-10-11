@@ -48,9 +48,12 @@ TEST(cinn, complex_nn) {
     // s1.FuseWith(s0);
     s0.Tile(m, 32);
     s0.Tile(n, 32);
+    s0.Tile(k, 16);
 
     s1.Tile(m, 4);
     s2.Tile(m, 4);
+    s1.Tile(n, 4);
+    s2.Tile(n, 4);
 
     fn.Inputs({A, B, Bias});
     fn.Outputs({C});

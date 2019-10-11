@@ -16,10 +16,10 @@ TEST(tile, basic) {
   TileTransformer appler("A", "i", 32);
   std::string target_schedule =
       "{ domain: \"{ B[i, j] : 0 < i <= 99 and 0 < j <= 99; A[i, j] : 0 < i <= 199 and 0 < j <= 199 }\", child: { "
-      "sequence: [ { filter: \"{ A[i, j] }\", child: { schedule: \"[{ A[i, j] -> [(floor((i)/32))] }, { A[i, j] -> "
-      "[(j)] }]\", child: { schedule: \"[{ A[i, j] -> [(i)] }, { A[i, j] -> [(j)] }]\", permutable: 1, coincident: [ "
-      "1, 1 ] } } }, { filter: \"{ B[i, j] }\", child: { schedule: \"[{ B[i, j] -> [(i)] }, { B[i, j] -> [(j)] }]\", "
-      "permutable: 1, coincident: [ 1, 1 ] } } ] } }";
+      "sequence: [ { filter: \"{ A[i, j] }\", child: { schedule: \"[{ A[i, j] -> [(-32 - 32*floor((-1 - i)/32))] }, { "
+      "A[i, j] -> [(i)] }, { A[i, j] -> [(j)] }]\", child: { schedule: \"[{ A[i, j] -> [(i)] }, { A[i, j] -> [(j)] "
+      "}]\", permutable: 1, coincident: [ 1, 1 ] } } }, { filter: \"{ B[i, j] }\", child: { schedule: \"[{ B[i, j] -> "
+      "[(i)] }, { B[i, j] -> [(j)] }]\", permutable: 1, coincident: [ 1, 1 ] } } ] } }";
   schedule = appler.Visit(schedule).get_schedule();
 
   LOG(INFO) << "schedule: " << schedule;

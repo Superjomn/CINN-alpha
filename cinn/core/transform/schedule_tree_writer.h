@@ -27,7 +27,6 @@ struct ScheduleTreeVisitor {
         return GetDerived().VisitBand(node, std::forward<Args>(args)...);
       case isl_schedule_node_sequence:
         LOG(INFO) << "get sequence";
-        LOG(INFO) << "num children: " << node.n_children();
         CHECK_GE(node.n_children(), 2);
         return GetDerived().VisitSequence(node, std::forward<Args>(args)...);
       case isl_schedule_node_set:
@@ -124,7 +123,6 @@ struct ScheduleNodeRewriter : public RecursiveScheduleTreeVisitor<Derived, isl::
 
     isl::schedule_node it = node.first_child();
     while (true) {
-      LOG(INFO) << "multi visit a node";
       it = GetDerived().Visit(it, std::forward<Args>(args)...);
       if (!it.has_next_sibling()) break;
       it = it.next_sibling();

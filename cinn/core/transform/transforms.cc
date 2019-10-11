@@ -3,50 +3,63 @@
 namespace cinn {
 
 // NOTE tricks here.
-bool ContainsDimension(const isl::union_pw_aff& aff, const std::string& dimension) {
+std::string::size_type FindDimension(const isl::union_pw_aff& aff, const std::string& dimension) {
   auto aff_repr = GetStreamStr(aff);
   auto range_pos = aff_repr.find("->");
   CHECK_NE(range_pos, std::string::npos);
-  auto it = aff_repr.find(dimension);
-  return it != std::string::npos;
+  auto pos = aff_repr.find("(" + dimension + ")", range_pos + 2);
+  return pos;
 }
 
 isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
   LOG(INFO) << "tile " << statement_ << " " << iterator_ << " " << tile_size_;
-  if (!IsBandTileable(node) || tiled_ || statements_filter_collected_.count(statement_) == 0) {
-    LOG(INFO) << "skip this band";
-    // return GetBase().VisitBand(node);
+  // if (!IsBandTileable(node) || tiled_ || statements_filter_collected_.count(statement_) == 0) {
+  // return node;
+  //}
+
+  if (tiled_ || statements_filter_collected_.count(statement_) == 0) {
     return node;
   }
   auto band = node.as<isl::schedule_node_band>();
   auto partial_schedule = band.get_partial_schedule();
 
-  isl::multi_union_pw_aff transformed_schedule = partial_schedule;
-  for (int i = 0; i < partial_schedule.size(); i++) {
-    auto aff = partial_schedule.at(i);
-    LOG(INFO) << i << "-th aff is " << aff;
-    if (ContainsDimension(aff, iterator_)) {
-      auto transform_repr =
-          StringFormat("{ [%s] -> [floor(%s/%d)] }", iterator_.c_str(), iterator_.c_str(), tile_size_);
+  std::vector<isl::union_pw_aff> union_pw_affs;
+  for (int pw_id = 0; pw_id < partial_schedule.size(); pw_id++) {
+    auto aff = partial_schedule.at(pw_id);
+    LOG(INFO) << pw_id << "-th aff is " << aff << " space " << aff.space();
+    if (FindDimension(aff, iterator_) != std::string::npos) {
+      auto transform_repr = StringFormat("{ [%s] -> [floor(%s/%d)*%d, %s] }",
+                                         iterator_.c_str(),
+                                         iterator_.c_str(),
+                                         tile_size_,
+                                         tile_size_,
+                                         iterator_.c_str());
       auto transform = isl::union_map(band.ctx(), transform_repr);
       auto map = isl::manage(isl_union_map_from_union_pw_aff(aff.release()));
       map = map.apply_range(transform);
 
-      auto aff3 = isl::manage(isl_multi_union_pw_aff_from_union_map(map.release()));
-      CHECK_EQ(aff3.size(), 1UL);
-      auto final = aff3.get_at(0);
-      transformed_schedule = transformed_schedule.set_at(i, final);
-      break;
+      auto transformed_aff = isl::manage(isl_multi_union_pw_aff_from_union_map(map.release()));
+      CHECK_GE(transformed_aff.size(), 1UL);
+      for (int i = 0; i < transformed_aff.size(); i++) union_pw_affs.push_back(transformed_aff.get_at(i));
+      // transformed_schedule = transformed_schedule.set_at(pw_id, final);
+    } else {
+      union_pw_affs.push_back(partial_schedule.at(pw_id));
     }
   }
 
-  LOG(INFO) << "transformed schedule: " << transformed_schedule;
+  // update the partial schedule.
+  isl::union_pw_aff_list aff_list(band.ctx(), 10);
+  for (int i = 0; i < union_pw_affs.size(); i++) {
+    aff_list = aff_list.add(union_pw_affs[i]);
+  }
+  std::string schedule2_repr = GetStreamStr(aff_list);
+  schedule2_repr.front() = '[';
+  schedule2_repr.back() = ']';
+
+  isl::multi_union_pw_aff transformed_schedule(partial_schedule.ctx(), schedule2_repr);
 
   auto new_node = band.insert_partial_schedule(transformed_schedule);
-
   tiled_ = true;
-
-  // return GetBase().VisitBand(new_node);
   return new_node;
 }
 
@@ -88,6 +101,10 @@ isl::schedule_node TileTransformer::VisitFilter(const isl::schedule_node& node) 
   };
   filter.foreach_set(collect_set);
   return Visit(node.first_child());
+}
+
+isl::schedule_node SkewTransformer::VisitBand(const isl::schedule_node& node) {
+  auto partial_schedule = node.get_schedule();
 }
 
 }  // namespace cinn
