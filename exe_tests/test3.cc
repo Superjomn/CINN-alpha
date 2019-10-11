@@ -37,7 +37,7 @@ TEST(cinn, complex_nn) {
     Expr C({M, N}, primitive_t::float32, "C");
     Expr Bias({N}, primitive_t::float32, "Bias");
 
-    Var m, n, k;
+    Var m("m"), n("n"), k("k");
     Expr scale_ratio(1.3f);
 
     auto s0 = MatMul(fn, A, B, C, m, n, k);
@@ -45,8 +45,12 @@ TEST(cinn, complex_nn) {
     auto s2 = Scale(fn, C, scale_ratio, m, n);
 
     s2.FuseWith(s1);
-    s1.FuseWith(s2);
-    s1.FuseWith(s0);
+    // s1.FuseWith(s0);
+    s0.Tile(m, 32);
+    s0.Tile(n, 32);
+
+    s1.Tile(m, 4);
+    s2.Tile(m, 4);
 
     fn.Inputs({A, B, Bias});
     fn.Outputs({C});

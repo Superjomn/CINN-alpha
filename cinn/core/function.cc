@@ -7,6 +7,7 @@
 #include <vector>
 #include "cinn/core/isl_code_gen.h"
 #include "cinn/core/stage.h"
+#include "cinn/core/transform/transforms.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/logging.h"
@@ -238,7 +239,7 @@ isl::union_map ComputeDeps(const isl::union_set& domain, const isl::union_map& r
   return deps;
 }
 
-//! Compare two stage names by numeraic values.
+//! Compare two stage names by numeric values, that is, "s10" > "s1".
 int CompareStageName(const std::string& s0, const std::string& s1) {
   auto s0_ = s0.substr(1);
   auto s1_ = s1.substr(1);
@@ -309,18 +310,20 @@ void Snippet::ComputeSchedule() {
 }
 
 void Snippet::BuildTiles() {
-  LOG(INFO) << "******** build tiles";
   if (!is_polyhedral()) return;
-
   CHECK(schedule_) << "schedule tree should be build first before tile";
+
+  LOG(INFO) << "original schedule " << *schedule_;
 
   for (auto& stage : stages_) {
     if (stage.tiles().empty()) continue;
-    IslTileGenerator::Global().set_stage_name(stage.name());
 
-    isl_schedule_node* root =
-        isl_schedule_node_map_descendant_bottom_up(isl_schedule_get_root(schedule_->get()), cinn::node_tiler, nullptr);
-    schedule_.reset(new isl::schedule(isl::manage(isl_schedule_node_get_schedule(root))));
+    for (auto& tile_piece : stage.tiles()) {
+      TileTransformer tiler(stage.name(), tile_piece.first, tile_piece.second);
+      *schedule_ = tiler.Visit(*schedule_).get_schedule();
+    }
+
+    LOG(INFO) << "final schedule: " << *schedule_;
   }
 }
 

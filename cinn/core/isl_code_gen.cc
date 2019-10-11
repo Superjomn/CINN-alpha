@@ -464,7 +464,7 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
 
 void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
   LOG_INDENT("ReplaceExprWithStage");
-  CINN_DEBUG(3) << "replace " << ir::Dump(root) << ", the var " << s << " to " << ir::Dump(expr);
+  CINN_DEBUG(6) << "replace " << ir::Dump(root) << ", the var " << s << " to " << ir::Dump(expr);
 
   switch (root.type()) {
     OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);

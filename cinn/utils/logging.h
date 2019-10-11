@@ -28,6 +28,7 @@ struct Log {
   std::ostream& stream() { return os_; }
 
   ~Log() {
+    /*
     std::string log = os_.str();
     if (level_ > __cinn_log_level__ || log.empty()) return;
 #ifdef DEBUG_WITH_LOCATION
@@ -38,6 +39,7 @@ struct Log {
     std::cerr << std::left << "'";
     for (int i = 0; i < __cinn_log_indent__; i++) std::cerr << "    |";
     std::cerr << ' ' << log << std::endl;
+     */
   }
 
  private:
