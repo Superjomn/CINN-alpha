@@ -31,6 +31,8 @@ std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type typ
 //! Get a representation of the tuple in the set.
 std::string isl_set_get_statement_repr(__isl_keep isl_set *set);
 
+isl_multi_union_pw_aff *__isl_give isl_multi_union_pw_aff_from_union_pw_aff_list(isl_union_pw_aff_list *__isl_keep pw);
+
 //! Get a dimension position if it match the name. return -1 if not exists.
 int isl_map_get_dim_pos_by_name(__isl_keep isl_map *map, isl_dim_type type, const std::string &name);
 
@@ -125,6 +127,9 @@ __isl_give isl_set *isl_set_append_cond(__isl_give isl_set *set, const char *con
 // A callback for tile a schedule node.
 // TODO(Superjomn) it is weak, enhance it.
 isl_schedule_node *node_tiler(__isl_take isl_schedule_node *node, void *user);
+
+// Get the nth set from a union_set.
+__isl_give isl_set *isl_union_set_get_nth_element(isl_union_set *__isl_keep uset, int n);
 
 namespace isl_utils {
 

@@ -281,7 +281,7 @@ void IRPrinter::Visit(const Assign *op) {
 }
 
 void IRPrinter::Visit(const Function *op) {
-  LOG_INDENT("IRPrinter::Visit Function");
+  LOG_INDENT(6);
   CINN_DEBUG(3) << "print function " << op->name();
 
   // print func definition.

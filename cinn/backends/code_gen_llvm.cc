@@ -293,7 +293,7 @@ void CodeGenLLVM::ReadTensorElement(const ir::Reference &ref) {
 
 void CodeGenLLVM::Visit(const ir::For *op) {
   CHECK(builder_);
-  LOG_INDENT("CodeGenLLVM::Visit");
+  LOG_INDENT(6);
 
   CINN_DEBUG(0) << "init: " << ir::Dump(op->iter_init);
   CINN_DEBUG(0) << "cond: " << ir::Dump(op->iter_cond);

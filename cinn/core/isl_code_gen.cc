@@ -1,13 +1,17 @@
 #include "cinn/core/isl_code_gen.h"
+#include <stack>
 #include <utility>
 #include "cinn/ir/expr.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
+#include "cinn/ir/ir_mutator.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
 
 namespace cinn {
+
+std::vector<std::string> forloop_indice_stack;
 
 // Eat an isl block node.
 void EatBlock(const isl::ast_node& node, ir::Expr* expr);
@@ -19,7 +23,7 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr);
 void EatIf(const isl::ast_node& node, ir::Expr* expr);
 
 void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
-  LOG_INDENT("IslAstNodeToCinnExpr");
+  LOG_INDENT(6);
   CHECK(!node.is_null());
   CHECK(expr);
 
@@ -72,7 +76,7 @@ void EatUser(const isl::ast_node& node, ir::Expr* expr) {
 }
 // Eat an isl `for` node.
 void EatFor(const isl::ast_node& node, ir::Expr* expr) {
-  LOG_INDENT("EatFor");
+  LOG_INDENT(6);
   CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_for);
   CINN_DEBUG(5) << "get isl ast for node";
 
@@ -201,7 +205,6 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           *expr = ir::Div::make(ops[0], ops[1]);
           break;
         case isl_ast_op_le:
-
           *expr = ir::LE::make(ops[0], ops[1]);
           break;
         case isl_ast_op_lt:
@@ -235,7 +238,7 @@ void ReplaceUseridWithExpr(ir::Expr root, const std::string& userid, ir::Expr e)
 // TODO(Superjomn) to remove the access argument
 isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& access) {
   CHECK(build);
-  LOG_INDENT("CreateIslAstIndexExpression");
+  LOG_INDENT(6);
   isl::map schedule = isl::manage(isl_map_from_union_map(isl_ast_build_get_schedule(build)));
 
   // get identity access from schedule.
@@ -244,7 +247,6 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& 
   auto statement_set = isl::manage(
       isl_set_read_from_str(isl_map_get_ctx(schedule.get()), StringFormat("{ %s : }", statement.c_str()).c_str()));
   auto identity_access = isl::manage(isl_set_identity(statement_set.release()));
-  LOG(INFO) << "identity_access: " << identity_access;
 
   isl::map map = isl::manage(isl_map_reverse(schedule.copy()));
   CINN_DEBUG(2) << "schedule reversed: " << map;
@@ -271,7 +273,7 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& 
 
 std::map<std::string, isl::ast_expr> ExtractIslTransformedIndiceMap(const isl::set& iterator_domain,
                                                                     isl_ast_build* build) {
-  LOG_INDENT("ExtractIslTransformedIndiceMap");
+  LOG_INDENT(6);
   std::map<std::string, isl::ast_expr> iterator_map;
   isl::map identity = isl::manage(isl_set_identity(iterator_domain.copy()));
   isl::map schedule = identity;
@@ -352,7 +354,7 @@ Generator& Generator::Global() {
   }
 
 void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, Expr>& indice_map, Expr& root) {
-  LOG_INDENT("ReplaceCinnIndiceWithIslTransformedIndicesHelper");
+  LOG_INDENT(6);
   CINN_DEBUG(3) << "replacing " << ir::Dump(root);
   switch (root.type()) {
     OP_2_ARGS_FOR_EACH(TWO_ARG_OP);
@@ -371,7 +373,7 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       CINN_DEBUG(3) << "visit Call " << ir::Dump(root);
       auto* call = root.As<ir::Call>();
       for (auto& it : call->arguments) {
-        LOG_INDENT("visit Call");
+        LOG_INDENT(6);
         CINN_DEBUG(4) << "replacing argument " << ir::Dump(it);
         ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, it);
         CINN_DEBUG(4) << "get " << ir::Dump(it);
@@ -381,21 +383,21 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
     }
 
     case ir::NodeTy::Reference: {
-      LOG_INDENT("visit Reference");
+      LOG_INDENT(0);
       auto* reference = root.As<ir::Reference>();
       std::vector<ir::Var> iterators;
       for (auto& it : reference->iterators) {
-        LOG_INDENT("visit Reference.iterators");
-        CINN_DEBUG(3) << "replacing " << ir::Dump(it);
+        LOG_INDENT(2);
+        CINN_DEBUG(0) << "replacing " << ir::Dump(it);
         ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, it);
-        CINN_DEBUG(3) << "get " << ir::Dump(it);
+        CINN_DEBUG(0) << "get " << ir::Dump(it);
       }
       CINN_DEBUG(3) << "get " << ir::Dump(root);
       break;
     }
 
     case ir::NodeTy::IfThenElse: {
-      LOG_INDENT("visit IfThenElse");
+      LOG_INDENT(6);
       auto* if_then_else = root.As<ir::IfThenElse>();
       ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, if_then_else->condition);
       if (if_then_else->true_block.valid()) {
@@ -432,7 +434,7 @@ Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl:
 }
 
 isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, void* user) {
-  LOG_INDENT("IslAstNodeInfoCollect");
+  LOG_INDENT(6);
   Stage stage = Generator::Global().GetComputationByNode(node);
   CINN_DEBUG(2) << "Stage name is " << stage.name();
   CHECK(!stage.name().empty());
@@ -454,6 +456,123 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
   return node;
 }
 
+// Replace the original CINN expression's operand with the actual forloop iterators in ISL.
+// For example:
+// original statement: S0[i,j,k] = A[i] * A[j] + B[k]
+// the forloop iterator levels: [c0, c3+1, c4*2]
+// will get the s0[c0, s3+1, c4*2]
+std::map<std::string, ir::Expr> ExprAttachIslIndices(ir::Expr expr, isl::set domain, const ir::Reference& reference) {
+  LOG_INDENT(2);
+  CHECK_EQ(isl_set_dim(domain.get(), isl_dim_set), reference.iterators.size()) << "dimension not match";
+  // construct the map from name of cinn vars to isl iterator.
+  std::map<std::string, ir::Expr> cinn2isl_exprs;
+
+  int ndims = reference.iterators.size();
+
+  for (int i = 0; i < ndims; i++) {
+    std::string cinn_var_name = isl_set_get_dim_name(domain.get(), isl_dim_set, i);
+    cinn2isl_exprs[cinn_var_name] = reference.iterators[i];
+    CINN_DEBUG(0) << "cinn to isl exprs: " << cinn_var_name << " " << ir::Dump(reference.iterators[i]);
+  }
+  return cinn2isl_exprs;
+}
+
+std::map<std::string, ir::Expr> ExprAttachIslIndices(ir::Expr expr, isl::set domain, const ir::Call& call) {
+  LOG_INDENT(2);
+  CHECK_EQ(isl_set_dim(domain.get(), isl_dim_set), call.arguments.size()) << "dimension not match";
+  // construct the map from name of cinn vars to isl iterator.
+  std::map<std::string, ir::Expr> cinn2isl_exprs;
+
+  int ndims = call.arguments.size();
+
+  for (int i = 0; i < ndims; i++) {
+    std::string cinn_var_name = isl_set_get_dim_name(domain.get(), isl_dim_set, i);
+    cinn2isl_exprs[cinn_var_name] = call.arguments[i];
+    CINN_DEBUG(0) << "cinn to isl exprs: " << cinn_var_name << " " << ir::Dump(call.arguments[i]);
+  }
+  return cinn2isl_exprs;
+}
+
+/**
+ * Replace the variables in the expression corresponding to a map.
+ * @param expr the expression where the variable to replace.
+ * @param map the map of var to.
+ */
+void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
+  struct Mutator : public ir::IRMutator {
+    const Expr& expr;
+    const std::map<std::string, ir::Expr>& map;
+
+    Mutator(const Expr& expr, const std::map<std::string, ir::Expr>& map) : expr(expr), map(map) {}
+
+    void Mutate(Expr* op, Expr* expr) override { IRMutator::Mutate(op, expr); }
+
+    /*
+    void Mutate(ir::Call* op, Expr* expr) override  {
+      std::vector<ir::Expr> processed_args;
+      for (auto& arg : op->arguments) {
+        auto it = map.find(arg->name());
+        CHECK(it != map.end()) << "iterator " << op->name() << " not exists in Call";
+        LOG(INFO) << "replace " << ir::Dump(*expr) << " with " << ir::Dump(it->second);
+      }
+    }
+     */
+
+    void Mutate(ir::Var* op, Expr* expr) override {
+      LOG(INFO) << "******** mutate var";
+      auto it = map.find(op->name());
+      CHECK(it != map.end()) << "iterator " << op->name() << " not exists in Call";
+      LOG(INFO) << "replace " << ir::Dump(*expr) << " with " << ir::Dump(it->second);
+      *expr = it->second;
+    }
+  };
+
+  Mutator mutator(*expr, map);
+  mutator.Mutate(expr, expr);
+}
+
+void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
+  LOG(INFO) << "*** Attach " << stage_name;
+  LOG_INDENT(2);
+  auto stage = Generator::Global().GetStageByName(stage_name);
+
+  struct Collector : public ir::IRMutator {
+    std::string statement_;
+
+    Collector(const std::string& statement) : statement_(statement) {}
+
+    void Mutate(Expr* op, Expr* expr) override { IRMutator::Mutate(op, expr); }
+
+    void Mutate(ir::Call* call, Expr* expr) override {
+      LOG_INDENT(2);
+      auto stage = Generator::Global().GetStageByName(statement_);
+
+      LOG(INFO) << "current stage: " << call->caller;
+      if (call->caller == statement_) {
+        LOG(INFO) << "replacing " << statement_;
+        // replace this.
+        auto cinn2isl_exprs = ExprAttachIslIndices(*expr, stage.iterator_domain(), *call);
+        for (auto& item : cinn2isl_exprs) {
+          LOG(INFO) << item.first << " -> " << ir::Dump(item.second);
+        }
+
+        LOG(INFO) << "origina call " << ir::Dump(*expr) << " " << ir::Dump(stage.expr());
+        auto copied_expr = ir::CopyExpr(stage.expr());
+        ReplaceVarInExpr(&copied_expr, cinn2isl_exprs);
+        *expr = copied_expr;
+        LOG(INFO) << "after replaced: " << ir::Dump(*expr);
+      } else {
+        for (auto& arg : call->arguments) {
+          Mutate(&arg, &arg);
+        }
+      }
+    }
+  };
+
+  Collector collector(stage_name);
+  collector.Mutate(&root, &root);
+}
+
 #define TWO_PARAM_OP(op__)                  \
   case ir::NodeTy::op__: {                  \
     auto* node = root.As<ir::op__>();       \
@@ -462,86 +581,101 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
     break;                                  \
   }
 
+/*
 void ReplaceExprWithStage(Expr& root, const std::string& s, const Expr& expr) {
-  LOG_INDENT("ReplaceExprWithStage");
-  CINN_DEBUG(6) << "replace " << ir::Dump(root) << ", the var " << s << " to " << ir::Dump(expr);
+LOG_INDENT(2);
+CINN_DEBUG(0) << "replace " << ir::Dump(root) << ", the var " << s << " to " << ir::Dump(expr);
 
-  switch (root.type()) {
-    OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);
+LOG(INFO) << "terators prefix: ";
+for (auto iter : forloop_indice_stack) LOG(INFO) << "iterator " << iter;
 
-    case ir::NodeTy::Reference: {
-      CINN_DEBUG(4) << "visit Reference";
-      auto* node = root.As<ir::Reference>();
-      if (node->target.type() == ir::NodeTy::Var) {
-        ir::Var* x = node->target.As<ir::Var>();
-        CINN_DEBUG(6) << "reference.target.name: " << x->name();
-        if (x->name() == s) {
-          root = CopyExpr(expr);
-          break;
-        }
-      }
-      // recursively process the target and iterator expressions.
-      ReplaceExprWithStage(node->target, s, expr);
-      for (auto& iterator : node->iterators) {
-        ReplaceExprWithStage(iterator, s, expr);
-      }
-      break;
-    }
-    case ir::NodeTy::Call: {
-      CINN_DEBUG(4) << "visit Call";
-      auto* node = root.As<ir::Call>();
-      if (node->caller == s) {
+auto stage = Generator::Global().GetStageByName(s);
+
+switch (root.type()) {
+  OP_2_ARGS_FOR_EACH(TWO_PARAM_OP);
+
+  case ir::NodeTy::Reference: {
+    CINN_DEBUG(4) << "visit Reference";
+    auto* node = root.As<ir::Reference>();
+    if (node->target.type() == ir::NodeTy::Var) {
+      ir::Var* x = node->target.As<ir::Var>();
+      CINN_DEBUG(6) << "reference.target.name: " << x->name();
+      if (x->name() == s) {
         root = CopyExpr(expr);
         break;
       }
-
-      for (auto& arg : node->arguments) {
-        ReplaceExprWithStage(arg, s, expr);
-      }
-      break;
     }
-
-    case ir::NodeTy::For: {
-      CINN_DEBUG(4) << "visit For";
-      auto* node = root.As<ir::For>();
-      ReplaceExprWithStage(node->iter_init, s, expr);
-      ReplaceExprWithStage(node->iter_cond, s, expr);
-      ReplaceExprWithStage(node->iter_inc, s, expr);
-      ReplaceExprWithStage(node->body, s, expr);
-      break;
+    // recursively process the target and iterator expressions.
+    ReplaceExprWithStage(node->target, s, expr);
+    for (auto& iterator : node->iterators) {
+      ReplaceExprWithStage(iterator, s, expr);
     }
-
-    case ir::NodeTy::IfThenElse: {
-      CINN_DEBUG(4) << "visit if";
-      auto* node = root.As<ir::IfThenElse>();
-      ReplaceExprWithStage(node->condition, s, expr);
-      ReplaceExprWithStage(node->true_block, s, expr);
-      if (node->false_block.valid()) ReplaceExprWithStage(node->false_block, s, expr);
-      break;
-    }
-
-    case ir::NodeTy::Block: {
-      CINN_DEBUG(4) << "visit Block";
-      auto* node = root.As<ir::Block>();
-      for (auto& e : node->exprs) {
-        ReplaceExprWithStage(e, s, expr);
-      }
-      break;
-    }
-
-    case ir::NodeTy::IntImm:
-    case ir::NodeTy::FloatImm:
-    case ir::NodeTy::Var:
-      break;
-
-    default:
-      LOG(ERROR) << "not supported type: " << root.type();
+    break;
   }
+  case ir::NodeTy::Call: {
+    CINN_DEBUG(4) << "visit Call";
+    auto* node = root.As<ir::Call>();
+    if (node->caller == s) {
+      root = CopyExpr(expr);
+      break;
+    }
+
+    for (auto& arg : node->arguments) {
+      ReplaceExprWithStage(arg, s, expr);
+    }
+    break;
+  }
+
+  case ir::NodeTy::For: {
+    CINN_DEBUG(4) << "visit For";
+    auto* node = root.As<ir::For>();
+    LOG(INFO) << "iterator: " << ir::Dump(node->iterator);
+    // record the prefix of iterators.
+    forloop_indice_stack.push_back(ir::Dump(node->iterator));
+
+    ReplaceExprWithStage(node->iter_init, s, expr);
+    ReplaceExprWithStage(node->iter_cond, s, expr);
+    ReplaceExprWithStage(node->iter_inc, s, expr);
+    ReplaceExprWithStage(node->body, s, expr);
+
+    // pop out the iterator.
+    forloop_indice_stack.pop_back();
+    break;
+  }
+
+  case ir::NodeTy::IfThenElse: {
+    CINN_DEBUG(4) << "visit if";
+    auto* node = root.As<ir::IfThenElse>();
+    ReplaceExprWithStage(node->condition, s, expr);
+    ReplaceExprWithStage(node->true_block, s, expr);
+    if (node->false_block.valid()) ReplaceExprWithStage(node->false_block, s, expr);
+    break;
+  }
+
+  case ir::NodeTy::Block: {
+    CINN_DEBUG(4) << "visit Block";
+    auto* node = root.As<ir::Block>();
+    for (auto& e : node->exprs) {
+      ReplaceExprWithStage(e, s, expr);
+    }
+    break;
+  }
+
+  case ir::NodeTy::IntImm:
+  case ir::NodeTy::FloatImm:
+  case ir::NodeTy::Var:
+    break;
+
+  default:
+    VLOG(3) << "not supported type: " << root.type();
 }
+}
+#undef TWO_PARAM_OP
+ */
 
 Stage Generator::GetComputationByNode(isl_ast_node* node) {
   CHECK(node);
-  LOG_INDENT("Generator::GetComputationByNode");
+  LOG_INDENT(6);
   isl_ast_expr* expr = isl_ast_node_user_get_expr(node);
   isl_ast_expr* arg = isl_ast_expr_get_op_arg(expr, 0);
   std::string name = isl_id_get_name(isl_ast_expr_get_id(arg));

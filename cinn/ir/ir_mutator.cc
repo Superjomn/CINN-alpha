@@ -62,14 +62,23 @@ void IRMutator::Mutate(For* op, Expr* expr) {
   Mutate(&op->iter_inc, &op->iter_inc);
   Mutate(&op->body, &op->body);
 }
-void IRMutator::Mutate(IfThenElse* op, Expr* expr) {}
+void IRMutator::Mutate(IfThenElse* op, Expr* expr) {
+  Mutate(&op->condition, &op->condition);
+  CHECK(op->true_block.valid());
+  Mutate(&op->true_block, &op->true_block);
+  if (op->false_block.valid()) Mutate(&op->false_block, &op->false_block);
+}
 void IRMutator::Mutate(Block* op, Expr* expr) {
   CINN_DEBUG(5) << "mutating block ";
   for (auto& expr : op->exprs) {
     Mutate(&expr, &expr);
   }
 }
-void IRMutator::Mutate(Call* op, Expr* expr) {}
+void IRMutator::Mutate(Call* op, Expr* expr) {
+  for (auto& arg : op->arguments) {
+    Mutate(&arg, &arg);
+  }
+}
 void IRMutator::Mutate(Function* op, Expr* expr) {
   CINN_DEBUG(0) << "mutating Function " << op->name();
   for (auto& arg : op->inputs()) {

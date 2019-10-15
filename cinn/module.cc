@@ -7,7 +7,7 @@ namespace cinn {
 void Module::AddFunction(const Expr &function) { functions_.push_back(function); }
 
 void Module::Lower() {
-  LOG_INDENT("Module::Lower");
+  LOG_INDENT(6);
   for (auto &function : functions_) {
     CINN_DEBUG(2) << "lower function " << function.As<Function>()->name();
     LowerFunction(function);
@@ -34,7 +34,7 @@ class AssignTargetNameCollector : public ir::IRVisitor {
 };
 
 std::set<std::string> FindoutTemporaryBuffer(Function &function) {
-  LOG_INDENT("FindoutTemporaryBuffer");
+  LOG_INDENT(6);
   std::set<std::string> io_names, buf_names;
   AssignTargetNameCollector io_collector(&io_names), buf_collector(&buf_names);
 

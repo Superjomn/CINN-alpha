@@ -18,7 +18,7 @@ struct Expr;
 
 class IRMutator {
  public:
-  void Mutate(Expr* op, Expr* expr);
+  virtual void Mutate(Expr* op, Expr* expr);
 
   virtual void Mutate(Constant* op, Expr* expr);
 

@@ -27,7 +27,7 @@ isl::set BuildWithCond(__isl_give isl_set* domain, const std::string& cond) {
 }
 
 void Stage::ExtractDomainFromExpr(Expr x) {
-  LOG_INDENT("Stage::ExtractDomainFromExpr");
+  LOG_INDENT(6);
   CINN_DEBUG(3) << "expr.type: " << ir::GetNodeTyRepr(x.type());
   CINN_DEBUG(3) << "expr: " << ir::Dump(x);
   class Collector : public ir::IRVisitor {
@@ -137,7 +137,7 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 }
 
 Stage::Stage(Expr expr) {
-  LOG_INDENT("Stage::Stage");
+  LOG_INDENT(6);
   InitData();
   data_->expr = expr;
   set_name(NameGenerator::Global().NewStageName());
@@ -160,7 +160,7 @@ Stage::Stage(Expr expr) {
 void Stage::InitFromAssignExpr(Expr expr) {}
 
 void Stage::ApplyTransformationOnScheduleRange(const std::string& map_str) {
-  LOG_INDENT("Stage::ApplyTransformationOnScheduleRange");
+  LOG_INDENT(6);
   CHECK(data_->ctx);
   CHECK(data_->schedule.get());
   isl::map map(data_->ctx, map_str.c_str());
@@ -173,7 +173,7 @@ void Stage::ApplyTransformationOnScheduleRange(const std::string& map_str) {
 }
 
 std::string Stage::DumpIslC() const {
-  LOG_INDENT("Stage::DumpIslC");
+  LOG_INDENT(6);
   std::stringstream ss;
   CHECK(data_->ctx);
   CHECK(data_->iter_domain.get());
@@ -225,7 +225,7 @@ std::string Stage::DumpAsC() const {
 }
 
 void Stage::InitSchedule() {
-  LOG_INDENT(data_->name + ".InitSchedule");
+  LOG_INDENT(6);
   CHECK(data_->iter_domain.get());
   isl_utils::map schedule = data_->iter_domain.identity();
   // schedule = isl::manage(isl_map_set_tuple_name(schedule.release(), isl_dim_out, ""));
@@ -259,7 +259,7 @@ void Stage::set_name(const std::string& name) {
 }
 
 Expr Stage::GetIndiceTransformedExpr() const {
-  LOG_INDENT("Stage::GetIndiceTransformedExpr");
+  LOG_INDENT(6);
   CINN_DEBUG(3) << "stage: " << name() << " : " << ir::Dump(data_->expr);
   for (auto& item : data_->indice_map_) {
     CINN_DEBUG(3) << "dic " << item.first << " -> " << ir::Dump(item.second);
@@ -304,7 +304,7 @@ void Stage::Interchange(const std::string& dim0, const std::string& dim1) {
 }
 
 void Stage::Interchange(int pos0, int pos1) {
-  LOG_INDENT("Stage::Interchange");
+  LOG_INDENT(6);
   ScheduleNameAllDims();
 
   int ndim = schedule().range_dims();
@@ -350,7 +350,7 @@ void Stage::Interchange(int pos0, int pos1) {
 
 /*
 void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
-  LOG_INDENT("Stage::Tile");
+  LOG_INDENT(6);
   int posi = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, i.name());
   int posj = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, j.name());
 
@@ -368,8 +368,10 @@ void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
 
 void Stage::Tile(ir::Var i, size_t w) { data_->tiles[i.name()] = w; }
 
+void Stage::Tile(std::vector<int> sizes) { data_->tile_sizes_ = sizes; }
+
 void Stage::Split(const ir::Var& iter, int size) {
-  LOG_INDENT("Stage::Split");
+  LOG_INDENT(6);
   CHECK(!schedule().is_null());
   CHECK_GT(size, 0);
   CHECK(isl_utils::isl_map_has_dim_name(schedule().get(), isl_dim_out, iter.name()))
@@ -450,7 +452,7 @@ class ReferenceCollector : public ir::IRPrinter {
 }  // namespace
 
 isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) {
-  LOG_INDENT("CollectAccess");
+  LOG_INDENT(6);
   CINN_DEBUG(6) << "input interator_domain: " << iterator_domain;
   CINN_DEBUG(6) << "input expr: " << ir::Dump(expr);
   // init read access
@@ -490,7 +492,7 @@ isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) 
 void Stage::InitReadDependencies() {
   if (iterator_domain().is_null()) return;
   CHECK(expr().is_assign());
-  LOG_INDENT("Stage::InitReadDependencies");
+  LOG_INDENT(6);
   CHECK(!iterator_domain().is_null());
   CHECK(!read_access()) << "duplicate init read_access";
   set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
@@ -503,7 +505,7 @@ void Stage::InitReadDependencies() {
 void Stage::InitWriteDependencies() {
   if (iterator_domain().is_null()) return;
   CHECK(expr().is_assign());
-  LOG_INDENT("Stage::InitWriteDependencies");
+  LOG_INDENT(6);
   CHECK(!iterator_domain().is_null());
   set_write_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
 

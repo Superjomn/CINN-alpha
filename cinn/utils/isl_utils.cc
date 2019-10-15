@@ -300,4 +300,18 @@ isl_set *isl_set_append_cond(isl_set *set, const char *cond) {
   return isl_set_read_from_str(ctx, set_repr.c_str());
 }
 
+isl_multi_union_pw_aff *isl_multi_union_pw_aff_from_union_pw_aff_list(isl_union_pw_aff_list *pw) {
+  std::string repr = isl_union_pw_aff_list_to_str(pw);
+  repr.front() = '[';
+  repr.back() = ']';
+  return isl_multi_union_pw_aff_read_from_str(isl_union_pw_aff_list_get_ctx(pw), repr.c_str());
+}
+
+isl_set *isl_union_set_get_nth_element(isl_union_set *uset, int n) {
+  isl_set_list *isets = isl_union_set_get_set_list(uset);
+  isl_set *the_set = isl_set_list_get_at(isets, n);
+  isl_set_list_free(isets);
+  return the_set;
+}
+
 }  // namespace cinn

@@ -18,7 +18,7 @@ std::shared_ptr<Function> cinn::Function::make(const std::string& name,
                                                std::vector<Expr> inputs,
                                                std::vector<Expr> outputs,
                                                std::vector<Stage> stages) {
-  LOG_INDENT("Function::make");
+  LOG_INDENT(6);
   auto node = std::make_shared<Function>();
   node->InitData();
   node->data_->name = name;
@@ -99,7 +99,7 @@ Stage Function::AddStage(const Stage& stage) {
 }
 
 void Function::BuildSnippets() {
-  LOG_INDENT("Function::BuildSnippets, function " + name());
+  LOG_INDENT(6);
   auto& snippets = data_->snippets;
   for (auto& stage : data_->stages) {
     CINN_DEBUG(3) << "add stage: " << stage.name() << " " << ir::Dump(stage.expr());
@@ -138,7 +138,7 @@ Function::operator Expr() {
 }
 
 void Snippet::CollectIteratorDomain() {
-  LOG_INDENT("Snippet::InitIteratorDomainFromStages ");
+  LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type())) << "only polyhedral snippet supports iterator domain";
 
   // Collect all the iterators.
@@ -158,7 +158,7 @@ void Snippet::CollectIteratorDomain() {
 }
 
 void Snippet::CollectTransforms() {
-  LOG_INDENT("Snippet::CollectTransforms");
+  LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type())) << "only polyhedral snippet supports transform collection";
 
   for (auto& stage : stages_) {
@@ -173,7 +173,7 @@ void Snippet::CollectTransforms() {
 }
 
 void Snippet::AddStage(const Stage& stage) {
-  LOG_INDENT("Snippet:AddStage");
+  LOG_INDENT(6);
   CHECK(!is_end_) << "definition of the snippet is end, should not add stages.";
   CHECK(stage.type() != Stage::Type::unk);
   CINN_DEBUG(3) << "add a " << stage.type() << " stage called " << stage.name();
@@ -189,7 +189,7 @@ void Snippet::AddStage(const Stage& stage) {
 }
 
 void Snippet::CollectReadAccess() {
-  LOG_INDENT("Snippet::CollectReadAccess");
+  LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type()));
   for (auto& stage : stages_) {
     CHECK(stage.read_access());
@@ -204,7 +204,7 @@ void Snippet::CollectReadAccess() {
 }
 
 void Snippet::CollectWriteAccess() {
-  LOG_INDENT("Snippet::CollectWriteAccess");
+  LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type()));
   for (auto& stage : stages_) {
     CHECK(stage.write_access());
@@ -277,7 +277,7 @@ isl::union_map ComputeScheduleValidity(const isl::union_set& domain, const isl::
 
 void Snippet::ComputeSchedule() {
   // Use a unique ctx to avoid obstruction.
-  LOG_INDENT("Snippet::ComputeSchedule");
+  LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type()));
   CHECK(!access_reads_->is_null());
   CHECK(!access_writes_->is_null());
@@ -316,12 +316,10 @@ void Snippet::BuildTiles() {
   LOG(INFO) << "original schedule " << *schedule_;
 
   for (auto& stage : stages_) {
-    if (stage.tiles().empty()) continue;
+    if (stage.tile_sizes().empty()) continue;
 
-    for (auto& tile_piece : stage.tiles()) {
-      TileTransformer tiler(stage.name(), tile_piece.first, tile_piece.second);
-      *schedule_ = tiler.Visit(*schedule_).get_schedule();
-    }
+    TileTransformer2 tiler(stage.name(), stage.tile_sizes());
+    *schedule_ = tiler.Visit(*schedule_).get_schedule();
 
     LOG(INFO) << "final schedule: " << schedule_->get_root();
   }
@@ -350,7 +348,8 @@ void Snippet::BuildFusion() {
 }
 
 isl::ast_node Snippet::GenerateIslAst() const {
-  LOG_INDENT("Snippet::GenerateIslAst");
+  LOG(WARNING) << "****** Snippet::GenerateIslAst";
+  LOG_INDENT(2);
   isl::ast_node res;
   if (!is_polyhedral()) return res;
 
@@ -361,14 +360,14 @@ isl::ast_node Snippet::GenerateIslAst() const {
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
 
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
+  CINN_DEBUG(0) << "schedule in Snippet::GenerateIslAst: \n" << *schedule_;
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));
-
-  CINN_DEBUG(3) << "schedule tree get C code:\n" << isl_ast_node_to_C_str(ast.get());
+  CINN_DEBUG(0) << "schedule tree get C code:\n" << isl_ast_node_to_C_str(ast.get());
   return ast;
 }
 
 Expr Snippet::GetTransformedExpr() const {
-  LOG_INDENT("Snippet::GetTransformedExpr");
+  LOG_INDENT(6);
   CHECK(is_end_);
 
   if (!is_polyhedral()) {
@@ -391,7 +390,7 @@ Expr Snippet::GetTransformedExpr() const {
   Expr expr;
   IslAstNodeToCinnExpr(ast, &expr);
   for (int i = 0; i < stages_.size(); i++) {
-    ReplaceExprWithStage(expr, stages_[i].name(), stages_[i].GetIndiceTransformedExpr());
+    AttachCinnExprToIslIndices(expr, stages_[i].name());
   }
   return expr;
 }

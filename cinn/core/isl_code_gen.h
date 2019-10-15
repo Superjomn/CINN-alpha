@@ -39,6 +39,22 @@ void ReplaceUseridWithExpr(ir::Expr root, const std::string& userid, ir::Expr e)
 std::map<std::string, isl::ast_expr> ExtractIslTransformedIndiceMap(const isl::set& iterator_domain,
                                                                     isl_ast_build* build);
 
+/**
+ * Attach CINN Reference with ISL forloop iterators.
+ * We attach a stage each time.
+ *
+ * The steps:
+ * 1. Find out the References corresponding to this stage.
+ * 2. Extract the iterators of this references, currently just ISL iterators, e.g. S0[c0, c2+1] to [c0, c2+1]
+ * 3. Map the CINN iterators to ISL iterators, e.g. S0[c0, c2+1]'s CINN expression is S0[i,j] = A[i][j] + 1, will get a
+ * map: { i: c0, j:c2+1 }
+ * 4. Replace the ISL iterators in Reference with the CINN expression: S0[c0,c2+1] -> A[c0][c2+1]+1
+ *
+ * @param root the CINN expression(or Reference with ISL iterators) to replace with.
+ * @param statement the name of the stage.
+ */
+void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name);
+
 isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, void* user);
 
 void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, Expr>& indice_map, Expr& root);

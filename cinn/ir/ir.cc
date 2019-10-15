@@ -458,7 +458,7 @@ Expr Assign::make(Expr a, Expr b) {
 Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
 
 Expr Expr::operator[](Expr i) {
-  LOG_INDENT("Expr::operator[](Expr i)");
+  LOG_INDENT(6);
   auto vars = CollectVarsFromExpr(i);
   CHECK_LE(vars.size(), 1UL) << "Currently only support at most one variable in a dimension";
 
@@ -559,7 +559,7 @@ isl::set Param::context() const {
 
 // TODO(Superjomn) Support complex expression with more than one Var.
 void Expr::InferenceIteratorDomain(Expr *expr) {
-  LOG_INDENT("Expr::InferenceIteratorDomain");
+  LOG_INDENT(4);
   // CINN_DEBUG(3) << "expr: " << ir::Dump(*expr);
   isl::union_set result;
   // extract iterator from the expr.
@@ -603,7 +603,7 @@ std::vector<Var> ExtractVarsFromExpr(const Expr &expr) {
 }
 
 isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std::vector<std::string> &iterators) {
-  LOG_INDENT("BuildDomainFromDimensions");
+  LOG_INDENT(6);
   CHECK(!dims.empty());
 
   std::vector<std::string> constraints;
@@ -653,7 +653,7 @@ Expr ReplaceVarWithIterator(int id, const Expr &expr) {
 }  // namespace
 
 isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dims) {
-  LOG_INDENT("BuildDomainFromExprWithDimension");
+  LOG_INDENT(6);
   CHECK_EQ(exprs.size(), dims.size());
 
   std::vector<std::string> iterator_vars;

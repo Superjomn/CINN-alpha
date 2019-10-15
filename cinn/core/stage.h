@@ -64,6 +64,9 @@ class Stage {
     // Var name to tile size.
     std::map<std::string, int> tiles;
 
+    // Tile from the tail.
+    std::vector<int> tile_sizes_;
+
     // The names of the stages try to fuse with.
     std::set<std::string> stages_fuse_with;
   };
@@ -148,6 +151,8 @@ class Stage {
 
   const std::map<std::string, int> tiles() const { return data_->tiles; }
 
+  const std::vector<int>& tile_sizes() const { return data_->tile_sizes_; }
+
   const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
 
   //! Set the extra condition of the iterators.
@@ -166,6 +171,8 @@ class Stage {
   //! Tile in `i` iterator by `iw` stride, `j` iterator by `jw` stride.
   // void Tile(ir::Var i, size_t iw, ir::Var j, size_t jw);
   void Tile(ir::Var i, size_t w);
+
+  void Tile(std::vector<int> sizes);
 
   //! Skew in the loop level `i`.
   void Skew(ir::Var i);
