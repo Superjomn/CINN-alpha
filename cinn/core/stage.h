@@ -99,18 +99,8 @@ class Stage {
   /// Get the expression this stage holds.
   const Expr& expr() const { return data_->expr; }
 
-  Type type() const {
-    switch (expr().type()) {
-      case ir::NodeTy::Assign:
-        return Type::polyhedral;
-      case ir::NodeTy::Call:
-      case ir::NodeTy::Allocate:
-        return Type::function_call;
-      default:
-        LOG(INFO) << "type: " << expr().type();
-        return Type::unk;
-    }
-  }
+  //! Get the node type.
+  Type type() const;
 
   /**
    * Set extra condition to the iteration domain.
@@ -184,9 +174,6 @@ class Stage {
   void Vectorize(ir::Var i, size_t vec_size);
 
   // After transformations.
-
-  void ApplyTransformationOnScheduleRange(const std::string& map_str);
-
   isl::map GetTransformedSchedule();
 
   Stage& operator=(Expr x) {
@@ -202,8 +189,6 @@ class Stage {
 
   void SetIndiceMap(std::map<std::string, Expr>&& indice_map) { data_->indice_map_ = std::move(indice_map); }
   const std::map<std::string, Expr>& indice_map() const { return data_->indice_map_; }
-
-  Expr GetIndiceTransformedExpr() const;
 
  private:
   void InitData();

@@ -61,7 +61,8 @@ struct LogIndentGuard {
 extern int cur_log_indent_debug_level;
 
 #define LOG_INDENT(level)                            \
-  CINN_DEBUG(level) << __FUNCTION__;                 \
+  ::cinn::utils::cur_log_indent_debug_level = 0;     \
+  CINN_DEBUG(level) << "func " << __FUNCTION__;      \
   ::cinn::utils::cur_log_indent_debug_level = level; \
   ::cinn::utils::LogIndentGuard ______;
 

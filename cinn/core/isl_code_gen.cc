@@ -233,8 +233,6 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
   }
 }
 
-void ReplaceUseridWithExpr(ir::Expr root, const std::string& userid, ir::Expr e) {}
-
 // TODO(Superjomn) to remove the access argument
 isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build, const isl::map& access) {
   CHECK(build);
@@ -507,22 +505,10 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
 
     void Mutate(Expr* op, Expr* expr) override { IRMutator::Mutate(op, expr); }
 
-    /*
-    void Mutate(ir::Call* op, Expr* expr) override  {
-      std::vector<ir::Expr> processed_args;
-      for (auto& arg : op->arguments) {
-        auto it = map.find(arg->name());
-        CHECK(it != map.end()) << "iterator " << op->name() << " not exists in Call";
-        LOG(INFO) << "replace " << ir::Dump(*expr) << " with " << ir::Dump(it->second);
-      }
-    }
-     */
-
     void Mutate(ir::Var* op, Expr* expr) override {
-      LOG(INFO) << "******** mutate var";
       auto it = map.find(op->name());
       CHECK(it != map.end()) << "iterator " << op->name() << " not exists in Call";
-      LOG(INFO) << "replace " << ir::Dump(*expr) << " with " << ir::Dump(it->second);
+      CINN_DEBUG(3) << "replace " << ir::Dump(*expr) << " with " << ir::Dump(it->second);
       *expr = it->second;
     }
   };
@@ -532,8 +518,8 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
 }
 
 void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
-  LOG(INFO) << "*** Attach " << stage_name;
   LOG_INDENT(2);
+  CINN_DEBUG(0) << "*** Attach " << stage_name;
   auto stage = Generator::Global().GetStageByName(stage_name);
 
   struct Collector : public ir::IRMutator {
@@ -547,20 +533,17 @@ void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
       LOG_INDENT(2);
       auto stage = Generator::Global().GetStageByName(statement_);
 
-      LOG(INFO) << "current stage: " << call->caller;
+      CINN_DEBUG(0) << "current stage: " << call->caller;
       if (call->caller == statement_) {
-        LOG(INFO) << "replacing " << statement_;
+        CINN_DEBUG(3) << "replacing " << statement_;
         // replace this.
         auto cinn2isl_exprs = ExprAttachIslIndices(*expr, stage.iterator_domain(), *call);
-        for (auto& item : cinn2isl_exprs) {
-          LOG(INFO) << item.first << " -> " << ir::Dump(item.second);
-        }
 
-        LOG(INFO) << "origina call " << ir::Dump(*expr) << " " << ir::Dump(stage.expr());
+        CINN_DEBUG(4) << "origina call " << ir::Dump(*expr) << " " << ir::Dump(stage.expr());
         auto copied_expr = ir::CopyExpr(stage.expr());
         ReplaceVarInExpr(&copied_expr, cinn2isl_exprs);
         *expr = copied_expr;
-        LOG(INFO) << "after replaced: " << ir::Dump(*expr);
+        CINN_DEBUG(4) << "after replaced: " << ir::Dump(*expr);
       } else {
         for (auto& arg : call->arguments) {
           Mutate(&arg, &arg);

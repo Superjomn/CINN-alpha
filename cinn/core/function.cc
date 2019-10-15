@@ -410,4 +410,15 @@ void Snippet::TryFuse(const std::string& stage0, const std::string& stage1) {
   }
 }
 
+void Snippet::End() {
+  is_end_ = true;
+  if (is_polyhedral()) {
+    CollectIteratorDomain();
+    CollectTransforms();
+    CollectReadAccess();
+    CollectWriteAccess();
+    ComputeSchedule();
+  }
+}
+
 }  // namespace cinn

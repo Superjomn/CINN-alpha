@@ -14,9 +14,6 @@ std::string::size_type FindDimension(const isl::union_pw_aff& aff, const std::st
 
 isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
   LOG(INFO) << "tile " << statement_ << " " << iterator_ << " " << tile_size_;
-  // if (!IsBandTileable(node) || tiled_ || statements_filter_collected_.count(statement_) == 0) {
-  // return node;
-  //}
 
   if (tiled_ || statements_filter_collected_.count(statement_) == 0) {
     return node;
@@ -42,7 +39,6 @@ isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
       auto transformed_aff = isl::manage(isl_multi_union_pw_aff_from_union_map(map.release()));
       CHECK_GE(transformed_aff.size(), 1UL);
       for (int i = 0; i < transformed_aff.size(); i++) union_pw_affs.push_back(transformed_aff.get_at(i));
-      // transformed_schedule = transformed_schedule.set_at(pw_id, final);
     } else {
       union_pw_affs.push_back(partial_schedule.at(pw_id));
     }

@@ -46,16 +46,7 @@ class Snippet {
   void AddStage(const Stage& stage);
 
   //! End of snippet definition, should't AddStage latter.
-  void End() {
-    is_end_ = true;
-    if (is_polyhedral()) {
-      CollectIteratorDomain();
-      CollectTransforms();
-      CollectReadAccess();
-      CollectWriteAccess();
-      ComputeSchedule();
-    }
-  }
+  void End();
 
   Stage::Type type() const { return type_; }
 
@@ -97,9 +88,6 @@ class Snippet {
 
   //! Fuse the stages if set with Stage::FuseWith.
   void BuildFusion();
-
-  //! Tile a stage at the position of var with size.
-  void TileStage(const std::string& stage_name, const std::map<std::string, int>& tile_sizes);
 
  private:
   //! stages in order.

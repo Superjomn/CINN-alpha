@@ -159,19 +159,6 @@ Stage::Stage(Expr expr) {
 
 void Stage::InitFromAssignExpr(Expr expr) {}
 
-void Stage::ApplyTransformationOnScheduleRange(const std::string& map_str) {
-  LOG_INDENT(6);
-  CHECK(data_->ctx);
-  CHECK(data_->schedule.get());
-  isl::map map(data_->ctx, map_str.c_str());
-  CHECK(map.get()) << "map parse failed";
-
-  CINN_DEBUG(2) << "schedule space " << data_->schedule.space();
-  CINN_DEBUG(2) << "map space " << map.space();
-
-  data_->schedule = data_->schedule.apply_range(map);
-}
-
 std::string Stage::DumpIslC() const {
   LOG_INDENT(6);
   std::stringstream ss;
@@ -256,20 +243,6 @@ void Stage::set_name(const std::string& name) {
   CHECK(!data_->names.count(name)) << "duplicate name for Computation, " << name;
   data_->name = name;
   data_->names.insert(data_->name);
-}
-
-Expr Stage::GetIndiceTransformedExpr() const {
-  LOG_INDENT(6);
-  CINN_DEBUG(3) << "stage: " << name() << " : " << ir::Dump(data_->expr);
-  for (auto& item : data_->indice_map_) {
-    CINN_DEBUG(3) << "dic " << item.first << " -> " << ir::Dump(item.second);
-  }
-  CHECK(data_->expr.valid());
-  CHECK(!data_->indice_map_.empty()) << "indice_map should be created first";
-  CINN_DEBUG(3) << "original expr: " << ir::Dump(data_->expr);
-  Expr expr_copied = ir::CopyExpr(data_->expr);
-  ReplaceCinnIndiceWithIslTransformedIndicesHelper(data_->indice_map_, expr_copied);
-  return expr_copied;
 }
 
 void Stage::InitData() {
@@ -517,6 +490,19 @@ void Stage::InitWriteDependencies() {
 void Stage::SetCond(const ir::Var& iterator, const std::string& cond) {
   data_->iter_domain =
       BuildWithCond(data_->iter_domain.release(), StringFormat("%s %s", iterator.name().c_str(), cond.c_str()));
+}
+
+Stage::Type Stage::type() const {
+  switch (expr().type()) {
+    case ir::NodeTy::Assign:
+      return Type::polyhedral;
+    case ir::NodeTy::Call:
+    case ir::NodeTy::Allocate:
+      return Type::function_call;
+    default:
+      LOG(INFO) << "type: " << expr().type();
+      return Type::unk;
+  }
 }
 
 std::ostream& operator<<(std::ostream& os, Stage::Type t) {
