@@ -343,7 +343,6 @@ void CodeGenLLVM::Visit(const ir::For *op) {
     builder_->SetInsertPoint(inc_bb);
     auto *i = builder_->CreateLoad(i_ptr, "i");
     auto *inc = Codegen(op->iter_inc);
-    // auto* inc = llvm::ConstantInt::get(i32_t, 1);
     auto *add = builder_->CreateAdd(i, inc);
     builder_->CreateStore(add, i_ptr);
   }

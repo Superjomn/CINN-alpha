@@ -351,26 +351,6 @@ Expr IfThenElse::make(Expr condition, Expr true_block, Expr false_block) {
   return Expr(node);
 }
 
-void IfThenElse::Accept(IRVisitor *x) const {
-  condition.Accept(x);
-  true_block.Accept(x);
-  false_block.Accept(x);
-}
-
-#define OP_2_ARG_ACCEPT(op__)             \
-  void op__::Accept(IRVisitor *x) const { \
-    a.Accept(x);                          \
-    b.Accept(x);                          \
-  };
-
-OP_2_ARGS_FOR_EACH(OP_2_ARG_ACCEPT);
-
-void Minus::Accept(IRVisitor *x) const { a.Accept(x); }
-
-void For::Accept(IRVisitor *x) const { LOG(ERROR) << "get a for"; }
-
-void Block::Accept(IRVisitor *x) const { LOG(ERROR) << "get a block"; }
-
 Var::operator Expr() {
   auto node =
       std::make_shared<Var>(data_->name_, ptype(), data_->interval_.lower_bound(), data_->interval_.upper_bound());
@@ -457,6 +437,18 @@ Expr Assign::make(Expr a, Expr b) {
 
 Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
 
+Expr IncreAssign::make(Expr a, Expr b) {
+  CHECK(a.valid());
+  CHECK(b.valid());
+  auto node = std::make_shared<Assign>();
+  node->a = a;
+  node->b = b;
+  CHECK(!node->b.is_unk());
+  node->a.set_ptype(node->b.ptype());
+  node->set_ptype(node->b.ptype());
+  return Expr(node);
+}
+
 Expr Expr::operator[](Expr i) {
   LOG_INDENT(6);
   auto vars = CollectVarsFromExpr(i);
@@ -490,8 +482,6 @@ bool Expr::is_op() const {
   return valid() && (OP_2_ARGS_FOR_EACH(OP_COND)  //
                      false);
 }
-
-void Call::Accept(IRVisitor *x) const {}
 
 class IntervalExtractor : public IRVisitor {
  public:

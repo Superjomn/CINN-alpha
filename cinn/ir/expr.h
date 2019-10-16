@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "cinn/ir/ir_visitor.h"
 #include "cinn/ir/node_base.h"
 #include "cinn/type.h"
 #include "cinn/utils/macros.h"
@@ -34,15 +33,14 @@ static const std::string& GetNodeTyRepr(NodeTy ty) {
 
 static size_t GetNodeTyNum() { return static_cast<size_t>(NodeTy::__NUM__); }
 
+struct IRVisitor;
+
 /// The base class for all the IR nodes.
 class IRNode : public std::enable_shared_from_this<IRNode> {
  public:
   explicit IRNode(NodeTy type) : type_(type) {}
 
   std::shared_ptr<const IRNode> getptr() const { return shared_from_this(); }
-
-  /// Visitor pattern to traverse the IR.
-  virtual void Accept(IRVisitor* x) const = 0;
 
   NodeTy type() const { return type_; }
 
@@ -102,8 +100,6 @@ class ExprNodeBase : public IRNode {
   ExprNodeBase() : IRNode(T::node_type) {}
   explicit ExprNodeBase(NodeTy type) : IRNode(type) {}
 
-  void Accept(IRVisitor* visitor) const override { const_self()->Accept(visitor); }
-
   T* self() { return static_cast<T*>(this); }
   const T* const_self() const { return static_cast<const T*>(this); }
 };
@@ -113,8 +109,6 @@ class ExprNode : public ExprNodeBase<T> {
  public:
   ExprNode() = default;
   explicit ExprNode(NodeTy type) : ExprNodeBase<T>(type) {}
-
-  void Accept(IRVisitor* visitor) const override { visitor->Visit(const_self()); }
 
   T* self() { return static_cast<T*>(this); }
   const T* const_self() const { return static_cast<const T*>(this); }
@@ -126,8 +120,6 @@ class StmtNodeBase : public IRNode {
  public:
   StmtNodeBase() : IRNode(T::_node_type) {}
   explicit StmtNodeBase(NodeTy type) : IRNode(type) {}
-
-  void Accept(IRVisitor* visitor) const override {}
 };
 
 /// Integer constants
@@ -151,8 +143,6 @@ class IntImm : public ExprNodeBase<IntImm> {
     node->set_ptype(primitive_t::int32);
     return node;
   }
-
-  void Accept(IRVisitor* x) const override { x->Visit(this); }
 
   int64_t val() const { return val_; }
   const Type& type() const { return type_; }
@@ -183,8 +173,6 @@ class FloatImm : public ExprNodeBase<FloatImm> {
     return node;
   }
 
-  void Accept(IRVisitor* x) const override { x->Visit(this); }
-
   float val() const { return val_; }
 
   static const NodeTy node_type = NodeTy::FloatImm;
@@ -193,8 +181,6 @@ class FloatImm : public ExprNodeBase<FloatImm> {
 class Stmt : public IRHandle {
  public:
   Stmt() = default;
-
-  virtual void Accept(IRVisitor* visitor) const {}
 };
 
 }  // namespace ir

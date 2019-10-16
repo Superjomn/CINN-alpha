@@ -7,7 +7,7 @@
 namespace cinn {
 
 struct Mutator : public ir::IRMutator {
-  void Mutate(ir::Expr *op, ir::Expr *expr) { ir::IRMutator::Mutate(op, expr); }
+  void Visit(ir::Expr *op, ir::Expr *expr) { ir::IRMutator::Visit(op, expr); }
 
   /**
    * @brief Replace the index with absolute offset.
@@ -21,7 +21,8 @@ struct Mutator : public ir::IRMutator {
    * t[t0][t1] will be transformed to t[t0*N+t1]
    *
    */
-  void Mutate(ir::Reference *op, ir::Expr *expr) override {
+  void Visit(const ir::Reference *op, ir::Expr *expr) override {
+    auto m_op = expr->As<ir::Reference>();
     CHECK(op->target.is_tensor());
     auto *tensor = op->target.As<ir::Tensor>();
 
@@ -34,8 +35,8 @@ struct Mutator : public ir::IRMutator {
     }
 
     // replace the iterator.
-    op->iterators.clear();
-    op->iterators.push_back(new_iterator);
+    m_op->iterators.clear();
+    m_op->iterators.push_back(new_iterator);
   }
 };
 
@@ -45,7 +46,7 @@ class IndicesToAbsoluteOffsetPass : public Pass {
 
   void Impl(ir::Expr *expr) override {
     Mutator mutator;
-    mutator.Mutate(expr, expr);
+    mutator.Visit(expr, expr);
   }
 };
 

@@ -231,8 +231,6 @@ struct Function : public ir::ExprNode<Function> {
 
   const Expr& ComputeTransformedExpr() const;
 
-  void Accept(ir::IRVisitor* visitor) const override;
-
   static const ir::NodeTy node_type = ir::NodeTy::Function;
 
   // const isl::union_set& iterator_domain() const { return data_->iterator_domain; }

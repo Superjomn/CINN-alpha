@@ -21,7 +21,6 @@
 #include "cinn/core/buffer.h"
 
 namespace cinn {
-using ir::Expr;
 
 /**
  * Stage is an statement.
@@ -57,7 +56,7 @@ class Stage {
     std::string name;
 
     // statements' indice map from CINN to isl ast.
-    std::map<std::string, Expr> indice_map_;
+    std::map<std::string, ir::Expr> indice_map_;
 
     static std::set<std::string> names;
 
@@ -86,7 +85,7 @@ class Stage {
    *
    *     Stage s0(B);
    */
-  Stage(Expr expr);
+  Stage(ir::Expr expr);
 
   Stage(const std::shared_ptr<Stage::Data>& x) : data_(x) {}
 
@@ -97,7 +96,7 @@ class Stage {
   void operator=(const Stage& other) { data_ = other.data_; }
 
   /// Get the expression this stage holds.
-  const Expr& expr() const { return data_->expr; }
+  const ir::Expr& expr() const { return data_->expr; }
 
   //! Get the node type.
   Type type() const;
@@ -176,7 +175,7 @@ class Stage {
   // After transformations.
   isl::map GetTransformedSchedule();
 
-  Stage& operator=(Expr x) {
+  Stage& operator=(ir::Expr x) {
     InitFromAssignExpr(x);
     return *this;
   }
@@ -187,8 +186,8 @@ class Stage {
   // Dump to C-like code.
   std::string DumpAsC() const;
 
-  void SetIndiceMap(std::map<std::string, Expr>&& indice_map) { data_->indice_map_ = std::move(indice_map); }
-  const std::map<std::string, Expr>& indice_map() const { return data_->indice_map_; }
+  void SetIndiceMap(std::map<std::string, ir::Expr>&& indice_map) { data_->indice_map_ = std::move(indice_map); }
+  const std::map<std::string, ir::Expr>& indice_map() const { return data_->indice_map_; }
 
  private:
   void InitData();
@@ -198,13 +197,13 @@ class Stage {
   void ScheduleNameAllDims();
   //! Initialize the stage from an assign expression, It will extract the domain and schedule information from the
   //! expression.
-  void InitFromAssignExpr(Expr x);
+  void InitFromAssignExpr(ir::Expr x);
   //! Initialize the stage from an allocate expression.
-  void InitFromAllocateExpr(Expr x);
+  void InitFromAllocateExpr(ir::Expr x);
   //! Extract the iterator domain from the expr.
   // e.g. given the expression: A(i,j) = B(i,j) + C(i,k+1); 0<=i,j,k<=N, the iterator domain is
   // [N]->{ S0[i,j,k]: 0<=i,j,k<=N }
-  void ExtractDomainFromExpr(Expr x);
+  void ExtractDomainFromExpr(ir::Expr x);
   //! Init the read dependencies.
   void InitReadDependencies();
   //! Init the read dependencies.

@@ -25,6 +25,7 @@
   macro__(Not)                      \
   macro__(Exp)                      \
   macro__(Assign)                   \
+  macro__(IncreAssign)              \
 
 #define NODETY_CONTROL_OP_FOR_EACH(macro__) \
   macro__(For)                              \
@@ -73,7 +74,8 @@
   macro__(Max)    \
   macro__(And)    \
   macro__(Or)     \
-  macro__(Assign)
+  macro__(Assign) \
+  macro__(IncreAssign)
 
 #define OP_1_ARGS_FOR_EACH(macro__) \
   macro__(Minus)                    \

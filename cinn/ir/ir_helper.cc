@@ -1,5 +1,6 @@
 #include "cinn/ir/ir_helper.h"
 #include <memory>
+#include "cinn/ir/ir_visitor.h"
 #include "cinn/utils/macros.h"
 
 namespace cinn {

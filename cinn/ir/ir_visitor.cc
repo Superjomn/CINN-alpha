@@ -17,23 +17,6 @@ namespace ir {
 
 OP_2_ARGS_FOR_EACH(OP_2_ARGS_VISIT);
 
-void IRVisitor::Visit(const Expr *op) {
-  switch (op->type()) {
-#define __(op__)           \
-  case NodeTy::op__:       \
-    Visit(op->As<op__>()); \
-    break;
-
-    OP_ALL_FOR_EACH(__)
-
-    case NodeTy::Parameter:
-      Visit(op->As<Constant>());
-      break;
-
-    default:
-      LOG(FATAL) << "unsupported type: " << op->type();
-  }
-}
 void IRVisitor::Visit(const Stmt *op) {}
 
 void IRVisitor::Visit(const Call *op) {
@@ -42,7 +25,7 @@ void IRVisitor::Visit(const Call *op) {
   }
 }
 
-void IRVisitor::Visit(const Minus *op) { op->a.Accept(this); }
+void IRVisitor::Visit(const Minus *op) {}
 
 void IRVisitor::Visit(const IntImm *op) {}
 void IRVisitor::Visit(const FloatImm *op) {}
@@ -51,14 +34,10 @@ void IRVisitor::Visit(const Tensor *op) {}
 void IRVisitor::Visit(const Var *op) {}
 void IRVisitor::Visit(const Constant *op) {}
 void IRVisitor::Visit(const For *op) {}
-void IRVisitor::Visit(const Block *op) {
-  for (auto &e : op->exprs) {
-    e.Accept(this);
-  }
-}
+void IRVisitor::Visit(const Block *op) {}
 void IRVisitor::Visit(const IfThenElse *op) {}
 void IRVisitor::Visit(const Function *op) {}
-void IRVisitor::Visit(const Statement *op) { op->expr.Accept(this); }
+void IRVisitor::Visit(const Statement *op) {}
 void IRVisitor::Visit(const Allocate *op) {}
 void IRVisitor::Visit(const Param *op) {}
 void IRVisitor::Visit(const Tanh *op) {

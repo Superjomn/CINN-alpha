@@ -44,7 +44,7 @@ target_link_libraries(cinn_gtest_main "-pthread -ldl")
 
 cc_library(type SRCS type.cc)
 cc_library(target SRCS target.cc)
-cc_library(module SRCS module.cc)
+#cc_library(module SRCS module.cc)
 
 add_subdirectory(backends)
 add_subdirectory(utils)

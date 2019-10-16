@@ -53,15 +53,17 @@ std::map<std::string, isl::ast_expr> ExtractIslTransformedIndiceMap(const isl::s
  * @param root the CINN expression(or Reference with ISL iterators) to replace with.
  * @param statement the name of the stage.
  */
-void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name);
+void AttachCinnExprToIslIndices(ir::Expr& root, const std::string& stage_name);
 
 isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, void* user);
 
-void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, Expr>& indice_map, Expr& root);
-Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl::ast_expr>& indice_map, Expr& root);
+void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, ir::Expr>& indice_map,
+                                                      ir::Expr& root);
+ir::Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl::ast_expr>& indice_map,
+                                                    ir::Expr& root);
 
 //! Replace the Reference expression in the original_expr to `expr`.
-void ReplaceExprWithStage(Expr& origin_expr, const std::string& s, const Expr& expr);
+void ReplaceExprWithStage(ir::Expr& origin_expr, const std::string& s, const ir::Expr& expr);
 
 class Stage;
 

@@ -52,8 +52,6 @@ std::vector<std::string> CollectAllIteratorsFromStages(std::vector<Stage>& stage
   return iters;
 }
 
-void Function::Accept(ir::IRVisitor* visitor) const {}
-
 // TODO(Superjomn) to make the return type from Expr to vector<Expr> to contain multiple expressions and support Call
 // and Allocate.
 const Expr& Function::ComputeTransformedExpr() const {
@@ -348,7 +346,6 @@ void Snippet::BuildFusion() {
 }
 
 isl::ast_node Snippet::GenerateIslAst() const {
-  LOG(WARNING) << "****** Snippet::GenerateIslAst";
   LOG_INDENT(2);
   isl::ast_node res;
   if (!is_polyhedral()) return res;
@@ -358,6 +355,9 @@ isl::ast_node Snippet::GenerateIslAst() const {
   // TODO(Superjomn) pass the parameters.
   isl::set C(isl_utils::global_isl_ctx(), "{:}");
   isl::ast_build build = isl::manage(isl_ast_build_from_context(C.copy()));
+
+  isl_options_set_tile_scale_tile_loops(isl_utils::global_isl_ctx(), 0);
+  isl_options_set_tile_shift_point_loops(isl_utils::global_isl_ctx(), 0);
 
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
   CINN_DEBUG(0) << "schedule in Snippet::GenerateIslAst: \n" << *schedule_;
