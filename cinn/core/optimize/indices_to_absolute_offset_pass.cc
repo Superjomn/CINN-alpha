@@ -6,7 +6,7 @@
 
 namespace cinn {
 
-struct Mutator : public ir::IRMutator {
+struct IndicesMutator : public ir::IRMutator {
   void Visit(ir::Expr *op, ir::Expr *expr) { ir::IRMutator::Visit(op, expr); }
 
   /**
@@ -45,7 +45,7 @@ class IndicesToAbsoluteOffsetPass : public Pass {
   explicit IndicesToAbsoluteOffsetPass(const std::string &name) : Pass(name) {}
 
   void Impl(ir::Expr *expr) override {
-    Mutator mutator;
+    IndicesMutator mutator;
     mutator.Visit(expr, expr);
   }
 };

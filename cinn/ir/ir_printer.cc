@@ -350,5 +350,14 @@ void IRPrinter::PrintIndent(bool avoid_continuous_indent) {
   }
 }
 
+void IRPrinter::Visit(const Let *op) {
+  CHECK(!op->is_unk());
+  os_ << op->ptype() << " ";
+  Print(op->a);
+  os_ << " = ";
+  Print(op->b);
+  os_ << ";";
+}
+
 }  // namespace ir
 }  // namespace cinn

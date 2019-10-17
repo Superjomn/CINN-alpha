@@ -28,7 +28,7 @@ Stage Scale(Function& fn, Expr& A, Expr& scale, Var& m, Var& n) {
 }
 
 TEST(cinn, complex_nn) {
-  ir::Constant M(100), N(200), K(150);
+  ir::Constant M(512), N(512), K(256);
 
   Function fn("complex");
   {
@@ -40,13 +40,14 @@ TEST(cinn, complex_nn) {
     Var m("m"), n("n"), k("k");
     Expr scale_ratio(1.3f);
 
+    auto s_init = fn.AddStage(C[m][n].Assign(Expr(0.f)));
     auto s0 = MatMul(fn, A, B, C, m, n, k);
     auto s1 = AddBias(fn, C, Bias, m, n);
     auto s2 = Scale(fn, C, scale_ratio, m, n);
 
     s2.FuseWith(s1);
-    s0.Tile({8, 4});
-    s1.Tile({8, 8});
+    s0.Tile({32, 32});
+    s1.Tile({32, 32});
 
     fn.Inputs({A, B, Bias});
     fn.Outputs({C});
@@ -61,4 +62,6 @@ TEST(cinn, complex_nn) {
 
 }  // namespace cinn
 
+USE_PASS(nested_block_clean);
 USE_PASS(indices_to_absolute_offset);
+USE_PASS(fold_reference_indices);

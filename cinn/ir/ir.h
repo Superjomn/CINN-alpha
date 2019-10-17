@@ -52,7 +52,12 @@ class Constant : public ExprNode<Constant> {
 
   bool is_float() const { return ptype() == primitive_t::float32 || ptype() == primitive_t::float64; }
 
-  bool operator==(const Constant& other) const { return name_ == other.name_ && ptype() == other.ptype(); }
+  /**
+   * Tell whether two Constant equals.
+   * @param other the other Constant instance to compare.
+   * @return boolean represents whether two Constants equals.
+   */
+  bool operator==(const Constant& other) const;
 
   std::string __str__() const;
 
@@ -559,6 +564,23 @@ struct Assign : public ExprNode<Assign> {
   static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Assign;
+};
+
+struct Let : public ExprNode<Let> {
+  Expr a;
+  Expr b;
+
+  static Expr make(Expr a, Expr b) {
+    auto node = std::make_shared<Let>();
+    node->a = a;
+    node->b = b;
+    CHECK(!b.is_unk());
+    node->set_ptype(b.ptype());
+    a.set_ptype(b.ptype());
+    return Expr(node);
+  }
+
+  static const NodeTy node_type = NodeTy::Let;
 };
 
 struct IncreAssign : public ExprNode<IncreAssign> {

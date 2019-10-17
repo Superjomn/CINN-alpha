@@ -65,6 +65,13 @@ class C_CodeGen : public ir::IRPrinter {
   void Visit(const Function* op) override;
   void Visit(const ir::Tensor* op) override;
   void Visit(const ir::Block* op) override;
+  void Visit(const ir::Let* op) override;
+
+  /**
+   * Print the primitive type in code.
+   * @param ptype
+   */
+  void PrintPType(primitive_t ptype);
 
  public:
   void Visit(const ir::Reference* op) override;

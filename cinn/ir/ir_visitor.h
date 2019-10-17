@@ -28,37 +28,42 @@ struct IRVisitorBase {
       __(Var);
       __(Param);
       __(Tensor);
-      __(Reference);
-      __(Statement);
-      __(Allocate);
 
-      __(Add);
-      __(Sub);
-      __(Mul);
-      __(Div);
-      __(Mod);
-      __(Minus);
-      __(EQ);
-      __(NE);
-      __(LT);
-      __(LE);
-      __(GT);
-      __(GE);
-      __(And);
-      __(Or);
-      __(Exp);
-      __(Assign);
-      __(IncreAssign);
+      //__(Reference);
+      case ir::NodeTy::Reference:
+        return Visit(expr->As<Reference>(), args...);
 
-      __(For);
-      __(IfThenElse);
-      __(Block);
-      __(Call);
+        __(Statement);
+        __(Allocate);
 
-      __(Tanh);
-      __(Sigmoid);
-      __(Max);
-      __(Min)
+        __(Add);
+        __(Sub);
+        __(Mul);
+        __(Div);
+        __(Mod);
+        __(Minus);
+        __(EQ);
+        __(NE);
+        __(LT);
+        __(LE);
+        __(GT);
+        __(GE);
+        __(And);
+        __(Or);
+        __(Exp);
+        __(Assign);
+        __(IncreAssign);
+        __(Let);
+
+        __(For);
+        __(IfThenElse);
+        __(Block);
+        __(Call);
+
+        __(Tanh);
+        __(Sigmoid);
+        __(Max);
+        __(Min)
 
       case ir::NodeTy::Function:
         return Visit(expr->As<Function>(), args...);
@@ -111,6 +116,7 @@ struct IRVisitorBase {
   virtual RetTy Visit(const Call* op, Args... args) = 0;
   virtual RetTy Visit(const Assign* op, Args... args) = 0;
   virtual RetTy Visit(const IncreAssign* op, Args... args) = 0;
+  virtual RetTy Visit(const Let* op, Args... args) = 0;
 
   virtual RetTy Visit(const Function* op, Args... args) = 0;
   virtual RetTy Visit(const Statement* op, Args... args) = 0;
@@ -162,6 +168,7 @@ class IRVisitor : public IRVisitorBase<void> {
   virtual void Visit(const Call* op);
   virtual void Visit(const Assign* op);
   virtual void Visit(const IncreAssign* op);
+  virtual void Visit(const Let* op);
 
   virtual void Visit(const Function* op);
   virtual void Visit(const Statement* op);

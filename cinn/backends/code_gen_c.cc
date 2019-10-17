@@ -16,6 +16,7 @@ void C_CodeGen::PrintHeader() {
   os_ << "#include <stdio.h>\n";
   os_ << "\n";
   os_ << "typedef char cinn_int8_t;\n";
+  os_ << "typedef int cinn_int32_t;\n";
   os_ << "typedef long long cinn_int64_t;\n";
   os_ << "typedef unsigned char cinn_uint8_t;\n";
   os_ << "typedef unsigned int cinn_uint32_t;\n";
@@ -144,6 +145,8 @@ void C_CodeGen::WriteToFile(const std::string &path) const {
 }
 
 void C_CodeGen::Visit(const ir::Block *op) {
+  // PrintIndent();
+  // os_ << "{\n";
   for (size_t i = 0; i < op->exprs.size(); i++) {
     auto &expr = op->exprs[i];
     PrintIndent();
@@ -151,6 +154,8 @@ void C_CodeGen::Visit(const ir::Block *op) {
 
     if (i != op->exprs.size() - 1) Println();
   }
+  // PrintIndent();
+  // os_ << "}\n";
 }
 
 void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std::string &source_file) {
@@ -167,6 +172,31 @@ void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std:
     gen(expr);
 
     gen.WriteToFile(header_file);
+  }
+}
+
+void C_CodeGen::Visit(const ir::Let *op) {
+  PrintPType(op->ptype());
+  os_ << " ";
+  Print(op->a);
+  os_ << " = ";
+  Print(op->b);
+  os_ << ";";
+}
+
+void C_CodeGen::PrintPType(primitive_t ptype) {
+  switch (ptype) {
+#define __(ptype__)               \
+  case primitive_t::ptype__:      \
+    os_ << "cinn_" #ptype__ "_t"; \
+    break;
+
+    __(float64);
+    __(float32);
+    __(int32);
+    __(int64);
+    default:
+      LOG(FATAL) << "Unsupported type " << ptype;
   }
 }
 

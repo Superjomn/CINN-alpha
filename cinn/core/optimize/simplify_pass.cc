@@ -6,7 +6,7 @@
 
 namespace cinn {
 
-class Mutator : public ir::IRMutator {
+class IndicesMutator : public ir::IRMutator {
  public:
  private:
 };

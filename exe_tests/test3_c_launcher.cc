@@ -2,19 +2,27 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include "cinn/utils/math.h"
+#include "cinn/utils/timer.h"
 #include "exe_tests/exe_test3.cc"
 
 TEST(exe_tests, test1) {
-  const int M = 100;
-  const int N = 200;
-  const int K = 150;
+  const int M = 512;
+  const int N = 512;
+  const int K = 256;
 
   std::vector<cinn_float32_t> A(M * K, 0.12), B(K * N, 0.2), C(M * N, 0), Bias(N, 0);
   cinn::RandomVec(A.data(), A.size());
   cinn::RandomVec(B.data(), B.size());
   cinn::RandomVec(Bias.data(), Bias.size());
 
-  complex(A.data(), B.data(), Bias.data(), C.data());
+  cinn::Timer timer;
+  const int repeat = 50;
+  timer.Start();
+  for (int i = 0; i < repeat; i++) {
+    complex(A.data(), B.data(), Bias.data(), C.data());
+  }
+  timer.Stop();
+  LOG(INFO) << "time " << timer.duration() * 1. / repeat;
 
   for (int i = 0; i < 10; i++) {
     LOG(INFO) << C[i];

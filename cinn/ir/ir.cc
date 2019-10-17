@@ -175,6 +175,12 @@ int64_t Constant::As<int64_t>() const {
   return int64_val_;
 }
 
+template <>
+double Constant::As<double>() const {
+  CHECK(ptype() == primitive_t::float64);
+  return fp64_val_;
+}
+
 unsigned int Constant::counter = 0;
 
 std::string Constant::__str__() const {
@@ -222,6 +228,30 @@ Constant::Constant(const Constant &other) {
 Constant::operator Expr() {
   auto node = std::make_shared<Constant>(*this);
   return Expr(node);
+}
+
+bool Constant::operator==(const Constant &other) const {
+  // If no value is set, check their name.
+  if (!name_.empty() && name_ == other.name_) return true;
+  // Check the actual value.
+  if (ptype() != other.ptype()) return false;
+
+  switch (ptype()) {
+    case primitive_t::float32:
+      return As<float_t>() == other.As<float_t>();
+    case primitive_t::int32:
+      return As<int32_t>() == other.As<int32_t>();
+    case primitive_t::int64:
+      return As<int64_t>() == other.As<int64_t>();
+    case primitive_t::float64:
+      return As<double>() == other.As<double>();
+    case primitive_t::unk:
+      return true;
+
+    default:
+      LOG(FATAL) << "unsupported primitive type: " << ptype();
+  }
+  return false;
 }
 
 Expr Mul::make(Expr a, Expr b) {
@@ -400,16 +430,6 @@ Expr Reference::make(Expr expr, const std::vector<Expr> &iterators) {
   x->set_ptype(expr.ptype());
   return Expr(x);
 }
-
-// this works only when the params are valid.
-void Reference::InferenceDimsFromIterators() {
-  for (auto &iterator : iterators) {
-    // the max value of the iterator expression as a dimension.
-  }
-}
-
-// Inference the variable's dimensions dims.
-void Reference::InferenceIteratorDims() { CHECK_EQ(dims.size(), iterators.size()); }
 
 Expr Expr::operator=(const Expr &other) {
   if (!valid() || type() != NodeTy::Reference) {

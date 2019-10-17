@@ -1,6 +1,7 @@
 #include "cinn/ir/ir_mutator.h"
 #include "cinn/core/function.h"
 #include "cinn/ir/ir.h"
+#include "cinn/ir/ir_printer.h"
 #include "cinn/utils/logging.h"
 
 namespace cinn {

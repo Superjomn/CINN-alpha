@@ -25,6 +25,7 @@
   macro__(Not)                      \
   macro__(Exp)                      \
   macro__(Assign)                   \
+  macro__(Let)                      \
   macro__(IncreAssign)              \
 
 #define NODETY_CONTROL_OP_FOR_EACH(macro__) \
@@ -75,7 +76,8 @@
   macro__(And)    \
   macro__(Or)     \
   macro__(Assign) \
-  macro__(IncreAssign)
+  macro__(IncreAssign) \
+  macro__(Let)    \
 
 #define OP_1_ARGS_FOR_EACH(macro__) \
   macro__(Minus)                    \
@@ -105,6 +107,8 @@ OP_ALL_WITHOUT_FUNCTION_FOR_EACH(macro__)  \
 macro__(Function)
 
 // clang-format on
+
+#define NOT_IMPLEMENT LOG(FATAL) << "Not Implemented";
 
 #define PRIMITIVE_TYPE_FOR_EACH(macro__)                                                                     \
   macro__(uint8) macro__(uint16) macro__(uint32) macro__(uint64) macro__(int8) macro__(int16) macro__(int32) \

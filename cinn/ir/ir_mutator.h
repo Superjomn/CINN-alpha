@@ -58,10 +58,14 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
 
   OP_2PARAM(Assign);
   OP_2PARAM(IncreAssign);
+  OP_2PARAM(Let);
 
   OP_1PARAM(Exp);
   OP_1PARAM(Tanh);
   OP_1PARAM(Sigmoid);
+
+#undef OP_2PARAM
+#undef OP_1PARAM
 
   void Visit(const ir::Var* op, ir::Expr* expr) override {}
   void Visit(const ir::Constant* op, ir::Expr* expr) override {}
