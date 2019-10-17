@@ -75,7 +75,10 @@ class IRPrinter : public IRVisitor {
 
   void Visit(const Tanh *op) override { NOT_IMPLEMENT; }
   void Visit(const Sigmoid *op) override { NOT_IMPLEMENT; }
-  void Visit(const IncreAssign *op) override { NOT_IMPLEMENT; }
+  void Visit(const SumAssign *op) override;
+  void Visit(const SubAssign *op) override;
+  void Visit(const MulAssign *op) override;
+  void Visit(const DivAssign *op) override;
 
   void indent_left() { indent_size_--; }
   void indent_right() { indent_size_++; }

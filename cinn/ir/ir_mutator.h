@@ -57,7 +57,10 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   OP_2PARAM(Max);
 
   OP_2PARAM(Assign);
-  OP_2PARAM(IncreAssign);
+  OP_2PARAM(SumAssign);
+  OP_2PARAM(SubAssign);
+  OP_2PARAM(MulAssign);
+  OP_2PARAM(DivAssign);
   OP_2PARAM(Let);
 
   OP_1PARAM(Exp);

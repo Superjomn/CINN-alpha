@@ -358,6 +358,30 @@ void IRPrinter::Visit(const Let *op) {
   Print(op->b);
   os_ << ";";
 }
+void IRPrinter::Visit(const SumAssign *op) {
+  Print(op->a);
+  os_ << " += ";
+  Print(op->b);
+  os_ << ";";
+}
+void IRPrinter::Visit(const SubAssign *op) {
+  Print(op->a);
+  os_ << " -= ";
+  Print(op->b);
+  os_ << ";";
+}
+void IRPrinter::Visit(const MulAssign *op) {
+  Print(op->a);
+  os_ << " *= ";
+  Print(op->b);
+  os_ << ";";
+}
+void IRPrinter::Visit(const DivAssign *op) {
+  Print(op->a);
+  os_ << " /= ";
+  Print(op->b);
+  os_ << ";";
+}
 
 }  // namespace ir
 }  // namespace cinn

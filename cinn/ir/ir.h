@@ -224,6 +224,10 @@ class Expr : public IRHandle {
   Expr(const std::string& name, primitive_t dtype = primitive_t::float32) { *this = Expr(Var(name, dtype)); }
 
   Expr Assign(Expr other);
+  Expr SumAssign(Expr other);
+  Expr SubAssign(Expr other);
+  Expr DivAssign(Expr other);
+  Expr MulAssign(Expr other);
 
   //! Create an int32 Expr.
   explicit Expr(int32_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 32), x); }
@@ -280,6 +284,10 @@ class Expr : public IRHandle {
    * 2. Reference assignment, e.g. `C(i,j) = A(i,j) + 1`.
    */
   Expr operator=(const Expr& other);
+  Expr operator+=(const Expr& other);
+  Expr operator-=(const Expr& other);
+  Expr operator*=(const Expr& other);
+  Expr operator/=(const Expr& other);
 
   //! Check whether this Expr is valid for use.
   bool valid() const { return ptr_.get(); }
@@ -287,12 +295,20 @@ class Expr : public IRHandle {
   //! Tell whether this expression is a operator.
   bool is_op() const;
 
+  bool is_assign_derived() const {
+    return type() == ir::NodeTy::Assign || type() == ir::NodeTy::SumAssign || type() == ir::NodeTy::SubAssign ||
+           type() == ir::NodeTy::MulAssign || type() == ir::NodeTy::DivAssign;
+  }
 #define IS_TYPE(m__, ty__) \
   bool is_##m__() const { return type() == ir::NodeTy::ty__; }
   IS_TYPE(var, Var)
   IS_TYPE(allocate, Allocate)
   IS_TYPE(reference, Reference)
   IS_TYPE(assign, Assign)
+  IS_TYPE(sum_assign, SumAssign)
+  IS_TYPE(sub_assign, SubAssign)
+  IS_TYPE(mul_assign, MulAssign)
+  IS_TYPE(div_assign, DivAssign)
   IS_TYPE(function_call, Call)
   IS_TYPE(tensor, Tensor)
   IS_TYPE(function, Function)
@@ -583,13 +599,40 @@ struct Let : public ExprNode<Let> {
   static const NodeTy node_type = NodeTy::Let;
 };
 
-struct IncreAssign : public ExprNode<IncreAssign> {
+struct SumAssign : public ExprNode<SumAssign> {
   Expr a;
   Expr b;
 
   static Expr make(Expr a, Expr b);
 
-  static const NodeTy node_type = NodeTy::IncreAssign;
+  static const NodeTy node_type = NodeTy::SumAssign;
+};
+
+struct SubAssign : public ExprNode<SubAssign> {
+  Expr a;
+  Expr b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::SubAssign;
+};
+
+struct MulAssign : public ExprNode<MulAssign> {
+  Expr a;
+  Expr b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::MulAssign;
+};
+
+struct DivAssign : public ExprNode<DivAssign> {
+  Expr a;
+  Expr b;
+
+  static Expr make(Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::DivAssign;
 };
 
 /**

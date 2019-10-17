@@ -26,7 +26,10 @@
   macro__(Exp)                      \
   macro__(Assign)                   \
   macro__(Let)                      \
-  macro__(IncreAssign)              \
+  macro__(SumAssign)                \
+  macro__(SubAssign)                \
+  macro__(MulAssign)                \
+  macro__(DivAssign)                \
 
 #define NODETY_CONTROL_OP_FOR_EACH(macro__) \
   macro__(For)                              \
@@ -76,12 +79,15 @@
   macro__(And)    \
   macro__(Or)     \
   macro__(Assign) \
-  macro__(IncreAssign) \
+  macro__(SumAssign) \
+  macro__(SubAssign) \
+  macro__(MulAssign) \
+  macro__(DivAssign) \
   macro__(Let)    \
 
 #define OP_1_ARGS_FOR_EACH(macro__) \
   macro__(Minus)                    \
-  macro__(Exp)                    \
+  macro__(Exp)                      \
   macro__(Tanh)                     \
   macro__(Sigmoid)
 

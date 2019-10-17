@@ -145,7 +145,7 @@ Stage::Stage(Expr expr) {
 
   ExtractDomainFromExpr(expr);
 
-  if (expr.is_assign()) {
+  if (expr.is_assign_derived()) {
     InitFromAssignExpr(expr);
     InitSchedule();
     InitReadDependencies();
@@ -464,7 +464,7 @@ isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) 
 
 void Stage::InitReadDependencies() {
   if (iterator_domain().is_null()) return;
-  CHECK(expr().is_assign());
+  CHECK(expr().is_assign_derived());
   LOG_INDENT(6);
   CHECK(!iterator_domain().is_null());
   CHECK(!read_access()) << "duplicate init read_access";
@@ -477,7 +477,7 @@ void Stage::InitReadDependencies() {
 
 void Stage::InitWriteDependencies() {
   if (iterator_domain().is_null()) return;
-  CHECK(expr().is_assign());
+  CHECK(expr().is_assign_derived());
   LOG_INDENT(6);
   CHECK(!iterator_domain().is_null());
   set_write_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
@@ -493,9 +493,8 @@ void Stage::SetCond(const ir::Var& iterator, const std::string& cond) {
 }
 
 Stage::Type Stage::type() const {
+  if (expr().is_assign_derived()) return Type::polyhedral;
   switch (expr().type()) {
-    case ir::NodeTy::Assign:
-      return Type::polyhedral;
     case ir::NodeTy::Call:
     case ir::NodeTy::Allocate:
       return Type::function_call;

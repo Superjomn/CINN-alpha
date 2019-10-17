@@ -52,7 +52,10 @@ struct IRVisitorBase {
         __(Or);
         __(Exp);
         __(Assign);
-        __(IncreAssign);
+        __(SumAssign);
+        __(SubAssign);
+        __(MulAssign);
+        __(DivAssign);
         __(Let);
 
         __(For);
@@ -115,7 +118,10 @@ struct IRVisitorBase {
   virtual RetTy Visit(const Reference* op, Args... args) = 0;
   virtual RetTy Visit(const Call* op, Args... args) = 0;
   virtual RetTy Visit(const Assign* op, Args... args) = 0;
-  virtual RetTy Visit(const IncreAssign* op, Args... args) = 0;
+  virtual RetTy Visit(const SumAssign* op, Args... args) = 0;
+  virtual RetTy Visit(const SubAssign* op, Args... args) = 0;
+  virtual RetTy Visit(const MulAssign* op, Args... args) = 0;
+  virtual RetTy Visit(const DivAssign* op, Args... args) = 0;
   virtual RetTy Visit(const Let* op, Args... args) = 0;
 
   virtual RetTy Visit(const Function* op, Args... args) = 0;
@@ -167,7 +173,10 @@ class IRVisitor : public IRVisitorBase<void> {
   virtual void Visit(const Reference* op) {}
   virtual void Visit(const Call* op);
   virtual void Visit(const Assign* op);
-  virtual void Visit(const IncreAssign* op);
+  virtual void Visit(const SumAssign* op);
+  virtual void Visit(const SubAssign* op);
+  virtual void Visit(const MulAssign* op);
+  virtual void Visit(const DivAssign* op);
   virtual void Visit(const Let* op);
 
   virtual void Visit(const Function* op);

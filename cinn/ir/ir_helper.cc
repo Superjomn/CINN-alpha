@@ -165,7 +165,10 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
 
   OP_2PARAM(Assign);
   OP_2PARAM(Let);
-  OP_2PARAM(IncreAssign);
+  OP_2PARAM(SumAssign);
+  OP_2PARAM(SubAssign);
+  OP_2PARAM(MulAssign);
+  OP_2PARAM(DivAssign);
 
   OP_1PARAM(Exp);
   OP_1PARAM(Tanh);

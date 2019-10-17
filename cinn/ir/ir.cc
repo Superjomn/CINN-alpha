@@ -443,24 +443,65 @@ Expr Expr::operator=(const Expr &other) {
   return *this;
 }
 
-Expr Assign::make(Expr a, Expr b) {
-  CHECK(a.valid());
-  CHECK(b.valid());
-  auto node = std::make_shared<Assign>();
-  node->a = a;
-  node->b = b;
-  CHECK(!node->b.is_unk());
-  node->a.set_ptype(node->b.ptype());
-  node->set_ptype(node->b.ptype());
-  return Expr(node);
+Expr Expr::operator+=(const Expr &other) {
+  if (!valid() || type() != NodeTy::Reference) {
+    ptr_ = other.ptr_;
+  } else {
+    CHECK(other.valid());
+    auto assign = SumAssign::make(*this, other);
+    // reset the pointer
+    this->ptr_ = assign.ptr_;
+  }
+  return *this;
+}
+
+Expr Expr::operator-=(const Expr &other) {
+  if (!valid() || type() != NodeTy::Reference) {
+    ptr_ = other.ptr_;
+  } else {
+    CHECK(other.valid());
+    auto assign = SubAssign::make(*this, other);
+    // reset the pointer
+    this->ptr_ = assign.ptr_;
+  }
+  return *this;
+}
+
+Expr Expr::operator*=(const Expr &other) {
+  if (!valid() || type() != NodeTy::Reference) {
+    ptr_ = other.ptr_;
+  } else {
+    CHECK(other.valid());
+    auto assign = MulAssign::make(*this, other);
+    // reset the pointer
+    this->ptr_ = assign.ptr_;
+  }
+  return *this;
+}
+
+Expr Expr::operator/=(const Expr &other) {
+  if (!valid() || type() != NodeTy::Reference) {
+    ptr_ = other.ptr_;
+  } else {
+    CHECK(other.valid());
+    auto assign = DivAssign::make(*this, other);
+    // reset the pointer
+    this->ptr_ = assign.ptr_;
+  }
+  return *this;
 }
 
 Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
+Expr Expr::SumAssign(Expr other) { return SumAssign::make(*this, other); }
+Expr Expr::SubAssign(Expr other) { return SubAssign::make(*this, other); }
+Expr Expr::MulAssign(Expr other) { return MulAssign::make(*this, other); }
+Expr Expr::DivAssign(Expr other) { return DivAssign::make(*this, other); }
 
-Expr IncreAssign::make(Expr a, Expr b) {
+template <typename T>
+Expr XAssignMake(Expr a, Expr b) {
   CHECK(a.valid());
   CHECK(b.valid());
-  auto node = std::make_shared<Assign>();
+  auto node = std::make_shared<T>();
   node->a = a;
   node->b = b;
   CHECK(!node->b.is_unk());
@@ -468,6 +509,12 @@ Expr IncreAssign::make(Expr a, Expr b) {
   node->set_ptype(node->b.ptype());
   return Expr(node);
 }
+
+Expr Assign::make(Expr a, Expr b) { return XAssignMake<Assign>(a, b); }
+Expr SumAssign::make(Expr a, Expr b) { return XAssignMake<SumAssign>(a, b); }
+Expr MulAssign::make(Expr a, Expr b) { return XAssignMake<MulAssign>(a, b); }
+Expr DivAssign::make(Expr a, Expr b) { return XAssignMake<DivAssign>(a, b); }
+Expr SubAssign::make(Expr a, Expr b) { return XAssignMake<SubAssign>(a, b); }
 
 Expr Expr::operator[](Expr i) {
   LOG_INDENT(6);
