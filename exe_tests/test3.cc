@@ -3,6 +3,7 @@
  */
 #include <gtest/gtest.h>
 #include "cinn/cinn.h"
+#include "cinn/core/optimize/use_passes.h"
 
 namespace cinn {
 
@@ -61,7 +62,3 @@ TEST(cinn, complex_nn) {
 }
 
 }  // namespace cinn
-
-USE_PASS(nested_block_clean);
-USE_PASS(indices_to_absolute_offset);
-USE_PASS(fold_reference_indices);

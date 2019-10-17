@@ -1,6 +1,7 @@
 #include "cinn/core/optimize/optimizer.h"
 #include <gtest/gtest.h>
 #include "cinn/core/optimize/pass_registry.h"
+#include "cinn/core/optimize/use_passes.h"
 #include "cinn/core/stage.h"
 #include "cinn/ir/ir_printer.h"
 
@@ -23,5 +24,3 @@ TEST(Optimizer_pass, indices_to_absolute_offset) {
 }
 
 }  // namespace cinn
-
-USE_PASS(indices_to_absolute_offset);

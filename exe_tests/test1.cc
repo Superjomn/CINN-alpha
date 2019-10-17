@@ -3,6 +3,7 @@
  */
 #include <gtest/gtest.h>
 #include "cinn/cinn.h"
+#include "cinn/core/optimize/use_passes.h"
 
 namespace cinn {
 
@@ -32,5 +33,3 @@ TEST(cinn, mat_mul) {
 }
 
 }  // namespace cinn
-
-USE_PASS(indices_to_absolute_offset);

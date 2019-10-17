@@ -5,6 +5,7 @@
 #include "cinn/core/function.h"
 #include "cinn/core/isl_code_gen.h"
 #include "cinn/core/optimize/pass_registry.h"
+#include "cinn/core/optimize/use_passes.h"
 #include "cinn/core/stage.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ops_overload.h"
@@ -69,6 +70,7 @@ TEST(cpp_code_gen, basic) {
 #include <stdio.h>
 
 typedef char cinn_int8_t;
+typedef int cinn_int32_t;
 typedef long long cinn_int64_t;
 typedef unsigned char cinn_uint8_t;
 typedef unsigned int cinn_uint32_t;
@@ -96,7 +98,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 )ROC";
 
     LOG(INFO) << "gen code:\n" << log;
-    EXPECT_EQ(log, target);
+    ASSERT_EQ(log, target);
   }
 
   {
@@ -112,6 +114,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 #include <stdio.h>
 
 typedef char cinn_int8_t;
+typedef int cinn_int32_t;
 typedef long long cinn_int64_t;
 typedef unsigned char cinn_uint8_t;
 typedef unsigned int cinn_uint32_t;
@@ -128,7 +131,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C);
 #endif  // CINN_FILE_
 )ROC";
 
-    EXPECT_EQ(log, target);
+    ASSERT_EQ(log, target);
   }
 }
 
@@ -161,5 +164,3 @@ TEST(cpp_code_gen, mat_mul) {
 
 namespace backends {}  // namespace backends
 }  // namespace cinn
-
-USE_PASS(indices_to_absolute_offset);
