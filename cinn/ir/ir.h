@@ -737,7 +737,13 @@ isl::set BuildDomainFromDimensions(const std::vector<Constant>& dims, const std:
 // e.g. get i2 if id=2
 inline std::string GenIndexedIteratorName(int id);
 
-isl::set BuildDomainFromExprWithDimension(const std::vector<Expr>& exprs, const std::vector<Constant>& dims);
+/**
+ * Inference the iterator domain from multiple expressions and dimensions.
+ * @param exprs iterator expressions from a reference.
+ * @param dimensions dimensions of a Tensor.
+ * @return a isl set that represents the iterator domain containing all the iterators.
+ */
+isl::set BuildDomainFromExprWithDimension(const std::vector<Expr>& exprs, const std::vector<Constant>& dimensions);
 
 }  // namespace ir
 }  // namespace cinn

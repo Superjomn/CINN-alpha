@@ -238,7 +238,7 @@ bool Constant::operator==(const Constant &other) const {
 
   switch (ptype()) {
     case primitive_t::float32:
-      return As<float_t>() == other.As<float_t>();
+      return As<float>() == other.As<float>();
     case primitive_t::int32:
       return As<int32_t>() == other.As<int32_t>();
     case primitive_t::int64:
@@ -519,13 +519,15 @@ Expr SubAssign::make(Expr a, Expr b) { return XAssignMake<SubAssign>(a, b); }
 Expr Expr::operator[](Expr i) {
   LOG_INDENT(6);
   auto vars = CollectVarsFromExpr(i);
-  CHECK_LE(vars.size(), 1UL) << "Currently only support at most one variable in a dimension";
+  // CHECK_LE(vars.size(), 1UL) << "Currently only support at most one variable in a dimension";
 
   const bool is_var_iterator = !vars.empty();
 
+  // set iterator's ptype
   if (is_var_iterator) {
-    Var *var = const_cast<Var *>(vars.front());
-    if (var->ptype() == primitive_t::unk) var->set_ptype(primitive_t::int32);
+    for (auto &var : vars) {
+      const_cast<Var *>(var)->set_ptype(primitive_t::int32);
+    }
   }
 
   // The reference node is initialized and has at least one iterator, append the new vars.
@@ -535,6 +537,7 @@ Expr Expr::operator[](Expr i) {
     return *this;
   }
 
+  // The reference node is newly created.
   auto node = Reference::make(*this, {i});
   Expr result(node);
 
@@ -709,33 +712,38 @@ Expr ReplaceVarWithIterator(int id, const Expr &expr) {
 
 }  // namespace
 
-isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dims) {
-  LOG_INDENT(6);
-  CHECK_EQ(exprs.size(), dims.size());
+isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dimensions) {
+  LOG_INDENT(0);
+  CHECK_EQ(exprs.size(), dimensions.size());
 
   std::vector<std::string> iterator_vars;
-  std::vector<std::string> dim_iters;
-  // collect var for each iterator expr.
+  std::set<std::string> iterator_var_set;
+  std::vector<std::string> dim_alias;
+  // collect var for each iterator expr and geneate the statement for each expr.
   for (size_t i = 0; i < exprs.size(); i++) {
+    LOG(INFO) << "expr: " << ir::Dump(exprs[i]);
     auto vars = CollectVarsFromExpr(exprs[i]);
-    std::set<std::string> iter_names;
-    for (auto &var : vars) iter_names.insert(var->name());
-    CHECK_EQ(iter_names.size(), 1UL);
-    std::vector<std::string> sorted(iter_names.begin(), iter_names.end());
-
-    iterator_vars.push_back(sorted.front());
-    dim_iters.push_back(GenIndexedIteratorName(i));
+    // std::set<std::string> iter_names;
+    for (auto &var : vars) iterator_var_set.insert(var->name());
+    // CHECK_EQ(iter_names.size(), 1UL);
+    // std::vector<std::string> sorted(iter_names.begin(), iter_names.end());
+    // iterator_vars.push_back(sorted.front());
+    dim_alias.push_back(GenIndexedIteratorName(i));
   }
 
-  auto domains = BuildDomainFromDimensions(dims, dim_iters);
+  iterator_vars.assign(iterator_var_set.begin(), iterator_var_set.end());
+
+  isl::set alias_domain = BuildDomainFromDimensions(dimensions, dim_alias);
+  LOG(INFO) << "alias domain: " << alias_domain;
   isl::union_map ts;
 
   std::vector<std::string> iterators, targets, alias, alias_eq;
 
-  for (size_t i = 0; i < dims.size(); i++) {
+  for (size_t i = 0; i < dimensions.size(); i++) {
     targets.push_back(ir::Dump(exprs[i]));
-    alias.push_back(dim_iters[i]);
-    alias_eq.push_back(targets[i] + "=" + dim_iters[i]);
+    alias.push_back(dim_alias[i]);
+    // alias_eq.push_back(targets[i] + "=" + dim_alias[i]);
+    alias_eq.push_back(dim_alias[i] + "=" + ir::Dump(exprs[i]));
   }
 
   std::string repr = StringFormat("{ [%s] -> [%s] : %s }",
@@ -745,9 +753,10 @@ isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const 
   CINN_DEBUG(3) << "repr " << repr;
   isl::map transforms(isl_utils::global_isl_ctx(), repr.c_str());
 
-  isl::set result = domains.apply(transforms);
+  isl::set result = alias_domain.apply(transforms);
 
-  CINN_DEBUG(3) << "finial domain: " << result;
+  CINN_DEBUG(1) << "finial domain: " << result;
+  LOG(INFO) << "final domain: " << result;
   return result;
 }
 

@@ -78,7 +78,7 @@ Expr CopyExpr(const Expr& expr) {
       return Expr(node);
     }
 
-    case NodeTy ::Parameter: {
+    case NodeTy::Parameter: {
       auto* x = expr.As<Constant>();
       auto node = std::make_shared<Constant>();
       *node = *x;

@@ -14,9 +14,7 @@ void Optimizer::operator()(ir::Expr* expr) {
 
 Optimizer::Optimizer() {
   passes_in_order_.assign({
-      "nested_block_clean",
-      "indices_to_absolute_offset",
-      "fold_reference_indices",
+      "nested_block_clean", "indices_to_absolute_offset", "fold_reference_indices",
   });
 }
 
