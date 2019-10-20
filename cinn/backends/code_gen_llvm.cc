@@ -160,12 +160,12 @@ llvm::Value *CodeGenLLVM::Codegen(const ir::Expr &e) {
   return value_;
 }
 
-llvm::Function *CodeGenLLVM::CreateFunctionPrototype(const Function *op) {
+llvm::Function *CodeGenLLVM::CreateFunctionPrototype(const ir::Function *op) {
   // collect arguments
-  std::vector<llvm::Type *> args(op->inputs().size() + op->outputs().size(), f32ptr_t);
+  std::vector<llvm::Type *> args(op->inputs.size() + op->outputs.size(), f32ptr_t);
   std::vector<Expr> _args;
   for (size_t i = 0; i < args.size(); i++) {
-    _args.push_back((i < op->inputs().size()) ? op->inputs()[i] : op->outputs()[i - op->inputs().size()]);
+    _args.push_back((i < op->inputs.size()) ? op->inputs[i] : op->outputs[i - op->inputs.size()]);
   }
 
   // void fn(float* a, float* b...)
@@ -185,7 +185,7 @@ llvm::Function *CodeGenLLVM::CreateFunctionPrototype(const Function *op) {
   return function;
 }
 
-void CodeGenLLVM::Visit(const Function *op) {
+void CodeGenLLVM::Visit(const ir::Function *op) {
   LOG(INFO) << "to visit funciton";
   llvm::Function *function = module_->getFunction(op->name());
   CHECK(!function);
@@ -198,18 +198,18 @@ void CodeGenLLVM::Visit(const Function *op) {
   builder_->SetInsertPoint(block);
 
   // prepare arguments
-  std::vector<Expr> args(op->inputs().size() + op->outputs().size());
+  std::vector<Expr> args(op->inputs.size() + op->outputs.size());
   auto *f_args = function->arg_begin();
   for (int i = 0; i < args.size(); i++) {
     std::string arg_name;
-    if (i < op->inputs().size()) {
-      CHECK(op->inputs()[i].is_tensor());
-      LOG(INFO) << "called " << op->inputs()[i].As<ir::Tensor>()->name();
-      f_args[i].setName(op->inputs()[i].As<ir::Tensor>()->name());
+    if (i < op->inputs.size()) {
+      CHECK(op->inputs[i].is_tensor());
+      LOG(INFO) << "called " << op->inputs[i].As<ir::Tensor>()->name();
+      f_args[i].setName(op->inputs[i].As<ir::Tensor>()->name());
     } else {
-      CHECK(op->outputs()[i - op->inputs().size()].is_tensor());
-      LOG(INFO) << "called " << op->outputs()[i - op->inputs().size()].As<ir::Tensor>()->name();
-      f_args[i].setName(op->outputs()[i - op->inputs().size()].As<ir::Tensor>()->name());
+      CHECK(op->outputs[i - op->inputs.size()].is_tensor());
+      LOG(INFO) << "called " << op->outputs[i - op->inputs.size()].As<ir::Tensor>()->name();
+      f_args[i].setName(op->outputs[i - op->inputs.size()].As<ir::Tensor>()->name());
     }
 
     LOG(INFO) << "collect fn args: " << f_args[i].getName().str();
@@ -219,7 +219,7 @@ void CodeGenLLVM::Visit(const Function *op) {
   function_ = function;
 
   // prepare body.
-  Visit(&op->ComputeTransformedExpr());
+  Visit(&op->body);
 
   auto *final_bb = llvm::BasicBlock::Create(*ctx_, "final", function_);
   builder_->CreateBr(final_bb);

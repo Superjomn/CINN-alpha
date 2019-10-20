@@ -14,6 +14,7 @@ namespace backends {
 
 void C_CodeGen::PrintHeader() {
   os_ << "#include <stdio.h>\n";
+  os_ << "#include <math.h>\n";
   os_ << "\n";
   os_ << "typedef char cinn_int8_t;\n";
   os_ << "typedef int cinn_int32_t;\n";
@@ -65,7 +66,7 @@ void C_CodeGen::Visit(const ir::For *op) {
   os_ << "}";
 }
 
-void C_CodeGen::Visit(const Function *op) {
+void C_CodeGen::Visit(const ir::Function *op) {
   // input arguments
   std::vector<std::string> arguments;
 
@@ -75,12 +76,12 @@ void C_CodeGen::Visit(const Function *op) {
     arguments.push_back(StringFormat("cinn_%s_t* %s", ptype_to_str(x.ptype()).c_str(), name.c_str()));
   };
 
-  for (int i = 0; i < op->inputs().size(); i++) {
-    auto x = op->inputs()[i];
+  for (int i = 0; i < op->inputs.size(); i++) {
+    auto x = op->inputs[i];
     collect_argument(x);
   }
-  for (int i = 0; i < op->outputs().size(); i++) {
-    auto x = op->outputs()[i];
+  for (int i = 0; i < op->outputs.size(); i++) {
+    auto x = op->outputs[i];
     collect_argument(x);
   }
 
@@ -93,12 +94,10 @@ void C_CodeGen::Visit(const Function *op) {
     os_ << definition << " {";
     Println();
 
-    auto expr = op->ComputeTransformedExpr();
-
     indent_right();
     //@{ a block
     PrintIndent();
-    Print(expr);
+    Print(op->body);
     //@}
     indent_left();
 

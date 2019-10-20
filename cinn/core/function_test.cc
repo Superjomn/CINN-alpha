@@ -6,7 +6,9 @@
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
-using namespace ir;
+using ir::Expr;
+using ir::Var;
+using ir::Constant;
 
 using cs = std::vector<Constant>;
 
@@ -50,7 +52,7 @@ TEST(Function, buffer_allocate) {
   Function fn("fn");
   {
     auto s0 = fn.AddStage(C[i][j].Assign(A[i][j * 2] * B[i - 3][j]));
-    auto s_alloc_D = fn.AddStage(Allocate::make("D", Expr(10), primitive_t::float32));
+    auto s_alloc_D = fn.AddStage(ir::Allocate::make("D", Expr(10), primitive_t::float32));
 
     fn.Inputs({A, B});
     fn.Outputs({C});
@@ -60,7 +62,7 @@ TEST(Function, buffer_allocate) {
   LOG(INFO) << "func0.code : \n" << ir::Dump(Expr(fn));
 }
 
-Expr tanh(Expr x) { return Max::make(Expr(0.f), x); }
+Expr tanh(Expr x) { return ir::Max::make(Expr(0.f), x); }
 
 TEST(Snippet, test) {
   Snippet snippet0;

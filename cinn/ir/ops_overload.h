@@ -56,12 +56,11 @@ inline Expr operator!=(Expr a, T b) {
   return NE::make(a, Expr(b));
 }
 
+ir::Expr Tanh_(const ir::Expr &e);
+ir::Expr Exp_(const ir::Expr &e);
+ir::Expr Sigmoid_(const ir::Expr &e);
+ir::Expr Max_(const ir::Expr &a, const ir::Expr &b);
+ir::Expr Min_(const ir::Expr &a, const ir::Expr &b);
+
 }  // namespace ir
-
-ir::Expr Tanh(const ir::Expr &e);
-ir::Expr Exp(const ir::Expr &e);
-ir::Expr Sigmoid(const ir::Expr &e);
-ir::Expr Max(const ir::Expr &a, const ir::Expr &b);
-ir::Expr Min(const ir::Expr &a, const ir::Expr &b);
-
 }  // namespace cinn

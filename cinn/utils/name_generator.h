@@ -11,6 +11,7 @@ class NameGenerator {
   static size_t iterator_counter_;
   static size_t parameter_counter_;
   static size_t var_counter_;
+  static size_t named_counter_;
 
  public:
   static NameGenerator& Global() {
@@ -23,6 +24,7 @@ class NameGenerator {
   std::string NewIteratorName() const { return "i" + std::to_string(func_counter_++); }
   std::string NewParameterName() const { return "p" + std::to_string(parameter_counter_++); }
   std::string NewVarName() const { return "var" + std::to_string(var_counter_++); }
+  std::string NewNamed(const std::string& x) { return x + std::to_string(named_counter_++); }
 
  private:
   NameGenerator() = default;

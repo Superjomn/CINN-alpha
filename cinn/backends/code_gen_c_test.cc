@@ -67,6 +67,7 @@ TEST(cpp_code_gen, basic) {
     std::string target =
         R"ROC(#ifndef CINN_FILE_
 #define CINN_FILE_
+#include <math.h>
 #include <stdio.h>
 
 typedef char cinn_int8_t;
@@ -111,6 +112,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 
     std::string target = R"ROC(#ifndef CINN_FILE_
 #define CINN_FILE_
+#include <math.h>
 #include <stdio.h>
 
 typedef char cinn_int8_t;

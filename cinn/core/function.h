@@ -144,7 +144,7 @@ class Snippet {
  *     Expr A0;
  *     A0(i,j) = B(i,j) + C(i,j)
  */
-struct Function : public ir::ExprNode<Function> {
+struct Function {
   struct Data {
     //! Name of the function, should be unique across the compile context.
     std::string name;
@@ -176,6 +176,9 @@ struct Function : public ir::ExprNode<Function> {
 
     //! the final compiled expr.
     Expr transformed_expr;
+
+    //! the final ir representation.
+    Expr ir_function;
 
     isl_ctx* ctx{nullptr};
   };
@@ -233,14 +236,15 @@ struct Function : public ir::ExprNode<Function> {
 
   static const ir::NodeTy node_type = ir::NodeTy::Function;
 
-  // const isl::union_set& iterator_domain() const { return data_->iterator_domain; }
-
-  // isl::union_map GetFinalTransform() const;
+  const ir::Expr& ir_function() const { return data_->ir_function; }
 
   operator Expr();
 
   // TODO(Superjomn) Remove this method
-  void EndDefinition() { BuildSnippets(); }
+  void EndDefinition() {
+    BuildSnippets();
+    data_->ir_function = ir::Function::make(name(), data_->inputs, data_->outputs, ComputeTransformedExpr());
+  }
 
   void BuildSnippets();
 

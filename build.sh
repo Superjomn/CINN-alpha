@@ -17,7 +17,19 @@ function cmake_ {
 }
 
 function build {
+    run_exe_test 1
+    run_exe_test 2
+    run_exe_test 3
+    run_exe_test 4
+    run_exe_test 5
+
     make -j8
+}
+
+function run_exe_test {
+    local no=$1
+    make exe_test$no -j8
+    ctest -R exe_test$no
 }
 
 function test_ {

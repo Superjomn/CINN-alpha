@@ -62,7 +62,7 @@ class C_CodeGen : public ir::IRPrinter {
   void PrintFileGuardFooter();
 
   void Visit(const ir::For* op) override;
-  void Visit(const Function* op) override;
+  void Visit(const ir::Function* op) override;
   void Visit(const ir::Tensor* op) override;
   void Visit(const ir::Block* op) override;
   void Visit(const ir::Let* op) override;

@@ -70,7 +70,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const Call *op) override;
   void Visit(const Assign *op) override;
   void Visit(const Let *op) override;
-  void Visit(const Function *op) override;
+  void Visit(const ir::Function *op) override;
   void Visit(const Allocate *op) override;
 
   void Visit(const Tanh *op) override { NOT_IMPLEMENT; }

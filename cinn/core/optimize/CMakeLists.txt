@@ -9,4 +9,4 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
 
 cc_library(optimizer SRCS optimizer.cc DEPS ir passes pass_registry)
 
-cc_test(test_optimizer SRCS optimizer_test.cc DEPS ir optimizer ir_printer passes)
+cc_test(test_optimizer SRCS optimizer_test.cc DEPS ir optimizer passes)

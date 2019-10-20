@@ -50,5 +50,6 @@ add_subdirectory(backends)
 add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(core)
+add_subdirectory(hlir)
 
-cc_library(cinn_lib SRCS cinn.cc DEPS ir ir_printer code_gen_c code_gen_llvm ${llvm_libs} ops_overload transforms)
+cc_library(cinn_lib SRCS cinn.cc DEPS ir code_gen_c code_gen_llvm ${llvm_libs} ops_overload transforms function)

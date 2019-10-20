@@ -129,11 +129,7 @@ Expr Function::operator()(const std::vector<Expr>& inputs, const std::vector<Exp
   }
 }
 
-Function::operator Expr() {
-  auto node = std::make_shared<Function>();
-  node->data_ = data_;
-  return Expr(node);
-}
+Function::operator Expr() { return data_->ir_function; }
 
 void Snippet::CollectIteratorDomain() {
   LOG_INDENT(6);

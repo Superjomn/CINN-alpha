@@ -118,12 +118,14 @@ TEST(code_gen_llvm, function) {
     fn.EndDefinition();
   }
 
+  LOG(INFO) << "***** code: \n" << ir::Dump(fn.ir_function());
+
   Target target;
   llvm::LLVMContext context;
   std::unique_ptr<llvm::Module> module(new llvm::Module("test", context));
 
   CodeGenLLVM gen(target, context, module.get());
-  gen.Visit(&fn);
+  gen.Visit(&fn.ir_function());
 
   auto jit = CreateJIT(module.get());
   llvm::outs().flush();
@@ -139,6 +141,7 @@ TEST(code_gen_llvm, function) {
   typedef void (*fn_t)(float*, float*);
 
   auto* fn_func = reinterpret_cast<fn_t>(symbol.getAddress().get());
+  ASSERT_TRUE(fn_func);
 
   float A[20];
   for (int i = 0; i < 20; i++) A[i] = i;
@@ -172,7 +175,7 @@ TEST(code_gen_llvm, function1) {
   std::unique_ptr<llvm::Module> module(new llvm::Module("test", context));
 
   CodeGenLLVM gen(target, context, module.get());
-  gen.Visit(&fn);
+  gen.Visit(&fn.ir_function());
 
   auto jit = CreateJIT(module.get());
   llvm::outs().flush();
@@ -228,7 +231,7 @@ TEST(code_gen_llvm, function2) {
   std::unique_ptr<llvm::Module> module(new llvm::Module("test", context));
 
   CodeGenLLVM gen(target, context, module.get());
-  gen.Visit(&fn);
+  gen.Visit(&fn.ir_function());
 
   auto jit = CreateJIT(module.get());
   llvm::outs().flush();
@@ -282,7 +285,7 @@ TEST(code_gen_llvm, function3) {
   std::unique_ptr<llvm::Module> module(new llvm::Module("test", context));
 
   CodeGenLLVM gen(target, context, module.get());
-  gen.Visit(&fn);
+  gen.Visit(&fn.ir_function());
 
   auto jit = CreateJIT(module.get());
   llvm::outs().flush();

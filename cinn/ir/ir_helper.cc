@@ -209,16 +209,16 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     auto* b = expr->As<Function>();
 
     if (a == b) return true;
-    if (a->inputs().size() != b->inputs().size()) return false;
-    if (a->outputs().size() != b->outputs().size()) return false;
+    if (a->inputs.size() != b->inputs.size()) return false;
+    if (a->outputs.size() != b->outputs.size()) return false;
 
-    for (int i = 0; i < a->inputs().size(); i++) {
-      if (!Visit(&a->inputs()[i], &b->inputs()[i])) return false;
+    for (int i = 0; i < a->inputs.size(); i++) {
+      if (!Visit(&a->inputs[i], &b->inputs[i])) return false;
     }
-    for (int i = 0; i < a->outputs().size(); i++) {
-      if (!Visit(&a->outputs()[i], &b->outputs()[i])) return false;
+    for (int i = 0; i < a->outputs.size(); i++) {
+      if (!Visit(&a->outputs[i], &b->outputs[i])) return false;
     }
-    return Visit(&a->ComputeTransformedExpr(), &b->ComputeTransformedExpr());
+    return Visit(&a->body, &b->body);
   }
 
   bool Visit(const For* a, const Expr* expr) override {

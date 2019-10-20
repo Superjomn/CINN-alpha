@@ -22,13 +22,13 @@ void IRMutator::Visit(const ir::Reference* op, ir::Expr* expr) {
 }
 
 void IRMutator::Visit(const Function* op, ir::Expr* expr) {
-  for (auto& arg : op->inputs()) {
+  for (auto& arg : op->inputs) {
     Visit(&arg, const_cast<Expr*>(&arg));
   }
-  for (auto& arg : op->outputs()) {
+  for (auto& arg : op->outputs) {
     Visit(&arg, const_cast<Expr*>(&arg));
   }
-  auto* body = const_cast<Expr*>(&op->ComputeTransformedExpr());
+  auto* body = const_cast<Expr*>(&op->body);
   Visit(body, body);
 }
 

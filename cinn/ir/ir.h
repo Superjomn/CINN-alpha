@@ -59,6 +59,9 @@ class Constant : public ExprNode<Constant> {
    */
   bool operator==(const Constant& other) const;
 
+  int32_t int32_val() const { return int32_val_; }
+  float fp32_val() const { return fp32_val_; }
+
   std::string __str__() const;
 
   template <typename T>
@@ -223,11 +226,11 @@ class Expr : public IRHandle {
   Expr(Expr&& other) { ptr_ = std::move(other.ptr_); }
   Expr(const std::string& name, primitive_t dtype = primitive_t::float32) { *this = Expr(Var(name, dtype)); }
 
-  Expr Assign(Expr other);
-  Expr SumAssign(Expr other);
-  Expr SubAssign(Expr other);
-  Expr DivAssign(Expr other);
-  Expr MulAssign(Expr other);
+  Expr Assign(Expr other) const;
+  Expr SumAssign(Expr other) const;
+  Expr SubAssign(Expr other) const;
+  Expr DivAssign(Expr other) const;
+  Expr MulAssign(Expr other) const;
 
   //! Create an int32 Expr.
   explicit Expr(int32_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 32), x); }
@@ -356,6 +359,35 @@ struct Reference : public ExprNode<Reference> {
   void InferenceDimsFromIterators();
 
   void InferenceIteratorDims();
+};
+
+class Function : public ExprNode<Function> {
+  std::string name_;
+
+ public:
+  //! For inline function to expand the definition inplace.
+  std::vector<ir::Expr> inputs;
+
+  //! For inline function to expand the definition inplace.
+  std::vector<ir::Expr> outputs;
+
+  ir::Expr body;
+
+  static Expr make(const std::string& name,
+                   const std::vector<ir::Expr>& inputs,
+                   const std::vector<Expr>& outputs,
+                   const Expr& body) {
+    auto node = std::make_shared<Function>();
+    node->name_ = name;
+    node->inputs = inputs;
+    node->outputs = outputs;
+    node->body = body;
+    return Expr(node);
+  }
+
+  const std::string& name() const { return name_; }
+
+  static const NodeTy node_type = NodeTy::Function;
 };
 
 /**

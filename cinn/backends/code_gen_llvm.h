@@ -79,7 +79,7 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void Visit(const ir::Assign *op) override;
 
-  void Visit(const Function *op) override;
+  void Visit(const ir::Function *op) override;
 
   void Visit(const ir::Allocate *op) override { IRPrinter::Visit(op); }
 
@@ -95,7 +95,7 @@ class CodeGenLLVM : public ir::IRPrinter {
 
   void ResetValue() { value_ = nullptr; }
 
-  llvm::Function *CreateFunctionPrototype(const Function *op);
+  llvm::Function *CreateFunctionPrototype(const ir::Function *op);
 
   llvm::Module &module() { return *module_; }
 

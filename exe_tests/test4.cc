@@ -17,9 +17,9 @@ std::tuple<Stage, Stage> FC(Function& fn, Expr& x, Expr& w, Expr& bias, Expr& ou
 
 std::tuple<Stage, Stage> SoftMax(Function& fn, Expr& x, Expr& sum, Expr& out, Var& m, Var& n) {
   Stage s0 = fn.AddStage(  //
-      sum[Expr(0)] = sum[Expr(0)] + Exp(x[m][n]));
+      sum[Expr(0)] = sum[Expr(0)] + Exp_(x[m][n]));
   Stage s1 = fn.AddStage(  //
-      out[m][n].Assign(Exp(x[m][n]) / sum[Expr(0)]));
+      out[m][n].Assign(Exp_(x[m][n]) / sum[Expr(0)]));
   return std::make_tuple(s0, s1);
 }
 

@@ -31,10 +31,11 @@ TEST(test5, basic) {
 
     // O(n, m, h, w) +=! I(n, r_c, h + r_kh, w + r_kw) * W1(m, r_c, r_kh, r_kw)
     // O(n, m, h, w)  = O(n, m, h, w) + Bias(m)
-    fn.EndDefinition();
 
     fn.Inputs({I, W1});
     fn.Outputs({O});
+
+    fn.EndDefinition();
   }
 
   backends::CompileAsC(Expr(fn), "exe_test5.h", "exe_test5.cc");

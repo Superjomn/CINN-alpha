@@ -55,16 +55,14 @@ void Stage::ExtractDomainFromExpr(Expr x) {
       }
       in_reference_ = false;
     }
-    void Visit(const Function* op) override {
-      for (auto& x : op->inputs()) {
+    void Visit(const ir::Function* op) override {
+      for (auto& x : op->inputs) {
         Visit(&x);
       }
-      for (auto& x : op->outputs()) {
+      for (auto& x : op->outputs) {
         Visit(&x);
       }
-      for (auto& stage : op->stages()) {
-        Visit(&stage.expr());
-      }
+      Visit(&op->body);
     }
   };
 
@@ -490,6 +488,11 @@ void Stage::InitWriteDependencies() {
 void Stage::SetCond(const ir::Var& iterator, const std::string& cond) {
   data_->iter_domain =
       BuildWithCond(data_->iter_domain.release(), StringFormat("%s %s", iterator.name().c_str(), cond.c_str()));
+}
+
+void Stage::SetCond(const ir::Expr& expr, const std::string& cond) {
+  data_->iter_domain =
+      BuildWithCond(data_->iter_domain.release(), StringFormat("%s %s", ir::Dump(expr).c_str(), cond.c_str()));
 }
 
 Stage::Type Stage::type() const {

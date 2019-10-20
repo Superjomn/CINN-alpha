@@ -113,6 +113,18 @@ class Stage {
    */
   void SetCond(const ir::Var& iterator, const std::string& cond);
 
+  /**
+   * Set extra condition to the iteration domain.
+   * @param expr the expression as the iterator in a reference.
+   * @param cond the string represented condition of this iterator.
+   *
+   *
+   * Such as
+   *
+   * s0.SetCond(i*Expr(2), " %2 = 0"); // means the condition is "i % 2 = 0".
+   */
+  void SetCond(const ir::Expr& expr, const std::string& cond);
+
   //! Tell whether this stage is an Assign stage.
   bool is_assign() const;
   //! Tell whether this stage is an Allocate stage.

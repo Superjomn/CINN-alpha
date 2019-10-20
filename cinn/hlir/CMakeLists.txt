@@ -1,0 +1,11 @@
+cc_library(hlir_util SRCS hlir_util.cc)
+cc_library(operator SRCS operator.cc DEPS hlir_util)
+cc_library(program SRCS program.cc DEPS hlir_util)
+cc_library(graph SRCS graph.cc DEPS hlir_util)
+cc_library(tensor SRCS tensor.cc DEPS hlir_util)
+cc_library(placeholder SRCS placeholder.cc DEPS hlir_util)
+cc_library(variable SRCS variable.cc DEPS hlir_util)
+cc_library(session SRCS session.cc DEPS hlir_util)
+cc_library(op_registry SRCS op_registry.cc)
+
+add_subdirectory(instruction_layer)

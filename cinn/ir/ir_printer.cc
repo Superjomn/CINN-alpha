@@ -218,7 +218,7 @@ void IRPrinter::Visit(const IfThenElse *op) {
 
 void IRPrinter::Visit(const Block *op) {
   // PrintIndent();
-  os_ << "{%_B" << indent_size_ << "\n";
+  // os_ << "{%_B" << indent_size_ << "\n";
   indent_right();
 
   for (size_t i = 0; i < op->exprs.size(); i++) {
@@ -229,8 +229,8 @@ void IRPrinter::Visit(const Block *op) {
   }
 
   indent_left();
-  PrintIndent();
-  os_ << "}%_B" << indent_size_;
+  // PrintIndent();
+  // os_ << "}%_B" << indent_size_;
 }
 void IRPrinter::Visit(const Constant *op) {
   switch (op->ptype()) {
@@ -280,22 +280,22 @@ void IRPrinter::Visit(const Assign *op) {
   os_ << ";";
 }
 
-void IRPrinter::Visit(const Function *op) {
+void IRPrinter::Visit(const ir::Function *op) {
   LOG_INDENT(6);
   CINN_DEBUG(3) << "print function " << op->name();
 
   // print func definition.
   std::vector<std::string> arguments;
-  for (int i = 0; i < op->inputs().size(); i++) {
-    auto &x = op->inputs()[i];
+  for (int i = 0; i < op->inputs.size(); i++) {
+    auto &x = op->inputs[i];
     CHECK(x.is_var() || x.is_tensor());
     if (x.is_var())
       arguments.push_back("Buffer& " + x.As<ir::Var>()->name());
     else
       arguments.push_back("Tensor& " + x.As<ir::Tensor>()->name());
   }
-  for (int i = 0; i < op->outputs().size(); i++) {
-    auto &x = op->outputs()[i];
+  for (int i = 0; i < op->outputs.size(); i++) {
+    auto &x = op->outputs[i];
     CHECK(x.is_var() || x.is_tensor());
     if (x.is_var())
       arguments.push_back("Buffer& " + x.As<ir::Var>()->name());
@@ -311,9 +311,8 @@ void IRPrinter::Visit(const Function *op) {
   indent_size_++;
 
   // print the buffer allocate.
-  CINN_DEBUG(3) << "stage size: " << op->stages().size();
 
-  Print(op->ComputeTransformedExpr());
+  Print(op->body);
   os_ << '\n';
 
   indent_size_--;

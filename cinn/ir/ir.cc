@@ -491,11 +491,11 @@ Expr Expr::operator/=(const Expr &other) {
   return *this;
 }
 
-Expr Expr::Assign(Expr other) { return Assign::make(*this, other); }
-Expr Expr::SumAssign(Expr other) { return SumAssign::make(*this, other); }
-Expr Expr::SubAssign(Expr other) { return SubAssign::make(*this, other); }
-Expr Expr::MulAssign(Expr other) { return MulAssign::make(*this, other); }
-Expr Expr::DivAssign(Expr other) { return DivAssign::make(*this, other); }
+Expr Expr::Assign(Expr other) const { return Assign::make(*this, other); }
+Expr Expr::SumAssign(Expr other) const { return SumAssign::make(*this, other); }
+Expr Expr::SubAssign(Expr other) const { return SubAssign::make(*this, other); }
+Expr Expr::MulAssign(Expr other) const { return MulAssign::make(*this, other); }
+Expr Expr::DivAssign(Expr other) const { return DivAssign::make(*this, other); }
 
 template <typename T>
 Expr XAssignMake(Expr a, Expr b) {
