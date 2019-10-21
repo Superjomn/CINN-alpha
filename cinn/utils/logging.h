@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stack>
 #include <string>
 
 #define DEBUG_WITH_LOCATION
@@ -51,20 +52,30 @@ struct Log {
   int level_;
 };
 
-struct LogIndentGuard {
-  LogIndentGuard() { ++__cinn_log_indent__; }
-  ~LogIndentGuard() { --__cinn_log_indent__; }
-};
-
 //! This value controls the indent size of a block. It is reset by LOG_INDENT macro, all the CINN_DEBUG macro in a block
 //! will calcuate their indent size from this as base.
 extern int cur_log_indent_debug_level;
 
+static std::stack<int> log_levels;
+
+struct LogIndentGuard {
+  LogIndentGuard(int level) {
+    if (log_levels.empty()) log_levels.push(6);
+    cur_log_indent_debug_level = level;
+    log_levels.push(level);
+
+    ++__cinn_log_indent__;
+  }
+  ~LogIndentGuard() {
+    --__cinn_log_indent__;
+    log_levels.pop();
+    cur_log_indent_debug_level = log_levels.top();
+  }
+};
+
 #define LOG_INDENT(level)                            \
-  ::cinn::utils::cur_log_indent_debug_level = 0;     \
-  CINN_DEBUG(level) << "func " << __FUNCTION__;      \
-  ::cinn::utils::cur_log_indent_debug_level = level; \
-  ::cinn::utils::LogIndentGuard ______;
+  CINN_DEBUG(level) << "== " << __PRETTY_FUNCTION__; \
+  ::cinn::utils::LogIndentGuard ______(level);
 
 }  // namespace utils
 }  // namespace cinn

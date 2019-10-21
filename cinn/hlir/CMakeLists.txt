@@ -7,5 +7,6 @@ cc_library(placeholder SRCS placeholder.cc DEPS hlir_util)
 cc_library(variable SRCS variable.cc DEPS hlir_util)
 cc_library(session SRCS session.cc DEPS hlir_util)
 cc_library(op_registry SRCS op_registry.cc)
+cc_library(buffer SRCS buffer.cc)
 
 add_subdirectory(instruction_layer)

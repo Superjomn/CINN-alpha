@@ -533,7 +533,7 @@ Expr Expr::operator[](Expr i) {
   // The reference node is initialized and has at least one iterator, append the new vars.
   if (ptr() && type() == ir::NodeTy::Reference) {
     As<Reference>()->iterators.push_back(i);
-    if (is_var_iterator) InferenceIteratorDomain(this);
+    if (is_var_iterator) InferenceIteratorDomain();
     return *this;
   }
 
@@ -541,7 +541,7 @@ Expr Expr::operator[](Expr i) {
   auto node = Reference::make(*this, {i});
   Expr result(node);
 
-  if (!vars.empty()) InferenceIteratorDomain(&result);
+  if (!vars.empty()) result.InferenceIteratorDomain();
 
   return result;
 }
@@ -617,15 +617,14 @@ isl::set Param::context() const {
   return isl::set(isl_utils::global_isl_ctx(), StringFormat("[%s]->{:%s}", name().c_str(), cond().c_str()));
 }
 
-// TODO(Superjomn) Support complex expression with more than one Var.
-void Expr::InferenceIteratorDomain(Expr *expr) {
-  LOG_INDENT(4);
-  // CINN_DEBUG(3) << "expr: " << ir::Dump(*expr);
+void Expr::InferenceIteratorDomain() {
+  LOG_INDENT(0);
+  CINN_DEBUG(3) << "expr: " << ir::Dump(*this);
   isl::union_set result;
   // extract iterator from the expr.
-  if (!expr->is_reference()) return;
-  CHECK(expr->is_reference()) << "type is " << expr->type();
-  auto *ref = expr->As<Reference>();
+  if (!this->is_reference()) return;
+  CHECK(this->is_reference()) << "type is " << this->type();
+  auto *ref = this->As<Reference>();
   if (!ref->target.is_tensor()) return;
   auto *tensor = ref->target.As<Tensor>();
   CHECK_LE(ref->iterators.size(), tensor->dims().size());
@@ -721,7 +720,7 @@ isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const 
   std::vector<std::string> dim_alias;
   // collect var for each iterator expr and geneate the statement for each expr.
   for (size_t i = 0; i < exprs.size(); i++) {
-    LOG(INFO) << "expr: " << ir::Dump(exprs[i]);
+    CINN_DEBUG(3) << "expr: " << ir::Dump(exprs[i]);
     auto vars = CollectVarsFromExpr(exprs[i]);
     // std::set<std::string> iter_names;
     for (auto &var : vars) iterator_var_set.insert(var->name());
@@ -734,7 +733,7 @@ isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const 
   iterator_vars.assign(iterator_var_set.begin(), iterator_var_set.end());
 
   isl::set alias_domain = BuildDomainFromDimensions(dimensions, dim_alias);
-  LOG(INFO) << "alias domain: " << alias_domain;
+  CINN_DEBUG(3) << "alias domain: " << alias_domain;
   isl::union_map ts;
 
   std::vector<std::string> iterators, targets, alias, alias_eq;
@@ -756,7 +755,6 @@ isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const 
   isl::set result = alias_domain.apply(transforms);
 
   CINN_DEBUG(1) << "finial domain: " << result;
-  LOG(INFO) << "final domain: " << result;
   return result;
 }
 

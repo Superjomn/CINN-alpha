@@ -289,14 +289,12 @@ isl_set *isl_set_append_cond(isl_set *set, const char *cond) {
 
   // ugly append the cond
   set_repr = set_repr.substr(0, set_repr.size() - 2);
-  LOG(INFO) << "set_repr: " << set_repr;
 
   if (set_repr.find("and") == std::string::npos) {
     set_repr = StringFormat("%s %s }", set_repr.c_str(), cond);
   } else {
     set_repr = StringFormat("%s and %s }", set_repr.c_str(), cond);
   }
-  LOG(INFO) << "repr " << set_repr;
   return isl_set_read_from_str(ctx, set_repr.c_str());
 }
 

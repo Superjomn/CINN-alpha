@@ -318,9 +318,8 @@ class Expr : public IRHandle {
   IS_TYPE(block, Block)
 #undef IS_TYPE
 
- private:
   // Inference the dimention indice on the id-th dimention.
-  void InferenceIteratorDomain(Expr* expr);
+  void InferenceIteratorDomain();
 };
 
 /**

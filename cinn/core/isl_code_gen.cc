@@ -522,7 +522,7 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
 }
 
 void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
-  LOG_INDENT(2);
+  LOG_INDENT(3);
   CINN_DEBUG(0) << "*** Attach " << stage_name;
   auto stage = Generator::Global().GetStageByName(stage_name);
 

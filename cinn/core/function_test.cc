@@ -6,9 +6,9 @@
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
+using ir::Constant;
 using ir::Expr;
 using ir::Var;
-using ir::Constant;
 
 using cs = std::vector<Constant>;
 

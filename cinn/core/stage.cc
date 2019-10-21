@@ -21,15 +21,16 @@ using interval_tuple_t = ir::Reference::interval_tuple_t;
 
 // Compose the iterator domain with the extra condition.
 isl::set BuildWithCond(__isl_give isl_set* domain, const std::string& cond) {
+  LOG_INDENT(0);
   CINN_DEBUG(3) << "get extra cond " << cond;
   if (cond.empty()) return isl::manage(domain);
   return isl::manage(isl_set_append_cond(domain, cond.c_str()));
 }
 
 void Stage::ExtractDomainFromExpr(Expr x) {
-  LOG_INDENT(6);
-  CINN_DEBUG(3) << "expr.type: " << ir::GetNodeTyRepr(x.type());
-  CINN_DEBUG(3) << "expr: " << ir::Dump(x);
+  LOG_INDENT(2);
+  CINN_DEBUG(1) << "expr.type: " << ir::GetNodeTyRepr(x.type());
+  CINN_DEBUG(1) << "expr: " << ir::Dump(x);
   class Collector : public ir::IRVisitor {
     std::vector<ir::Var> iterators_;
     bool in_reference_{false};
@@ -82,20 +83,25 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   CINN_DEBUG(3) << "get statement: " << statement;
 
   auto references = ir::CollectExprNode<ir::Reference>(x);
+  CHECK(!references.empty());
 
   std::map<std::string, isl::set> iter_domain;
   std::set<std::string> var_names;
   for (auto& ref : references) {
     // CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
     // get constant iterator
-    if (ref->domain.is_null()) continue;
+    if (ref->domain.is_null()) {
+      CINN_DEBUG(3) << "domain is empty, skip collecting";
+      continue;
+    }
 
-    CINN_DEBUG(6) << "reference domain: " << ref->domain;
+    CINN_DEBUG(3) << "reference domain: " << ref->domain;
 
     for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
       var_names.insert(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
     }
   }
+  CHECK(!var_names.empty());
   std::vector<std::string> var_names_in_order(var_names.begin(), var_names.end());
   CINN_DEBUG(3) << "variable names collected from all the References: " << Concat(var_names_in_order, ", ");
 
