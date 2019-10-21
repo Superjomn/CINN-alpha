@@ -47,5 +47,16 @@ ir::Expr &Tensor::expr() {
   return expr_;
 }
 
+const ir::Expr &Tensor::expr() const {
+  if (!expr_.valid()) {
+    std::vector<ir::Constant> ir_shape;
+    for (int v : shape()) {
+      ir_shape.emplace_back(v);
+    }
+    expr_ = ir::Expr(ir_shape, primitive_t::float32);
+  }
+  return expr_;
+}
+
 }  // namespace hlir
 }  // namespace cinn

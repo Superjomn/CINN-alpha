@@ -31,4 +31,4 @@ class Reshape : public Operator {
 }  // namespace hlir
 }  // namespace cinn
 
-REGISTER_OP(pad, kInstructionWise, ::cinn::hlir::instruction_layer::Reshape);
+REGISTER_OP(reshape, kInstructionWise, ::cinn::hlir::instruction_layer::Reshape);

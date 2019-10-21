@@ -13,8 +13,8 @@ namespace cinn {
 namespace backends {
 
 void C_CodeGen::PrintHeader() {
-  os_ << "#include <stdio.h>\n";
   os_ << "#include <math.h>\n";
+  os_ << "#include <stdio.h>\n";
   os_ << "\n";
   os_ << "typedef char cinn_int8_t;\n";
   os_ << "typedef int cinn_int32_t;\n";

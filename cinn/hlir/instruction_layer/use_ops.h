@@ -2,3 +2,4 @@
 
 USE_OP(pad, kInstructionWise);
 USE_OP(matmul, kInstructionWise);
+USE_OP(reshape, kInstructionWise);

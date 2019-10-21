@@ -9,4 +9,8 @@ cc_library(session SRCS session.cc DEPS hlir_util)
 cc_library(op_registry SRCS op_registry.cc)
 cc_library(buffer SRCS buffer.cc)
 
+set(instruction_ops CACHE INTERNAL "instruction ops")
 add_subdirectory(instruction_layer)
+
+message(STATUS "instruction_ops: ${instruction_ops}")
+cc_test(test_graph SRCS graph_test.cc DEPS ${instruction_ops} graph session op_registry operator cinn_lib)

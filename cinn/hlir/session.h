@@ -18,23 +18,14 @@ class Session {
    * @param name name of the tensor to retrive.
    * @return the address of the corresponding Tensor.
    */
-  Tensor* GetTensor(const std::string& name) {
-    auto it = tensors_.find(name);
-    if (it == std::end(tensors_)) return nullptr;
-    return it->second.get();
-  }
+  Tensor* GetTensor(const std::string& name) const;
 
   /**
    * Create a new Tensor with specific name.
    * @param name name of the Tensor.
    * @return the address of the newly created Tensor.
    */
-  Tensor* NewTensor(const std::string& name) {
-    CHECK(!tensors_.count(name));
-    auto* t = new Tensor;
-    tensors_[name].reset(t);
-    return t;
-  }
+  Tensor* NewTensor(const std::string& name);
 
   /**
    * Get the count of Tensors in the session.

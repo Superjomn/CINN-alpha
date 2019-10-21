@@ -12,17 +12,48 @@ namespace hlir {
  */
 class Program {
  public:
-  const std::shared_ptr<Operator>& NewOp(const std::string& type,
-                                         HlirLayer layer,
-                                         const std::vector<std::string>& inputs,
-                                         const std::vector<std::string>& outputs) {
-    return ops_.back();
+  void AddOp(std::unique_ptr<Operator>&& op) { ops_.emplace_back(std::move(op)); }
+
+  std::set<std::string> Inputs() const {
+    std::set<std::string> vars;
+
+    for (auto& op : ops_) {
+      for (auto& item : op->inputs()) {
+        vars.insert(item.second);
+      }
+    }
+
+    for (auto& op : ops_) {
+      for (auto& item : op->outputs()) {
+        if (vars.count(item.second)) vars.erase(item.second);
+      }
+    }
+    return vars;
   }
 
-  const std::vector<std::shared_ptr<Operator>>& ops() const { return ops_; }
+  std::set<std::string> Outputs() const {
+    std::set<std::string> vars;
+
+    for (auto& op : ops_) {
+      for (auto& item : op->outputs()) {
+        vars.insert(item.second);
+      }
+    }
+
+    for (auto& op : ops_) {
+      for (auto& item : op->inputs()) {
+        if (vars.count(item.second)) vars.erase(item.second);
+      }
+    }
+    return vars;
+  }
+
+  const std::vector<std::unique_ptr<Operator>>& ops() const { return ops_; }
+
+  size_t size() const { return ops_.size(); }
 
  private:
-  std::vector<std::shared_ptr<Operator>> ops_;
+  std::vector<std::unique_ptr<Operator>> ops_;
 };
 
 }  // namespace hlir

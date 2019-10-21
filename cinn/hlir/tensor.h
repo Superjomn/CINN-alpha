@@ -60,16 +60,7 @@ class Tensor {
    * Get the Expr of this Tensor, should be a Tensor declaration such as `Expr("A", primitive_t::fp32, {20, 20})`.
    * @return the corresponding Expr.
    */
-  const ir::Expr& expr() const {
-    if (!expr_.valid()) {
-      std::vector<ir::Constant> ir_shape;
-      for (int v : shape()) {
-        ir_shape.emplace_back(v);
-      }
-      expr_ = ir::Expr(ir_shape, primitive_t::float32);
-    }
-    return expr_;
-  }
+  const ir::Expr& expr() const;
 
   /**
    * Get the Expr of this Tensor, should be a Tensor declaration such as `Expr("A", primitive_t::fp32, {20, 20})`.

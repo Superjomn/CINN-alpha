@@ -30,10 +30,7 @@ class Operator {
   Operator(const std::string& type, HlirLayer layer, Session* session)
       : type_(type), layer_(layer), session_(session) {}
 
-  void set_session(Session* x) {
-    CHECK(x);
-    session_ = x;
-  }
+  void set_session(Session* x);
 
   /**
    * Compile to lower layer of operators or IR.
@@ -62,7 +59,7 @@ class Operator {
    * @param argument
    * @param value
    */
-  void SetOutput(const std::string& argument, const std::string& value) { argument2value_[argument] = value; }
+  void SetOutput(const std::string& argument, const std::string& value) { output_argument2value_[argument] = value; }
 
   /**
    * Get a output argument.
@@ -70,6 +67,11 @@ class Operator {
    * @return
    */
   Tensor& GetOutput(const std::string& argument);
+
+  const std::map<std::string, std::string>& inputs() const { return input_argument2value_; }
+  const std::map<std::string, std::string>& outputs() const { return output_argument2value_; }
+
+  const std::string& type() const { return type_; }
 
   template <typename T>
   T& param() {
@@ -93,7 +95,8 @@ class Operator {
   std::string type_;
   HlirLayer layer_{HlirLayer::kUnk};
   Session* session_;
-  std::map<std::string, std::string> argument2value_;
+  std::map<std::string, std::string> input_argument2value_;
+  std::map<std::string, std::string> output_argument2value_;
   Any param_;
 };
 
