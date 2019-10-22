@@ -14,39 +14,15 @@ class Program {
  public:
   void AddOp(std::unique_ptr<Operator>&& op) { ops_.emplace_back(std::move(op)); }
 
-  std::set<std::string> Inputs() const {
-    std::set<std::string> vars;
+  /**
+   * The input tensors of this program.
+   */
+  std::set<std::string> Inputs() const;
 
-    for (auto& op : ops_) {
-      for (auto& item : op->inputs()) {
-        vars.insert(item.second);
-      }
-    }
-
-    for (auto& op : ops_) {
-      for (auto& item : op->outputs()) {
-        if (vars.count(item.second)) vars.erase(item.second);
-      }
-    }
-    return vars;
-  }
-
-  std::set<std::string> Outputs() const {
-    std::set<std::string> vars;
-
-    for (auto& op : ops_) {
-      for (auto& item : op->outputs()) {
-        vars.insert(item.second);
-      }
-    }
-
-    for (auto& op : ops_) {
-      for (auto& item : op->inputs()) {
-        if (vars.count(item.second)) vars.erase(item.second);
-      }
-    }
-    return vars;
-  }
+  /**
+   * The output tensors of this program.
+   */
+  std::set<std::string> Outputs() const;
 
   const std::vector<std::unique_ptr<Operator>>& ops() const { return ops_; }
 

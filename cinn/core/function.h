@@ -197,6 +197,7 @@ struct Function {
     data_->name = name;
     data_->ctx = isl_utils::global_isl_ctx();
   }
+  Function(const Function& other) { data_ = other.data_; }
 
   Stage AddStage(const Stage& stage);
 

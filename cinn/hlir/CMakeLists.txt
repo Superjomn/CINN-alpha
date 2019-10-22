@@ -1,7 +1,5 @@
 cc_library(hlir_util SRCS hlir_util.cc)
 cc_library(operator SRCS operator.cc DEPS hlir_util)
-cc_library(program SRCS program.cc DEPS hlir_util)
-cc_library(graph SRCS graph.cc DEPS hlir_util)
 cc_library(tensor SRCS tensor.cc DEPS hlir_util)
 cc_library(placeholder SRCS placeholder.cc DEPS hlir_util)
 cc_library(variable SRCS variable.cc DEPS hlir_util)
@@ -12,5 +10,13 @@ cc_library(buffer SRCS buffer.cc)
 set(instruction_ops CACHE INTERNAL "instruction ops")
 add_subdirectory(instruction_layer)
 
+cc_library(program SRCS program.cc DEPS hlir_util ${instruction_ops})
+cc_library(graph SRCS graph.cc DEPS hlir_util program)
+cc_library(graph_util SRCS graph_util.cc DEPS graph)
+
+add_subdirectory(optimize)
+
+
 message(STATUS "instruction_ops: ${instruction_ops}")
 cc_test(test_graph SRCS graph_test.cc DEPS ${instruction_ops} graph session op_registry operator cinn_lib)
+cc_test(test_graph_util SRCS graph_util_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops})

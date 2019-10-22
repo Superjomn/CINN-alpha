@@ -13,13 +13,13 @@ TEST(Optimizer_pass, indices_to_absolute_offset) {
   ir::Var i, j, k;
 
   auto expr = A[i][j][k];
-  Optimizer optimizer;
+  IrOptimizer optimizer;
   optimizer(&expr);
 
   auto log = ir::Dump(expr);
   LOG(INFO) << "ir: " << log;
 
-  auto target = "A<>[((((((i0 * 40) * 60) + i1) * 40) * 60) + i2)]";
+  auto target = "A<30,40,60>[((((((i0 * 40) * 60) + i1) * 40) * 60) + i2)]";
   ASSERT_EQ(log, target);
 }
 

@@ -52,6 +52,12 @@ void IRVisitor::Visit(const Exp *op) {
   CHECK(op->a.valid());
   Visit(&op->a);
 }
+void IRVisitor::Visit(const Reference *op) {
+  Visit(&op->target);
+  for (auto &iter : op->iterators) {
+    Visit(&iter);
+  }
+}
 
 }  // namespace ir
 }  // namespace cinn

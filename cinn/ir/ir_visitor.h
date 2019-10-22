@@ -170,7 +170,7 @@ class IRVisitor : public IRVisitorBase<void> {
   virtual void Visit(const Tensor* op);
   virtual void Visit(const Constant* op);
   virtual void Visit(const Var* op);
-  virtual void Visit(const Reference* op) {}
+  virtual void Visit(const Reference* op);
   virtual void Visit(const Call* op);
   virtual void Visit(const Assign* op);
   virtual void Visit(const SumAssign* op);

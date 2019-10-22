@@ -20,6 +20,9 @@ namespace utils {
       __FILE__, __LINE__, ::cinn::utils::__cinn_log_indent__, ::cinn::utils::cur_log_indent_debug_level + level) \
       .stream()
 
+#define CINN_DEBUG_ABS_LEVEL(level) \
+  ::cinn::utils::Log(__FILE__, __LINE__, ::cinn::utils::__cinn_log_indent__, level).stream()
+
 extern int __cinn_log_level__;
 extern int __cinn_log_indent__;
 
@@ -73,8 +76,12 @@ struct LogIndentGuard {
   }
 };
 
-#define LOG_INDENT(level)                            \
-  CINN_DEBUG(level) << "== " << __PRETTY_FUNCTION__; \
+#define LOG_INDENT_WITH_BANNER(level, banner)     \
+  CINN_DEBUG_ABS_LEVEL(level) << "== " << banner; \
+  ::cinn::utils::LogIndentGuard ______(level);
+
+#define LOG_INDENT(level)                                      \
+  CINN_DEBUG_ABS_LEVEL(level) << "== " << __PRETTY_FUNCTION__; \
   ::cinn::utils::LogIndentGuard ______(level);
 
 }  // namespace utils

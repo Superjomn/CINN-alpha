@@ -11,19 +11,20 @@ namespace cinn {
 /**
  * @brief Pass is the basic module of optimizer. One can implement the Impl method to create a new pass.
  */
+template <typename T>
 class Pass {
   std::string name_;
 
  public:
   explicit Pass(const std::string& name) : name_(name) {}
 
-  void Run(ir::Expr* expr) {
+  void Run(T* expr) {
     LOG(INFO) << "Running " << name_ << " pass";
     Impl(expr);
   }
 
   //! The implementation of this pass.
-  virtual void Impl(ir::Expr* expr) = 0;
+  virtual void Impl(T* expr) = 0;
 
   //! The name of this pass.
   const std::string& name() const { return name_; }

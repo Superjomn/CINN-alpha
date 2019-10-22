@@ -40,7 +40,7 @@ struct IndicesMutator : public ir::IRMutator {
   }
 };
 
-class IndicesToAbsoluteOffsetPass : public Pass {
+class IndicesToAbsoluteOffsetPass : public Pass<ir::Expr> {
  public:
   explicit IndicesToAbsoluteOffsetPass(const std::string &name) : Pass(name) {}
 
@@ -52,4 +52,4 @@ class IndicesToAbsoluteOffsetPass : public Pass {
 
 }  // namespace cinn
 
-REGISTER_PASS(indices_to_absolute_offset, cinn::IndicesToAbsoluteOffsetPass);
+REGISTER_IR_PASS(indices_to_absolute_offset, cinn::IndicesToAbsoluteOffsetPass);

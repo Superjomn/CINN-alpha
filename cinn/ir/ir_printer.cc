@@ -1,4 +1,5 @@
 #include "cinn/ir/ir_printer.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "cinn/core/function.h"
@@ -156,7 +157,13 @@ void IRPrinter::Visit(const Or *op) {
   os_ << ")";
 }
 
-void IRPrinter::Visit(const Tensor *op) { os_ << op->name() << "<>"; }
+void IRPrinter::Visit(const Tensor *op) {
+  std::vector<int> dims;
+  std::transform(
+      op->dims().begin(), op->dims().end(), std::back_inserter(dims), [](const Constant &x) { return x.int32_val(); });
+  CHECK(!dims.empty()) << "the Tensor don't has shape";
+  os_ << op->name() << StringFormat("<%s>", Concat(ToString(dims), ",").c_str());
+}
 
 void IRPrinter::Visit(const For *op) {
   //@{
@@ -168,12 +175,17 @@ void IRPrinter::Visit(const For *op) {
   Print(op->iter_cond);
   Print(", ");
   Print(op->iter_inc);
-  os_ << ") {\n";
+  os_ << ") {";
+  Println();
   //@}
+  indent_right();
 
   // print a block
   CHECK(op->body.is_block());
   Print(op->body);
+  Println();
+
+  indent_left();
 
   //@{
   PrintIndent();
@@ -219,16 +231,14 @@ void IRPrinter::Visit(const IfThenElse *op) {
 void IRPrinter::Visit(const Block *op) {
   // PrintIndent();
   // os_ << "{%_B" << indent_size_ << "\n";
-  indent_right();
 
   for (size_t i = 0; i < op->exprs.size(); i++) {
     auto &expr = op->exprs[i];
     PrintIndent();
     Print(expr);
-    if (i != op->exprs.size() - 1) os_ << "\n";
+    if (i != op->exprs.size() - 1) Println();
   }
 
-  indent_left();
   // PrintIndent();
   // os_ << "}%_B" << indent_size_;
 }
@@ -303,19 +313,23 @@ void IRPrinter::Visit(const ir::Function *op) {
       arguments.push_back("Tensor& " + x.As<ir::Tensor>()->name());
   }
 
+  PrintIndent();
   os_ << StringFormat("def %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
 
   // body print with indent
   PrintIndent();
   os_ << " {";
-  indent_size_++;
+  Println();
+
+  indent_right();
 
   // print the buffer allocate.
 
+  PrintIndent();
   Print(op->body);
   os_ << '\n';
 
-  indent_size_--;
+  indent_left();
 
   PrintIndent();
   os_ << "}";

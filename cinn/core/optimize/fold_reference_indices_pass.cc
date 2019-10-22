@@ -181,7 +181,7 @@ class Mutator : public ir::IRMutator {
 
 }  // namespace
 
-class ThePass : public Pass {
+class ThePass : public Pass<ir::Expr> {
   statis_t statis;
   const int frequency{10};
 
@@ -222,4 +222,4 @@ class ThePass : public Pass {
 
 }  // namespace cinn
 
-REGISTER_PASS(fold_reference_indices, cinn::ThePass);
+REGISTER_IR_PASS(fold_reference_indices, cinn::ThePass);

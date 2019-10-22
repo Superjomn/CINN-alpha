@@ -1,4 +1,5 @@
 #include "cinn/hlir/tensor.h"
+#include <algorithm>
 #include "cinn/ir/ir.h"
 
 namespace cinn {
@@ -36,26 +37,39 @@ std::vector<ir::Expr> &Tensor::iterators() {
   return iterators_;
 }
 
-ir::Expr &Tensor::expr() {
+ir::Expr &Tensor::expr() { return expr_; }
+
+const ir::Expr &Tensor::expr() const { return expr_; }
+
+void Tensor::InitExpr() {
   if (!expr_.valid()) {
+    CHECK(!shape().empty()) << "should set shape first";
     std::vector<ir::Constant> ir_shape;
     for (int v : shape()) {
       ir_shape.emplace_back(v);
     }
-    expr_ = ir::Expr(ir_shape, primitive_t::float32);
+    ir_inner_name_ = NameGenerator::Global().NewNamed("tensor");
+    expr_ = ir::Expr(ir_shape, primitive_t::float32, ir_inner_name());
   }
-  return expr_;
 }
 
-const ir::Expr &Tensor::expr() const {
-  if (!expr_.valid()) {
-    std::vector<ir::Constant> ir_shape;
-    for (int v : shape()) {
-      ir_shape.emplace_back(v);
-    }
-    expr_ = ir::Expr(ir_shape, primitive_t::float32);
-  }
-  return expr_;
+void Tensor::set_shape(const shape_t &x) {
+  CHECK(shape_.empty()) << "duplicate set shape";
+  shape_ = x;
+  InitExpr();
+}
+
+std::string Tensor::__repr__() const {
+  std::vector<std::string> shape_str;
+  CHECK(!shape().empty()) << " tensor " << ir_inner_name() << " empty";
+  std::transform(
+      shape().begin(), shape().end(), std::back_inserter(shape_str), [](int v) { return std::to_string(v); });
+  return StringFormat("Tensor %s->%s [%s]", name().c_str(), ir_inner_name().c_str(), Concat(shape_str, ",").c_str());
+}
+
+const std::string &Tensor::ir_inner_name() const {
+  CHECK(!ir_inner_name_.empty());
+  return ir_inner_name_;
 }
 
 }  // namespace hlir

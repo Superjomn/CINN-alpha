@@ -41,7 +41,7 @@ struct Mutator : public ir::IRMutator {
 
 }  // namespace
 
-class NestedBlockCleanPass : public Pass {
+class NestedBlockCleanPass : public Pass<ir::Expr> {
  public:
   explicit NestedBlockCleanPass(const std::string& name) : Pass(name) {}
 
@@ -53,4 +53,4 @@ class NestedBlockCleanPass : public Pass {
 
 }  // namespace cinn
 
-REGISTER_PASS(nested_block_clean, cinn::NestedBlockCleanPass);
+REGISTER_IR_PASS(nested_block_clean, cinn::NestedBlockCleanPass);

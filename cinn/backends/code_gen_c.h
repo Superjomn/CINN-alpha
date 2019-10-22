@@ -17,7 +17,7 @@ class C_CodeGen : public ir::IRPrinter {
     source,  // compile source file
   };
   const char* file_guard = "CINN_FILE_";
-  Optimizer optimizer;
+  IrOptimizer optimizer;
   std::stringstream ss_;
   mutable std::string compiled_code_;
 

@@ -2,6 +2,8 @@
 #include <vector>
 #include "cinn/hlir/op_registry.h"
 #include "cinn/hlir/operator.h"
+#include "cinn/ir/ir_printer.h"
+#include "cinn/utils/logging.h"
 
 namespace cinn {
 namespace hlir {
@@ -25,14 +27,18 @@ class MatMulOp : public Operator {
   }
 
   void CompileImpl() override {
+    LOG_INDENT(1);
     auto& input0 = GetInput("X");
     auto& W = GetInput("W");
     auto& output0 = GetOutput("Out");
 
     ir::Expr x = input0.expr(), w = W.expr(), out = output0.expr();
+    CINN_DEBUG(2) << "x.expr: " << ir::Dump(x);
+    CINN_DEBUG(2) << "w.expr: " << ir::Dump(w);
+    CINN_DEBUG(2) << "out.expr: " << ir::Dump(out);
 
     ir::Var i, j, k;
-    output0.AddStage(out[i][j] = x[i][k] * w[k][j]);
+    output0.AddStage(out[i][j] += x[i][k] * w[k][j]);
   }
 };
 

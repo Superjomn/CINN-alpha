@@ -21,6 +21,21 @@ static std::string Concat(const T& fields, const std::string& splitter) {
   return ss.str();
 }
 
+/**
+ * Convert a container of some type to a vector of string.
+ * @tparam Container container type such as std::vector.
+ * @param vs the container instance.
+ * @return a vector of string.
+ */
+template <typename Container>
+std::vector<std::string> ToString(const Container& vs) {
+  std::vector<std::string> res;
+  for (auto& x : vs) {
+    res.push_back(std::to_string(x));
+  }
+  return res;
+}
+
 //! Get the string repr by operator<<.
 template <typename T>
 std::string GetStreamStr(const T& x) {

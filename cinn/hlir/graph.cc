@@ -84,5 +84,59 @@ void Graph::NewTensorNode(const std::string& name) {
 
   vars_[name] = var_node;
 }
+
+std::set<const Node*> Graph::Inputs() const {
+  std::set<const Node*> result;
+  for (auto& node : nodes()) {
+    if (node->is_tensor()) {
+      if (node->inlinks.empty()) {
+        result.insert(node.get());
+      }
+    }
+  }
+  return result;
+}
+
+std::set<const Node*> Graph::Outputs() const {
+  std::set<const Node*> result;
+  for (auto& node : nodes()) {
+    if (node->is_tensor()) {
+      if (node->outlinks.empty()) {
+        result.insert(node.get());
+      }
+    }
+  }
+  return result;
+}
+
+std::set<Node*> Graph::Inputs() {
+  std::set<Node*> result;
+  for (auto& node : nodes()) {
+    if (node->is_tensor()) {
+      if (node->inlinks.empty()) {
+        result.insert(node.get());
+      }
+    }
+  }
+  return result;
+}
+
+std::set<Node*> Graph::Outputs() {
+  std::set<Node*> result;
+  for (auto& node : nodes()) {
+    if (node->is_tensor()) {
+      if (node->outlinks.empty()) {
+        result.insert(node.get());
+      }
+    }
+  }
+  return result;
+}
+
+Node* Graph::GetTensor(const std::string& name) {
+  auto it = vars_.find(name);
+  CHECK(it != vars_.end());
+  return it->second;
+}
 }  // namespace hlir
 }  // namespace cinn

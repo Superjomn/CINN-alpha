@@ -37,9 +37,22 @@ class Tensor {
    */
   ir::Expr Elem() const;
 
+  /**
+   * Get the shape of the tensor.
+   * @return the shape of the tensor.
+   */
   const shape_t& shape() const { return shape_; }
-  void set_shape(const shape_t& x) { shape_ = x; }
 
+  /**
+   * Set the shape of the tensor.
+   * @param x the shape
+   */
+  void set_shape(const shape_t& x);
+
+  /**
+   * Set the iterators manually, be sure that the iterators empty.
+   * @param iterators
+   */
   void set_iterators(const std::vector<ir::Expr>& iterators) {
     CHECK(iterators_.empty());
     iterators_ = iterators;
@@ -50,6 +63,7 @@ class Tensor {
    * @return a vector of Exprs representing the iterators in order.
    */
   const std::vector<ir::Expr>& iterators() const;
+
   /**
    *
    * @return the mutable iterators.
@@ -94,12 +108,29 @@ class Tensor {
    */
   Stage& last_stage() { return stages_.back(); }
 
+  void set_name(const std::string& x) { name_ = x; }
+  const std::string& name() const { return name_; }
+
+  /**
+   * Get the inner representation in IR of this tensor, it is the unique identifier for this tensor in the isl
+   * representation.
+   */
+  const std::string& ir_inner_name() const;
+
+  std::string __repr__() const;
+
  private:
+  void InitExpr();
+
   shape_t shape_;
   mutable ir::Expr expr_;
   mutable std::vector<ir::Expr> iterators_;
   std::vector<Stage> stages_;
   std::shared_ptr<Buffer> buffer_;
+  //! Represented inside the IR.
+  std::string ir_inner_name_;
+  //! the name of this tensor in HLIR graph.
+  std::string name_;
 };
 
 }  // namespace hlir
