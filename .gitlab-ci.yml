@@ -1,7 +1,7 @@
 before_script:
   - env
 
-image: lite_server
+#image: lite_server
 
 stages:
   - ci
