@@ -1,7 +1,7 @@
 before_script:
   - env
 
-#image: lite_server
+image: ubuntu:16.04
 
 stages:
   - ci
