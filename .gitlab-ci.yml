@@ -8,8 +8,6 @@ stages:
   - build_server
 
 check:prebuilt:
-    tags:
-        - lite
     stage: ci
     script:
         - rm -rf ~/.pip
@@ -29,8 +27,6 @@ check:prebuilt:
             - $CI_USER_DIR/.cache
 
 build:server:
-    tags:
-        - lite
     stage: build_server
     cache:
         key: server_thirdparty
