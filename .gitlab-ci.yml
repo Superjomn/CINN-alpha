@@ -11,7 +11,7 @@ check:prebuilt:
     stage: ci
     script:
         - rm -rf ~/.pip
-        - apt install python python-pip
+        - apt-get install python python-pip
         - pip install pre-commit
         - pre-commit install
 
