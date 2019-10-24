@@ -3,6 +3,9 @@ before_script:
 
 image: ubuntu:16.04
 
+before_script:
+  - apt-get update -qq && apt-get install -y -qq python python-pip
+
 stages:
   - ci
   - build_server
@@ -11,7 +14,6 @@ check:prebuilt:
     stage: ci
     script:
         - rm -rf ~/.pip
-        - apt-get install python python-pip
         - pip install pre-commit
         - pre-commit install
 
