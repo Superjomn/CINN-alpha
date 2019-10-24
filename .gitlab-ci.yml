@@ -14,8 +14,9 @@ check:prebuilt:
     stage: ci
     script:
         - rm -rf ~/.pip
-        - pip3 install pre-commit
+        - pip3 install pre-commit cpplint
         - pre-commit install
+        - ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format
 
         # merge the latest code
         - git config --global user.email "you@example.com"
