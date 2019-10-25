@@ -6,6 +6,9 @@ dist: trusty
 os:
   - linux
 
+tags:
+  - lite
+
 addons:
   apt:
     packages:
