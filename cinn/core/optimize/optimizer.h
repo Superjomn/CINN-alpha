@@ -40,9 +40,7 @@ class IrOptimizer : public Optimizer<ir::Expr> {
  public:
   IrOptimizer()
       : Optimizer({
-            "nested_block_clean",
-            "indices_to_absolute_offset",
-            "fold_reference_indices",
+            "nested_block_clean", "indices_to_absolute_offset", "fold_reference_indices",
         }) {}
 };
 

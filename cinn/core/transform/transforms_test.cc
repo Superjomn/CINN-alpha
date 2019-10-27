@@ -37,6 +37,7 @@ TEST(tile, tile_from_tail) {
 
   TileTransformer2 appler("A", {32, 32});
   schedule = appler.Visit(schedule).get_schedule();
+  LOG(INFO) << "schedule: \n" << schedule;
   LOG(INFO) << "final schedule: \n" << schedule.root();
 
   auto *build = isl_ast_build_from_context(isl_set_read_from_str(ctx.get(), "{:}"));
@@ -61,6 +62,19 @@ TEST(unroll, basic) {
   auto *build = isl_ast_build_from_context(isl_set_read_from_str(ctx.get(), "{:}"));
   auto *ast = isl_ast_build_node_from_schedule(build, schedule.copy());
   LOG(INFO) << "code: \n" << isl_ast_node_to_C_str(ast);
+}
+
+TEST(skew, basic) {
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::union_set domain(ctx, "{ A[i,j] : 0 < i,j < 10; B[i,j] : 0<i,j<10 }");
+  isl::union_map validity(ctx, "{ A[i,j] -> B[i,j] }");
+
+  isl::schedule_constraints sc = isl::schedule_constraints::on_domain(domain);
+  sc = sc.set_validity(validity);
+  isl::schedule schedule = sc.compute_schedule();
+
+  SkewTransformer appler("A", "i");
+  schedule = appler.Visit(schedule).get_schedule();
 }
 
 }  // namespace cinn

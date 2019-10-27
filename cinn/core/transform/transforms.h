@@ -61,6 +61,25 @@ struct TileTransformer : public ScheduleNodeRewriter<TileTransformer> {
   std::map<std::string, isl::set> statements_filter_collected_;
 };
 
+struct CollectStatementFilter : public ScheduleNodeRewriter<CollectStatementFilter> {
+  isl::schedule_node VisitFilter(const isl::schedule_node& node) {
+    collected_statements_.clear();
+    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node.get()));
+    auto collect_set = [this](isl::set x) {
+      auto name = isl_set_get_tuple_name(x.get());
+      collected_statements_[name] = x;
+    };
+    filter.foreach_set(collect_set);
+    return Visit(node.first_child());
+  }
+
+ protected:
+  // A flag to avoid duplication.
+  bool tiled_ = false;
+  // The statements the latest filter collects.
+  std::map<std::string, isl::set> collected_statements_;
+};
+
 /**
  * Tile the dimensions from the tail of a band node.
  */
@@ -120,32 +139,11 @@ struct UnrollTransformer : public ScheduleNodeRewriter<UnrollTransformer> {
   static isl::union_set GetUnrollIsolatedSetOptions(isl::ctx ctx) {
     isl::union_set option(ctx, "{ isolate[[] -> unroll[1]] }");
     return option;
-    /*
-    auto space = isl::manage(isl_space_alloc(ctx.get(), 0, 0, 1));
-    isl::map option = isl::map::universe(space);
-    isl::id dim_in_id = isl::manage(isl_id_alloc(ctx.get(), "isolate", nullptr));
-    isl::id dim_out_id = isl::manage(isl_id_alloc(ctx.get(), "unroll", nullptr));
-
-    option = isl::manage(isl_map_set_tuple_id(option.release(), isl_dim_in, dim_in_id.release()));
-    option = isl::manage(isl_map_set_tuple_id(option.release(), isl_dim_out, dim_out_id.release()));
-    return isl::manage(isl_map_wrap(option.release()));
-     */
   }
 
   isl::union_set GetIsolateOptions(isl::set domain, int out_dims_num) {
     isl::union_set option(domain.ctx(), "{ isolate[[]->[a,b]] : 0 < a < 5 }");
     return option;
-    /*
-    unsigned dims = isl_set_dim(domain.get(), isl_dim_set);
-    CHECK_LE(out_dims_num, dims);
-    isl::map isolate_relation = isl::manage(isl_map_from_domain(domain.release()));
-    isolate_relation = isl::manage(
-        isl_map_move_dims(isolate_relation.release(), isl_dim_out, 0, isl_dim_in, dims - out_dims_num, out_dims_num));
-    isl::set isolate_option = isl::manage(isl_map_wrap(isolate_relation.release()));
-    isl::id id = isl::manage(isl_id_alloc(isolate_option.ctx().get(), "isolate", nullptr));
-    isolate_option = isl::manage(isl_set_set_tuple_id(isolate_option.release(), id.release()));
-    return isl::union_set(isolate_option);
-     */
   }
 
  private:
@@ -161,6 +159,9 @@ struct UnrollTransformer : public ScheduleNodeRewriter<UnrollTransformer> {
   std::map<std::string, isl::set> statements_filter_collected_;
 };
 
+/**
+ * Loop Skew on a specific iterator and the next iterator besides it.
+ */
 struct SkewTransformer : public ScheduleNodeRewriter<SkewTransformer> {
   using BaseTy = ScheduleNodeRewriter<SkewTransformer>;
   BaseTy& GetBase() { return *this; }
@@ -175,7 +176,24 @@ struct SkewTransformer : public ScheduleNodeRewriter<SkewTransformer> {
    * @param node the schedule node reached.
    * @return the original or updated node.
    */
-  isl::schedule_node VisitBand(const isl::schedule_node& node);
+  isl::schedule_node VisitBand(const isl::schedule_node& node) {
+    LOG(INFO) << "collected filter " << collected_statements_.size();
+    LOG(INFO) << "get a band";
+    LOG(INFO) << "domain: " << isl::manage(isl_schedule_node_get_domain(node.get()));
+    LOG(INFO) << "partial schedule: " << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
+    return node;
+  }
+
+  isl::schedule_node VisitFilter(const isl::schedule_node& node) {
+    collected_statements_.clear();
+    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node.get()));
+    auto collect_set = [this](isl::set x) {
+      auto name = isl_set_get_tuple_name(x.get());
+      collected_statements_[name] = x;
+    };
+    filter.foreach_set(collect_set);
+    return Visit(node.first_child());
+  }
 
  private:
   // The statement to tile.
@@ -185,7 +203,36 @@ struct SkewTransformer : public ScheduleNodeRewriter<SkewTransformer> {
   // A flag to avoid duplication.
   bool tiled_ = false;
   // The statements the latest filter collects.
-  std::map<std::string, isl::set> statements_filter_collected_;
+  std::map<std::string, isl::set> collected_statements_;
+};
+
+/**
+ * Transpose the forloops.
+ */
+struct TransposeTransformer : public ScheduleNodeRewriter<TransposeTransformer> {
+  using BaseTy = ScheduleNodeRewriter<TransposeTransformer>;
+  BaseTy& GetBase() { return *this; }
+  const BaseTy& GetBase() const { return *this; }
+
+  /**
+   * Construct an TransposeTransformer instance.
+   * @param statement the statement to operate on.
+   * @param iterator0 the first iterator to replace with.
+   * @param iterator1 the second iterator to replace with.
+   */
+  TransposeTransformer(const std::string& statement, const std::string& iterator0, const std::string& iterator1)
+      : iterator0_(iterator0), iterator1_(iterator1) {}
+
+  /**
+   * Visit a schedule band node, tile it if match the target.
+   *
+   * @param node the schedule node reached.
+   * @return the original or updated node.
+   */
+  isl::schedule_node VisitBand(const isl::schedule_node& node);
+
+ private:
+  std::string iterator0_, iterator1_;
 };
 
 }  // namespace cinn

@@ -100,10 +100,6 @@ isl::schedule_node TileTransformer::VisitFilter(const isl::schedule_node& node) 
   return Visit(node.first_child());
 }
 
-isl::schedule_node SkewTransformer::VisitBand(const isl::schedule_node& node) {
-  auto partial_schedule = node.get_schedule();
-}
-
 isl::schedule_node UnrollTransformer::VisitBand(const isl::schedule_node& node) {
   auto ctx = node.ctx();
   CollectCurrentStatementsFromBand(node);
@@ -237,7 +233,6 @@ isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
   LOG(INFO) << "unroll_option: " << unroll_option;
   isl::union_set unroll_option2(domain.ctx(), GetStreamStr(unroll_option));
   isl::schedule_node inner_band = new_node.child(0);
-  // isl::union_set isolate2(ctx, "{ isolate[[i1,j1] -> [c,d]] : 32i1 <= 199 and 32j1 <= 199 }");
   inner_band = inner_band.as<isl::schedule_node_band>().set_ast_build_options(unroll_option2);
   inner_band = inner_band.as<isl::schedule_node_band>().member_set_ast_loop_unroll(
       GetStatementSetDimsInDomain(statement_, domain) - 1);
