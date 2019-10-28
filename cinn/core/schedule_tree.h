@@ -42,13 +42,13 @@ class ScheduleTree {
 
   template <typename T>
   T* As() {
-    static_assert(std::is_base_of<ScheduleTree, T>::value);
+    // static_assert(std::is_base_of<ScheduleTree, T>::value);
     if (type_ != T::type) return nullptr;
     return static_cast<T*>(this);
   }
   template <typename T>
   const T* As() const {
-    static_assert(std::is_base_of<ScheduleTree, T>::value);
+    // static_assert(std::is_base_of<ScheduleTree, T>::value);
     if (type_ != T::type) return nullptr;
     return static_cast<const T*>(this);
   }

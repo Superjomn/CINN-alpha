@@ -12,8 +12,8 @@ NodesDFSIterator::NodesDFSIterator(const std::vector<Node *> &source) {
   for (auto *x : source) stack_.push(x);
 }
 
-NodesDFSIterator::NodesDFSIterator(NodesDFSIterator &&other) noexcept
-    : stack_(std::move(other.stack_)), visited_(std::move(other.visited_)) {}
+NodesDFSIterator::NodesDFSIterator(NodesDFSIterator &&other) noexcept : stack_(std::move(other.stack_)),
+                                                                        visited_(std::move(other.visited_)) {}
 
 NodesDFSIterator::NodesDFSIterator(const NodesDFSIterator &other) : stack_(other.stack_), visited_(other.visited_) {}
 

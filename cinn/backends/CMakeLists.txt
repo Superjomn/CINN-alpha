@@ -20,6 +20,7 @@ target_link_libraries(test_code_gen_llvm ir function)
 
 cc_test(test_isl SRCS isl_test.cc DEPS isl_utils)
 target_link_libraries(test_isl ${isl_lib})
+cc_test(test_isl_aff SRCS isl_aff_test.cc DEPS isl_utils)
 
 cc_library(code_gen_c SRCS code_gen_c.cc DEPS ir optimizer)
 cc_test(test_code_gen_c SRCS code_gen_c_test.cc DEPS code_gen_c function )
