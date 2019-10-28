@@ -241,4 +241,25 @@ isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
   return Visit(inner_band.first_child().parent());
 }
 
+isl::schedule_node TransposeTransformer::VisitBand(const isl::schedule_node& node) {
+  if (!collected_statements_.count(statement_)) return Visit(node.first_child());
+  LOG(INFO) << "collected filter " << collected_statements_.size();
+  LOG(INFO) << "get a band";
+  LOG(INFO) << "domain: " << isl::manage(isl_schedule_node_get_domain(node.get()));
+  LOG(INFO) << "partial schedule: " << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
+  isl::multi_union_pw_aff partial_schedule = isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
+  // isl::pw_multi_aff transform(partial_schedule.ctx(), "{ [i,j] -> [j,i] }");
+  isl::pw_multi_aff transform = PrepareTransform();
+  partial_schedule =
+      isl::manage(isl_multi_union_pw_aff_apply_pw_multi_aff(partial_schedule.release(), transform.release()));
+  LOG(INFO) << "transformed partial schedule: " << partial_schedule;
+
+  auto filter_set = collected_statements_[statement_];
+  std::string filter_repr = isl_set_get_statement_repr(filter_set.get());
+  LOG(INFO) << "get filtered_set: " << filter_set;
+
+  isl::union_set filter(node.ctx(), "{ A[i,j] }");
+  auto new_node = node.insert_partial_schedule(partial_schedule);
+  return Visit(new_node.first_child().first_child());
+}
 }  // namespace cinn

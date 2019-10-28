@@ -1,7 +1,7 @@
 before_script:
   - env
 
-image: lite_server
+image: cinn:0.1
 
 stages:
   - ci
@@ -12,15 +12,16 @@ check:prebuilt:
         - lite
     stage: ci
     script:
-        - rm -rf ~/.pip
-        - pip install pre-commit
+        #- rm -rf ~/.pip
         - pre-commit install
 
+        - git reset --hard HEAD
         # merge the latest code
+        - git remote -v
         - git config --global user.email "you@example.com"
         - git config --global user.name "Your Name"
-        - git fetch origin master
-        - git merge --no-ff origin/master
+        #- git fetch origin develop
+        #- git merge --no-ff origin/develop
 
         - ./build.sh check_style
     cache:
@@ -38,14 +39,11 @@ build:server:
             - build/third_party
             - ~/.ccache
     script:
-        - apt install ccache
-
         # merge the latest code
         - git config --global user.email "you@example.com"
         - git config --global user.name "Your Name"
-        - git fetch origin master
-        - git merge --no-ff origin/master
-
+        #- git fetch origin master
+        #- git merge --no-ff origin/master
         - ./build.sh ci
 
     dependencies:
