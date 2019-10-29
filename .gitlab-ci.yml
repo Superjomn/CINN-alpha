@@ -36,7 +36,6 @@ build:server:
     cache:
         key: server_thirdparty
         paths:
-            - build/third_party
             - ~/.ccache
     script:
         # merge the latest code
