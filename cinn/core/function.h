@@ -84,7 +84,10 @@ class Snippet {
   isl::ast_node GenerateIslAst() const;
 
   //! Tile the stages.
-  void BuildTiles();
+  void ApplyTiles();
+
+  //! Apply the transpose transformations to the schedule.
+  void ApplyTransposes();
 
   //! Fuse the stages if set with Stage::FuseWith.
   void BuildFusion();
@@ -199,12 +202,21 @@ struct Function {
   }
   Function(const Function& other) { data_ = other.data_; }
 
+  /**
+   * Add a stage to this Function.
+   * @param stage the stage to add.
+   * @return the added stage.
+   */
   Stage AddStage(const Stage& stage);
 
-  //! Try to fuse a and b stages, it will fuse them if possible.
+  /**
+   * Try to fuse a and b stages, it will fuse them if possible.
+   */
   void Fuse(const Stage& a, const Stage& b);
 
-  //! Set the function's inputs.
+  /**
+   * Set the function's inputs.
+   */
   void Inputs(const std::vector<Expr>& xs) { data_->inputs = xs; }
 
   //! Set the function's outupts.
@@ -235,13 +247,17 @@ struct Function {
 
   const Expr& ComputeTransformedExpr() const;
 
-  static const ir::NodeTy node_type = ir::NodeTy::Function;
-
+  /**
+   * Return the corresponding ir::Function.
+   */
   const ir::Expr& ir_function() const { return data_->ir_function; }
 
   operator Expr();
 
   // TODO(Superjomn) Remove this method
+  /**
+   * Finalize the definition of a Function, new stages cann't add to this function latter.
+   */
   void EndDefinition() {
     BuildSnippets();
     data_->ir_function = ir::Function::make(name(), data_->inputs, data_->outputs, ComputeTransformedExpr());

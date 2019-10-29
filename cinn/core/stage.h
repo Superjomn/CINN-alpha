@@ -66,9 +66,15 @@ class Stage {
     // Tile from the tail.
     std::vector<int> tile_sizes_;
 
+    //! the dimensions to transpose.
+    std::vector<std::pair<std::string, std::string>> transposes_;
+
     // The names of the stages try to fuse with.
     std::set<std::string> stages_fuse_with;
   };
+
+  //! The iterators in order, the statement
+  std::vector<ir::Var> iterators_in_order_;
 
  public:
   Stage() { InitData(); }
@@ -113,6 +119,8 @@ class Stage {
    */
   void SetCond(const ir::Var& iterator, const std::string& cond);
 
+  void SetIterators(const std::vector<ir::Var>& xs);
+
   /**
    * Set extra condition to the iteration domain.
    * @param expr the expression as the iterator in a reference.
@@ -154,6 +162,8 @@ class Stage {
 
   const std::vector<int>& tile_sizes() const { return data_->tile_sizes_; }
 
+  const std::vector<std::pair<std::string, std::string>>& transposes() const { return data_->transposes_; }
+
   const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
 
   //! Set the extra condition of the iterators.
@@ -173,6 +183,10 @@ class Stage {
   // void Tile(ir::Var i, size_t iw, ir::Var j, size_t jw);
   void Tile(ir::Var i, size_t w);
 
+  /**
+   * Tile the last several loop levels with tile sizes set by `sizes`.
+   * @param sizes the sizes to tile.
+   */
   void Tile(std::vector<int> sizes);
 
   //! Skew in the loop level `i`.

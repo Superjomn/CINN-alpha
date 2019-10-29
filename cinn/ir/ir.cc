@@ -618,7 +618,7 @@ isl::set Param::context() const {
 }
 
 void Expr::InferenceIteratorDomain() {
-  LOG_INDENT(0);
+  LOG_INDENT(5);
   CINN_DEBUG(3) << "expr: " << ir::Dump(*this);
   isl::union_set result;
   // extract iterator from the expr.

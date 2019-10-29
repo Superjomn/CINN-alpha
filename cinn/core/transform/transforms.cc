@@ -1,5 +1,6 @@
 #include "cinn/core/transform/transforms.h"
 #include "cinn/utils/isl_utils.h"
+#include "cinn/utils/logging.h"
 
 namespace cinn {
 
@@ -13,10 +14,11 @@ std::string::size_type FindDimension(const isl::union_pw_aff& aff, const std::st
 }
 
 isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
-  LOG(INFO) << "tile " << statement_ << " " << iterator_ << " " << tile_size_;
+  LOG_INDENT(0);
+  CINN_DEBUG(0) << "tile " << statement_ << " " << iterator_ << " " << tile_size_;
 
-  if (tiled_ || statements_filter_collected_.count(statement_) == 0) {
-    return node;
+  if (tiled_ || !collected_statements_.count(statement_)) {
+    return Visit(node.first_child()).parent();
   }
   auto band = node.as<isl::schedule_node_band>();
   auto partial_schedule = band.get_partial_schedule();
@@ -24,7 +26,7 @@ isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
   std::vector<isl::union_pw_aff> union_pw_affs;
   for (int pw_id = 0; pw_id < partial_schedule.size(); pw_id++) {
     auto aff = partial_schedule.at(pw_id);
-    LOG(INFO) << pw_id << "-th aff is " << aff << " space " << aff.space();
+    CINN_DEBUG(1) << pw_id << "-th aff is " << aff << " space " << aff.space();
     if (FindDimension(aff, iterator_) != std::string::npos) {
       auto transform_repr = StringFormat("{ [%s] -> [floor(%s/%d)*%d, %s] }",
                                          iterator_.c_str(),
@@ -57,7 +59,7 @@ isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
 
   auto new_node = band.insert_partial_schedule(transformed_schedule);
   tiled_ = true;
-  return new_node;
+  return Visit(new_node.first_child()).parent();
 }
 
 bool TileTransformer::IsBandTileable(const isl::schedule_node& node) {
@@ -90,32 +92,11 @@ bool TileTransformer::IsSimpleInnermostBand(const isl::schedule_node& node) {
 }
 
 isl::schedule_node TileTransformer::VisitFilter(const isl::schedule_node& node) {
-  statements_filter_collected_.clear();
-  isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node.get()));
-  auto collect_set = [this](isl::set x) {
-    auto name = isl_set_get_tuple_name(x.get());
-    statements_filter_collected_[name] = x;
-  };
-  filter.foreach_set(collect_set);
-  return Visit(node.first_child());
+  CollectFilter(node);
+  return Visit(node.first_child()).parent();
 }
 
-isl::schedule_node UnrollTransformer::VisitBand(const isl::schedule_node& node) {
-  auto ctx = node.ctx();
-  CollectCurrentStatementsFromBand(node);
-  auto band = node.as<isl::schedule_node_band>();
-  if (band.n_member() >= 2) band = band.split(1);
-
-  auto domain = isl::manage(isl_schedule_node_get_domain(node.get()));
-  isl_set_list* domain_set_list = isl_union_set_get_set_list(domain.release());
-
-  isl::union_set option(node.ctx(), "{ isolate[[]->[j]]: 0 < j < 5 ; [isolate[] -> unroll[0]] }");
-
-  band = band.set_ast_build_options(option);
-
-  return Visit(band.child(0)).parent();
-  return band;
-}
+isl::schedule_node UnrollTransformer::VisitBand(const isl::schedule_node& node) {}
 
 isl::set GetStatementSetFromDomain(const std::string& statement, isl::union_set domain) {
   for (int i = 0; i < isl_union_set_n_set(domain.get()); i++) {
@@ -193,6 +174,7 @@ isl::union_set GetUnrollOption(const std::string& statement, isl::union_set doma
 }
 
 isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
+  LOG_INDENT(0);
   if (tiled_ || !collected_statements_.count(statement_)) return Visit(node.first_child()).parent();
 
   auto band = node.as<isl::schedule_node_band>();
@@ -204,13 +186,14 @@ isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
   vals = vals.add(1);
   for (int i = 0; i < tile_sizes_.size(); i++) vals = vals.set_at(vals.size() - i - 1, tile_sizes_[i]);
   auto new_node = band.tile(vals);
+
   band = new_node.as<isl::schedule_node_band>();
 
   isl::union_set domain = isl::manage(isl_schedule_node_get_domain(band.get()));
   auto transform = GetTileTransform(statement_, isl::manage(domain.copy()), tile_sizes_);
-  LOG(INFO) << "domain: " << domain;
+  CINN_DEBUG(1) << "domain: " << domain;
   // isl::map transform(ctx, "{ A[i,j] -> [a,b]: a = floor(i/32) and b = floor(j/32)  }");
-  LOG(INFO) << "transform " << transform;
+  CINN_DEBUG(1) << "transform " << transform;
   std::string transform_repr = GetStreamStr(transform);
   auto transformed = domain.apply(transform);
   CHECK_EQ(isl_union_set_n_set(transformed.get()), 1UL);
@@ -220,7 +203,7 @@ isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
   relation = relation.reverse();
   isl::set wrapped = isl::manage(isl_map_wrap(relation.release()));
   wrapped = isl::manage(isl_set_set_tuple_name(wrapped.release(), "isolate"));
-  LOG(INFO) << "relaton: " << wrapped;
+  // LOG(INFO) << "relaton: " << wrapped;
 
   // full tile separation
   new_node = band.set_ast_build_options(wrapped);
@@ -230,9 +213,9 @@ isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
   transform = isl::map(band.ctx(), transform_repr);
   domain = isl::manage(isl_schedule_node_get_domain(band.get()));
   isl::union_set unroll_option = GetUnrollOption(statement_, domain, transform);
-  LOG(INFO) << "unroll_option: " << unroll_option;
+  CINN_DEBUG(2) << "unroll_option: " << unroll_option;
   isl::union_set unroll_option2(domain.ctx(), GetStreamStr(unroll_option));
-  isl::schedule_node inner_band = new_node.child(0);
+  isl::schedule_node inner_band = new_node.first_child();
   inner_band = inner_band.as<isl::schedule_node_band>().set_ast_build_options(unroll_option2);
   inner_band = inner_band.as<isl::schedule_node_band>().member_set_ast_loop_unroll(
       GetStatementSetDimsInDomain(statement_, domain) - 1);
@@ -242,24 +225,33 @@ isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
 }
 
 isl::schedule_node TransposeTransformer::VisitBand(const isl::schedule_node& node) {
+  LOG_INDENT(0);
   if (!collected_statements_.count(statement_)) return Visit(node.first_child());
-  LOG(INFO) << "collected filter " << collected_statements_.size();
-  LOG(INFO) << "get a band";
-  LOG(INFO) << "domain: " << isl::manage(isl_schedule_node_get_domain(node.get()));
-  LOG(INFO) << "partial schedule: " << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
+  CINN_DEBUG(0) << "collected filter " << collected_statements_.size();
+  CINN_DEBUG(2) << "get a band";
+  CINN_DEBUG(1) << "domain: " << isl::manage(isl_schedule_node_get_domain(node.get()));
+  CINN_DEBUG(0) << "partial schedule: " << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
   isl::multi_union_pw_aff partial_schedule = isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
   // isl::pw_multi_aff transform(partial_schedule.ctx(), "{ [i,j] -> [j,i] }");
   isl::pw_multi_aff transform = PrepareTransform();
   partial_schedule =
       isl::manage(isl_multi_union_pw_aff_apply_pw_multi_aff(partial_schedule.release(), transform.release()));
-  LOG(INFO) << "transformed partial schedule: " << partial_schedule;
+  CINN_DEBUG(1) << "transformed partial schedule: " << partial_schedule;
 
   auto filter_set = collected_statements_[statement_];
   std::string filter_repr = isl_set_get_statement_repr(filter_set.get());
-  LOG(INFO) << "get filtered_set: " << filter_set;
+  CINN_DEBUG(1) << "get filtered_set: " << filter_set;
 
   isl::union_set filter(node.ctx(), "{ A[i,j] }");
   auto new_node = node.insert_partial_schedule(partial_schedule);
   return Visit(new_node.first_child().first_child());
 }
+
+void CollectFilter(const isl::schedule_node& node, std::map<std::string, isl::set>* collected_statements) {}
+
+isl::schedule_node TransposeTransformer::VisitFilter(const isl::schedule_node& node) {
+  CollectFilter(node);
+  return Visit(node.first_child()).parent();
+}
+
 }  // namespace cinn

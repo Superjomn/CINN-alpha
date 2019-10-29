@@ -300,23 +300,48 @@ void Snippet::ComputeSchedule() {
   *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.release()));
   CINN_DEBUG(3) << "schedule:\n" << isl_utils::DumpSchedule(ctx_.get(), *schedule_);
 
-  BuildTiles();
+  ApplyTransposes();
+  ApplyTiles();
 }
 
-void Snippet::BuildTiles() {
+void Snippet::ApplyTiles() {
   if (!is_polyhedral()) return;
   CHECK(schedule_) << "schedule tree should be build first before tile";
 
-  LOG(INFO) << "original schedule " << *schedule_;
+  LOG(INFO) << "original schedule " << schedule_->get_root();
 
   for (auto& stage : stages_) {
-    if (stage.tile_sizes().empty()) continue;
-
-    TileTransformer2 tiler(stage.name(), stage.tile_sizes());
-    *schedule_ = tiler.Visit(*schedule_).get_schedule();
+    {
+      if (!stage.tile_sizes().empty()) {
+        TileTransformer2 tiler(stage.name(), stage.tile_sizes());
+        *schedule_ = tiler.Visit(*schedule_).get_schedule();
+      }
+    }
+    {
+      for (auto& item : stage.tiles()) {
+        CHECK_GE(item.second, 2);
+        CHECK_LT(item.second, 512);
+        TileTransformer tiler(stage.name(), item.first, item.second);
+        *schedule_ = tiler.Visit(*schedule_).get_schedule();
+      }
+    }
 
     LOG(INFO) << "final schedule: " << schedule_->get_root();
   }
+}
+
+void Snippet::ApplyTransposes() {
+  if (!is_polyhedral()) return;
+  CHECK(schedule_) << "schedule tree should be build first before tile";
+
+  for (auto& stage : stages_) {
+    for (auto& item : stage.transposes()) {
+      LOG(INFO) << "Transposing " << stage.name() << " with " << item.first << " " << item.second;
+      TransposeTransformer applyer(stage.name(), item.first, item.second);
+      *schedule_ = applyer.Visit(*schedule_).get_schedule();
+    }
+  }
+  LOG(INFO) << "final schedule: " << schedule_->get_root();
 }
 
 void Snippet::BuildFusion() {

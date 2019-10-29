@@ -2,6 +2,7 @@
 
 #include <glog/logging.h>
 #include <isl/cpp.h>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -22,11 +23,11 @@ struct ScheduleTreeVisitor {
         CHECK_EQ(isl_schedule_node_n_children(node.get()), 1);
         return GetDerived().VisitDomain(node, std::forward<Args>(args)...);
       case isl_schedule_node_band:
-        LOG(INFO) << "get band\n" << node;
+        // LOG(INFO) << "get band\n" << node;
         CHECK_EQ(isl_schedule_node_n_children(node.get()), 1);
         return GetDerived().VisitBand(node, std::forward<Args>(args)...);
       case isl_schedule_node_sequence:
-        LOG(INFO) << "get sequence\n" << node;
+        // LOG(INFO) << "get sequence\n" << node;
         CHECK_GE(node.n_children(), 2);
         return GetDerived().VisitSequence(node, std::forward<Args>(args)...);
       case isl_schedule_node_set:
@@ -34,11 +35,11 @@ struct ScheduleTreeVisitor {
         CHECK_GE(isl_schedule_node_n_children(node.get()), 2);
         return GetDerived().VisitSet(node, std::forward<Args>(args)...);
       case isl_schedule_node_leaf:
-        LOG(INFO) << "get leaf\n" << node;
+        // LOG(INFO) << "get leaf\n" << node;
         CHECK_EQ(isl_schedule_node_n_children(node.get()), 0);
         return GetDerived().VisitLeaf(node, std::forward<Args>(args)...);
       case isl_schedule_node_mark:
-        LOG(INFO) << "get mark\n" << node;
+        // LOG(INFO) << "get mark\n" << node;
         CHECK_EQ(isl_schedule_node_n_children(node.get()), 1);
         return GetDerived().VisitMark(node, std::forward<Args>(args)...);
       case isl_schedule_node_extension:
@@ -46,7 +47,7 @@ struct ScheduleTreeVisitor {
         CHECK_EQ(isl_schedule_node_n_children(node.get()), 1);
         return GetDerived().VisitExtension(node, std::forward<Args>(args)...);
       case isl_schedule_node_filter:
-        LOG(INFO) << "get filter\n" << node;
+        // LOG(INFO) << "get filter\n" << node;
         CHECK_EQ(isl_schedule_node_n_children(node.get()), 1);
         return GetDerived().VisitFilter(node, std::forward<Args>(args)...);
       default:
@@ -123,13 +124,25 @@ struct ScheduleNodeRewriter : public RecursiveScheduleTreeVisitor<Derived, isl::
 
     isl::schedule_node it = node.first_child();
     while (true) {
-      LOG(INFO) << "xxxx visiting set/sequence node";
       it = GetDerived().Visit(it, std::forward<Args>(args)...);
       if (!it.has_next_sibling()) break;
       it = it.next_sibling();
     }
     return it.parent();
   }
+
+  void CollectFilter(const isl::schedule_node& node) {
+    collected_statements_.clear();
+    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node.get()));
+    auto collect_set = [this](isl::set x) {
+      auto name = isl_set_get_tuple_name(x.get());
+      collected_statements_[name] = x;
+    };
+    filter.foreach_set(collect_set);
+  }
+
+ protected:
+  std::map<std::string, isl::set> collected_statements_;
 };
 
 struct ApplyASTBuildOptions : public ScheduleNodeRewriter<ApplyASTBuildOptions> {
