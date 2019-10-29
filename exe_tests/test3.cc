@@ -49,8 +49,11 @@ TEST(cinn, complex_nn) {
     auto s2 = Scale(fn, C, scale_ratio, m, n);
 
     s2.FuseWith(s1);
-    s0.Tile({32, 32});
-    s1.Tile({32, 32});
+    // s0.Tile({32, 32});
+    // s1.Tile({32, 32});
+    s0.Tile(n, 32);
+    s0.Tile(k, 32);
+    s0.Interchange(m, k);
 
     fn.Inputs({A, B, Bias});
     fn.Outputs({C});

@@ -28,7 +28,7 @@ isl::set BuildWithCond(__isl_give isl_set* domain, const std::string& cond) {
 }
 
 void Stage::ExtractDomainFromExpr(Expr x) {
-  LOG_INDENT(2);
+  LOG_INDENT(0);
   CINN_DEBUG(1) << "expr.type: " << ir::GetNodeTyRepr(x.type());
   CINN_DEBUG(1) << "expr: " << ir::Dump(x);
   class Collector : public ir::IRVisitor {
@@ -272,57 +272,7 @@ std::set<std::string> Stage::Data::names;
 void Stage::Interchange(ir::Var i, ir::Var j) { Interchange(i.name(), j.name()); }
 
 void Stage::Interchange(const std::string& dim0, const std::string& dim1) {
-  // find the dimension position
-  int pos0 = isl_map_find_dim_by_name(schedule().get(), isl_dim_out, dim0.c_str());
-  int pos1 = isl_map_find_dim_by_name(schedule().get(), isl_dim_out, dim1.c_str());
-  CHECK_NE(pos0, -1);
-  CHECK_NE(pos1, -1);
-  Interchange(pos0, pos1);
-}
-
-void Stage::Interchange(int pos0, int pos1) {
-  LOG_INDENT(6);
-  ScheduleNameAllDims();
-
-  int ndim = schedule().range_dims();
-  CHECK_LT(pos0, ndim);
-  CHECK_LT(pos1, ndim);
-
-  CINN_DEBUG(3) << "current schedule: " << schedule();
-
-  const char* dim0_name = schedule().range_dim_name(pos0);
-  const char* dim1_name = schedule().range_dim_name(pos1);
-
-  std::vector<std::string> from_dims;
-  std::vector<std::string> to_dims;
-  for (int i = 0; i < ndim; i++) {
-    from_dims.push_back(schedule().range_dim_name(i));
-    if (i == pos0) {
-      to_dims.push_back(dim1_name);
-    } else if (i == pos1) {
-      to_dims.push_back(dim0_name);
-    } else {
-      to_dims.push_back(schedule().range_dim_name(i));
-    }
-  }
-  CHECK_EQ(from_dims.size(), to_dims.size());
-
-  std::string transform_repr = StringFormat("{ %s[%s] -> %s[%s] }",
-                                            name().c_str(),
-                                            Concat(from_dims, ", ").c_str(),
-                                            name().c_str(),
-                                            Concat(to_dims, ", ").c_str());
-  isl::map transform(ctx(), transform_repr);
-
-  // set dims
-  transform = isl::manage(isl_map_set_dim_names(transform.release(), isl_dim_out, to_dims));
-  // transform = isl::manage(isl_utils::isl_map_set_dim_names(transform.release(), isl_dim_in, from_dims));
-
-  CINN_DEBUG(2) << "transform: " << transform;
-  CINN_DEBUG(3) << "iterator domain: " << iterator_domain();
-  CINN_DEBUG(3) << "schedule: " << data_->schedule;
-  data_->schedule = isl::map(ctx(), GetStreamStr(data_->schedule));
-  data_->schedule = data_->schedule.apply_range(transform);
+  data_->transposes_.push_back(std::make_pair(dim0, dim1));
 }
 
 /*

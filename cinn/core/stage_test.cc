@@ -58,47 +58,6 @@ TEST(Stage, DumpC) {
   LOG(INFO) << "s0: " << s0.DumpAsC();
 }
 
-TEST(Stage, Interchange) {
-  Constant M(100);
-  Constant K(200);
-  Constant N(300);
-  Expr A(cs({M, K}), primitive_t::float32, "A");
-  Expr B(cs({K, N}), primitive_t::float32, "B");
-  Expr C(cs({M, N}), primitive_t::float32, "C");
-
-  Var i("i"), j("j"), k("k");
-
-  {
-    Stage s0 = C[i][j].Assign(A[i + 1][k] * B[k - 1][j]);
-    s0.Interchange(0, 1);
-
-    auto repr = GetStreamStr(s0.schedule());
-    ASSERT_EQ(
-        repr,
-        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 98 and 0 <= j <= 299 and 0 < k <= 199 }",
-                     s0.name().c_str(),
-                     s0.name().c_str()));
-    LOG(INFO) << "schedule: " << s0.schedule();
-  }
-  {
-    Stage s0 = C[i][j].Assign(A[i + 1][k] * B[k - 1][j]);
-    s0.Interchange(i, j);
-
-    auto repr = GetStreamStr(s0.schedule());
-    ASSERT_EQ(
-        repr,
-        StringFormat("{ %s[i, j, k] -> %s[j' = j, i' = i, k' = k] : 0 <= i <= 98 and 0 <= j <= 299 and 0 < k <= 199 }",
-                     s0.name().c_str(),
-                     s0.name().c_str()));
-    LOG(INFO) << "schedule: " << s0.schedule();
-    LOG(INFO) << s0.DumpIslC();
-    ASSERT_EQ(s0.DumpIslC(),
-              StringFormat("for (int j = 0; j <= 299; j += 1)\n  for (int i = 0; i <= 98; i += 1)\n    for (int k = 1; "
-                           "k <= 199; k += 1)\n      %s(i, j, k);\n",
-                           s0.name().c_str()));
-  }
-}
-
 TEST(Stage, InitRWAccess) {
   Constant M(20);
   Constant K(10);
@@ -115,10 +74,15 @@ TEST(Stage, InitRWAccess) {
     LOG(INFO) << "schedule: " << s0.schedule();
     LOG(INFO) << "read access: " << isl_union_map_to_str(s0.read_access());
     LOG(INFO) << "write access: " << isl_union_map_to_str(s0.write_access());
-    ASSERT_EQ(isl_union_map_to_str(s0.read_access()),
-              StringFormat(
-                  "{ %s[i, j, k] -> B[-1 + k, j]; %s[i, j, k] -> A[1 + i, k] }", s0.name().c_str(), s0.name().c_str()));
-    ASSERT_EQ(isl_union_map_to_str(s0.write_access()), StringFormat("{ %s[i, j, k] -> C[i, j] }", s0.name().c_str()));
+
+    isl::union_map read_target(
+        s0.schedule().ctx(),
+        StringFormat(
+            "{ %s[i, j, k] -> B[-1 + k, j]; %s[i, j, k] -> A[1 + i, k] }", s0.name().c_str(), s0.name().c_str()));
+    isl::union_map write_target(s0.schedule().ctx(), StringFormat("{ %s[i, j, k] -> C[i, j] }", s0.name().c_str()));
+
+    ASSERT_TRUE(isl_union_map_is_equal(s0.read_access(), read_target.get()));
+    ASSERT_TRUE(isl_union_map_is_equal(s0.write_access(), write_target.get()));
   }
 }
 

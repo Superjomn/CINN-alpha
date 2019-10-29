@@ -189,10 +189,11 @@ class ThePass : public Pass<ir::Expr> {
   explicit ThePass(const std::string &name) : Pass(name) {}
 
   void Impl(ir::Expr *expr) override {
+    LOG_INDENT(5);
     ReferenceIndicesPiecesCollector collector(statis);
     collector.Visit(expr, expr);
 
-    LOG(INFO) << "collected " << statis.size() << " blocks";
+    CINN_DEBUG(2) << "collected " << statis.size() << " blocks";
     FoldHighFrequencyPiece();
 
     Mutator mutator(statis);
@@ -200,8 +201,9 @@ class ThePass : public Pass<ir::Expr> {
   }
 
   void FoldHighFrequencyPiece() {
+    LOG_INDENT(4);
     for (auto &block_item : statis) {
-      LOG(INFO) << "block " << block_item.first << " origin " << block_item.second.pieces.size();
+      // LOG(INFO) << "block " << block_item.first << " origin " << block_item.second.pieces.size();
       for (auto &item : block_item.second.counter) {
         if (item.second >= frequency) {
           if (!block_item.second.let_exprs.count(item.first)) {
@@ -215,7 +217,7 @@ class ThePass : public Pass<ir::Expr> {
           block_item.second.pieces.erase(item.first);
         }
       }
-      LOG(INFO) << "--  " << block_item.second.pieces.size();
+      CINN_DEBUG(0) << "--  " << block_item.second.pieces.size();
     }
   }
 };

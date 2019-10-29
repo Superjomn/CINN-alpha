@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -59,8 +61,6 @@ struct TileTransformer : public ScheduleNodeRewriter<TileTransformer> {
   int tile_size_;
   // A flag to avoid duplication.
   bool tiled_ = false;
-  // The statements the latest filter collects.
-  std::map<std::string, isl::set> statements_filter_collected_;
 };
 
 /**
@@ -77,14 +77,8 @@ struct TileTransformer2 : public ScheduleNodeRewriter<TileTransformer2> {
   isl::schedule_node VisitBand(const isl::schedule_node& node);
 
   isl::schedule_node VisitFilter(const isl::schedule_node& node) {
-    collected_statements_.clear();
-    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node.get()));
-    auto collect_set = [this](isl::set x) {
-      auto name = isl_set_get_tuple_name(x.get());
-      collected_statements_[name] = x;
-    };
-    filter.foreach_set(collect_set);
-    return Visit(node.first_child());
+    CollectFilter(node);
+    return Visit(node.first_child()).parent();
   }
 
  private:
@@ -94,11 +88,19 @@ struct TileTransformer2 : public ScheduleNodeRewriter<TileTransformer2> {
   std::map<std::string, isl::set> collected_statements_;
 };
 
+/**
+ * Unroll the last loop level.
+ */
 struct UnrollTransformer : public ScheduleNodeRewriter<UnrollTransformer> {
   using BaseTy = ScheduleNodeRewriter<UnrollTransformer>;
   BaseTy& GetBase() { return *this; }
   const BaseTy& GetBase() const { return *this; }
 
+  /**
+   * Construct an UnrollTransformer.
+   * @param statement the statement to unroll.
+   * @param iterator the iterator to unroll.
+   */
   UnrollTransformer(const std::string& statement, const std::string& iterator)
       : statement_(statement), iterator_(iterator) {}
 
@@ -109,15 +111,6 @@ struct UnrollTransformer : public ScheduleNodeRewriter<UnrollTransformer> {
    * @return the original or updated node.
    */
   isl::schedule_node VisitBand(const isl::schedule_node& node);
-
-  // Detect the statements that scheduled in a band node.
-  void CollectCurrentStatementsFromBand(const isl::schedule_node& node) {
-    auto domain = isl::manage(isl_schedule_node_get_domain(node.get()));
-    auto band = node.as<isl::schedule_node_band>();
-    auto partial_schedule = band.get_partial_schedule();
-    LOG(INFO) << "partial schedule: " << partial_schedule;
-    LOG(INFO) << "domain: " << domain;
-  }
 
   static isl::union_set GetUnrollIsolatedSetOptions(isl::ctx ctx) {
     isl::union_set option(ctx, "{ isolate[[] -> unroll[1]] }");
@@ -161,18 +154,7 @@ struct TransposeTransformer : public ScheduleNodeRewriter<TransposeTransformer> 
    */
   isl::schedule_node VisitBand(const isl::schedule_node& node);
 
-  isl::schedule_node VisitFilter(const isl::schedule_node& node) {
-    collected_statements_.clear();
-    isl::union_set filter = isl::manage(isl_schedule_node_filter_get_filter(node.get()));
-    auto collect_set = [this](isl::set x) {
-      auto name = isl_set_get_tuple_name(x.get());
-      collected_statements_[name] = x;
-    };
-    filter.foreach_set(collect_set);
-
-    auto new_node = Visit(node.first_child());
-    return new_node.parent();
-  }
+  isl::schedule_node VisitFilter(const isl::schedule_node& node);
 
  private:
   isl::pw_multi_aff PrepareTransform() {
@@ -204,8 +186,6 @@ struct TransposeTransformer : public ScheduleNodeRewriter<TransposeTransformer> 
   std::pair<std::string, std::string> iterators_;
   // A flag to avoid duplication.
   bool tiled_ = false;
-  // The statements the latest filter collects.
-  std::map<std::string, isl::set> collected_statements_;
 };
 
 }  // namespace cinn
