@@ -1,4 +1,5 @@
 #include "cinn/ir/ir_helper.h"
+#include <algorithm>
 #include <memory>
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/utils/macros.h"
@@ -127,7 +128,53 @@ std::vector<const Reference*> CollectExprNode<Reference>(const Expr& expr) {
   Visitor visitor;
   visitor.Visit(&expr);
 
-  return std::vector<const Reference*>(visitor.set.begin(), visitor.set.end());
+  std::vector<const Reference*> result(visitor.set.begin(), visitor.set.end());
+  return result;
+}
+
+template <>
+std::vector<const Var*> CollectExprNode<Var>(const Expr& expr) {
+  class Collector : public ir::IRVisitor {
+    std::vector<const ir::Var*> iterators_;
+    bool in_reference_{false};
+
+   public:
+    Collector() : ir::IRVisitor() {}
+
+    const std::vector<const ir::Var*>& iterators() { return iterators_; }
+
+    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
+    void Visit(const ir::Var* var) override {
+      if (!in_reference_) return;
+      // check if exists
+      auto it = std::find_if(
+          iterators_.begin(), iterators_.end(), [&](const ir::Var* o) { return o->name() == var->name(); });
+      if (it == iterators_.end()) {
+        iterators_.push_back(var);
+      }
+    }
+    void Visit(const ir::Reference* op) override {
+      in_reference_ = true;
+      for (auto& x : op->iterators) {
+        Visit(&x);
+      }
+      in_reference_ = false;
+    }
+    void Visit(const ir::Function* op) override {
+      for (auto& x : op->inputs) {
+        Visit(&x);
+      }
+      for (auto& x : op->outputs) {
+        Visit(&x);
+      }
+      Visit(&op->body);
+    }
+  };
+
+  Collector collector;
+  collector.Visit(&expr);
+
+  return collector.iterators();
 }
 
 struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {

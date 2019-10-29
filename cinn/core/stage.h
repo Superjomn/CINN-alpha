@@ -73,7 +73,7 @@ class Stage {
     std::set<std::string> stages_fuse_with;
   };
 
-  //! The iterators in order, the statement
+  //! The iterators in order, the statement. It is used only once in the ExtractDomainFromExpr, so it is not in data_.
   std::vector<ir::Var> iterators_in_order_;
 
  public:
@@ -90,8 +90,10 @@ class Stage {
    *     B(i) = A(i) + 1;
    *
    *     Stage s0(B);
+   *
+   * One can specify the iterators of the statement in the schedule by passing the argument iterators.
    */
-  Stage(ir::Expr expr);
+  Stage(ir::Expr expr, const std::vector<ir::Var>& iterators = {});
 
   Stage(const std::shared_ptr<Stage::Data>& x) : data_(x) {}
 
@@ -118,8 +120,6 @@ class Stage {
    * s0.SetCond(i, " %2 = 0"); // means the condition is "i % 2 = 0".
    */
   void SetCond(const ir::Var& iterator, const std::string& cond);
-
-  void SetIterators(const std::vector<ir::Var>& xs);
 
   /**
    * Set extra condition to the iteration domain.

@@ -20,6 +20,17 @@ static std::string Concat(const T& fields, const std::string& splitter) {
   if (ordered.size() >= 1) ss << ordered.back();
   return ss.str();
 }
+template <typename T>
+static std::string Join(const std::vector<T>& fields,
+                        const std::string& splitter,
+                        std::function<std::string(const T&)>&& trans) {
+  std::stringstream ss;
+  for (int i = 0; i < fields.size() - 1; i++) {
+    ss << trans(fields[i]) << splitter;
+  }
+  if (fields.size() >= 1) ss << trans(fields.back());
+  return ss.str();
+}
 
 /**
  * Convert a container of some type to a vector of string.
