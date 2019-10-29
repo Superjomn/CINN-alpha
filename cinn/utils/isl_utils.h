@@ -31,6 +31,8 @@ std::string isl_map_get_statement_repr(__isl_keep isl_map *map, isl_dim_type typ
 //! Get a representation of the tuple in the set.
 std::string isl_set_get_statement_repr(__isl_keep isl_set *set);
 
+std::vector<std::string> isl_set_get_dims(const isl::set &set);
+
 isl_multi_union_pw_aff *__isl_give isl_multi_union_pw_aff_from_union_pw_aff_list(isl_union_pw_aff_list *__isl_keep pw);
 
 //! Get a dimension position if it match the name. return -1 if not exists.

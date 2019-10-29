@@ -207,4 +207,21 @@ TEST(Stage, cond) {
   EXPECT_EQ(log, target);
 }
 
+TEST(Stage, SetIterators) {
+  Constant M(20);
+  Constant K(10);
+  Constant N(30);
+  Expr A(cs({M, K}), primitive_t::float32, "A");
+  Expr B(cs({K, N}), primitive_t::float32, "B");
+  Expr C(cs({M, N}), primitive_t::float32, "C");
+
+  Var i("i"), j("j");
+
+  Stage s0(A[i][j].Assign(B[i][j] + C[i][j]), {j, i});
+
+  auto target_repr = StringFormat("{ %s[j, i] : 0 <= j <= 9 and 0 <= i <= 9 }", s0.name().c_str());
+  ASSERT_EQ(GetStreamStr(s0.iterator_domain()), target_repr);
+  LOG(INFO) << "iteration domain: " << s0.iterator_domain();
+}
+
 }  // namespace cinn

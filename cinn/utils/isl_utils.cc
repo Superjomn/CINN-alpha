@@ -30,6 +30,14 @@ std::string isl_set_get_statement_repr(isl_set *set) {
   return StringFormat("%s[%s]", tuple_name, Concat(dims, ", ").c_str());
 }
 
+std::vector<std::string> isl_set_get_dims(const isl::set &set) {
+  std::vector<std::string> res;
+  for (int i = 0; i < isl_set_dim(set.get(), isl_dim_set); i++) {
+    res.push_back(isl_set_get_dim_name(set.get(), isl_dim_set, i));
+  }
+  return res;
+}
+
 int isl_map_get_dim_pos_by_name(isl_map *map, isl_dim_type type, const std::string &name) {
   for (int i = 0; i < isl_map_dim(map, type); i++) {
     if (isl_map_get_dim_name(map, type, i) == name) return i;

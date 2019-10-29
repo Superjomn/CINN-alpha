@@ -31,53 +31,21 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   LOG_INDENT(0);
   CINN_DEBUG(1) << "expr.type: " << ir::GetNodeTyRepr(x.type());
   CINN_DEBUG(1) << "expr: " << ir::Dump(x);
-  class Collector : public ir::IRVisitor {
-    std::vector<ir::Var> iterators_;
-    bool in_reference_{false};
 
-   public:
-    Collector() : ir::IRVisitor() {}
-
-    const std::vector<ir::Var>& iterators() { return iterators_; }
-
-    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
-    void Visit(const ir::Var* var) override {
-      if (!in_reference_) return;
-      // check if exists
-      auto it = std::find_if(iterators_.begin(), iterators_.end(), [&](const ir::Var& o) { return o == *var; });
-      if (it == iterators_.end()) {
-        iterators_.push_back(*var);
-      }
-    }
-    void Visit(const ir::Reference* op) override {
-      in_reference_ = true;
-      for (auto& x : op->iterators) {
-        Visit(&x);
-      }
-      in_reference_ = false;
-    }
-    void Visit(const ir::Function* op) override {
-      for (auto& x : op->inputs) {
-        Visit(&x);
-      }
-      for (auto& x : op->outputs) {
-        Visit(&x);
-      }
-      Visit(&op->body);
-    }
-  };
-
-  Collector collector;
-  collector.Visit(&x);
-  const auto& iterators = collector.iterators();
-  CINN_DEBUG(3) << "collect " << iterators.size() << " iterators";
-
-  if (iterators.empty()) return;
+  if (iterators_in_order_.empty()) {
+    CINN_DEBUG(3) << "collect " << iterators_in_order_.size() << " iterators";
+    std::vector<const ir::Var*> iterators = ir::CollectExprNode<ir::Var>(expr());
+    std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterators_in_order_), [](const ir::Var* x) {
+      return *x;
+    });
+  }
+  if (iterators_in_order_.empty()) return;
   // construct the set
   std::vector<std::string> iterator_names;
-  std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
-    return x.name();
-  });
+  std::transform(
+      iterators_in_order_.begin(), iterators_in_order_.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
+        return x.name();
+      });
 
   std::string statement = name() + "[" + Concat(iterator_names, ", ") + "]";
   CINN_DEBUG(3) << "get statement: " << statement;
@@ -85,38 +53,37 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   auto references = ir::CollectExprNode<ir::Reference>(x);
   CHECK(!references.empty());
 
-  std::map<std::string, isl::set> iter_domain;
+  /*
   std::set<std::string> var_names;
   for (auto& ref : references) {
-    // CHECK(!ref->domain.is_null()) << "reference empty " << ir::Dump(ref->target);
     // get constant iterator
-    if (ref->domain.is_null()) {
+    if (ref.domain.is_null()) {
       CINN_DEBUG(3) << "domain is empty, skip collecting";
       continue;
     }
 
-    CINN_DEBUG(3) << "reference domain: " << ref->domain;
+    CINN_DEBUG(3) << "reference domain: " << ref.domain;
 
-    for (int i = 0; i < isl_set_dim(ref->domain.get(), isl_dim_set); i++) {
-      var_names.insert(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
+    for (int i = 0; i < isl_set_dim(ref.domain.get(), isl_dim_set); i++) {
+      var_names.insert(isl_set_get_dim_name(ref.domain.get(), isl_dim_set, i));
     }
   }
   CHECK(!var_names.empty());
   std::vector<std::string> var_names_in_order(var_names.begin(), var_names.end());
   CINN_DEBUG(3) << "variable names collected from all the References: " << Concat(var_names_in_order, ", ");
+   */
 
   // make all the reference's the same space
-  for (auto& ref : references) {
+  for (const auto* ref : references) {
     if (ref->domain.is_null()) continue;  // skip constant iterators.
     auto ref_domain = ref->domain;
-    int set_dim = isl_set_dim(ref->domain.get(), isl_dim_set);
-    std::vector<std::string> dim_names;
-    for (int i = 0; i < set_dim; i++) {
-      dim_names.push_back(isl_set_get_dim_name(ref->domain.get(), isl_dim_set, i));
-    }
+    int ref_dim = isl_set_dim(ref->domain.get(), isl_dim_set);
+    auto ref_iterators = isl_set_get_dims(ref_domain);
 
     std::string transform_repr =
-        StringFormat("{ [%s] -> [%s] }", Concat(dim_names, ", ").c_str(), Concat(var_names_in_order, ", ").c_str());
+        StringFormat("{ [%s] -> [%s] }",
+                     Concat(ref_iterators, ", ").c_str(),
+                     Join<ir::Var>(iterators_in_order_, ", ", [](const ir::Var& x) { return x.name(); }).c_str());
     isl::map transform(isl_utils::global_isl_ctx(), transform_repr.c_str());
     CINN_DEBUG(3) << "transform: " << transform;
     ref_domain = ref_domain.apply(transform);
@@ -132,18 +99,19 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 
   data_->iter_domain = isl::manage(isl_set_set_tuple_name(data_->iter_domain.release(), name().c_str()));
   // set dim name
-  for (int i = 0; i < var_names_in_order.size(); i++) {
-    data_->iter_domain =
-        isl::manage(isl_set_set_dim_name(data_->iter_domain.release(), isl_dim_set, i, var_names_in_order[i].c_str()));
+  for (int i = 0; i < iterators_in_order_.size(); i++) {
+    data_->iter_domain = isl::manage(
+        isl_set_set_dim_name(data_->iter_domain.release(), isl_dim_set, i, iterators_in_order_[i].name().c_str()));
   }
 
   CINN_DEBUG(3) << "get Stage's domain: " << iterator_domain();
 }
 
-Stage::Stage(Expr expr) {
+Stage::Stage(Expr expr, const std::vector<ir::Var>& iterators) {
   LOG_INDENT(6);
   InitData();
   data_->expr = expr;
+  iterators_in_order_ = iterators;
   set_name(NameGenerator::Global().NewStageName());
   CINN_DEBUG(2) << "stage set name " << name();
 
