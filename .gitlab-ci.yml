@@ -37,6 +37,7 @@ build:server:
         key: server_thirdparty
         paths:
             - ~/.ccache
+            - build/third_party
     script:
         # merge the latest code
         - git config --global user.email "you@example.com"
