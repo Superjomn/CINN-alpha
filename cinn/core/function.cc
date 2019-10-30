@@ -298,9 +298,10 @@ void Snippet::ComputeSchedule() {
   CINN_DEBUG(3) << "schedule constraints:\n" << sc;
 
   *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.release()));
-  CINN_DEBUG(3) << "schedule:\n" << isl_utils::DumpSchedule(ctx_.get(), *schedule_);
+  CINN_DEBUG(3) << "schedule:\n" << DumpSchedule(*schedule_);
 
   ApplyTransposes();
+
   ApplyTiles();
 }
 
@@ -312,8 +313,11 @@ void Snippet::ApplyTiles() {
 
   for (auto& stage : stages_) {
     {
+      LOG(INFO) << stage.name() << " "
+                << " tile_sizes " << stage.tile_sizes().size();
       if (!stage.tile_sizes().empty()) {
-        TileTransformer2 tiler(stage.name(), stage.tile_sizes());
+        // TileTransformer2 tiler(stage.name(), stage.tile_sizes());
+        TileDimsTransformer tiler(stage.name(), stage.tile_sizes());
         *schedule_ = tiler.Visit(*schedule_).get_schedule();
       }
     }
@@ -321,7 +325,7 @@ void Snippet::ApplyTiles() {
       for (auto& item : stage.tiles()) {
         CHECK_GE(item.second, 2);
         CHECK_LT(item.second, 512);
-        TileTransformer tiler(stage.name(), item.first, item.second);
+        TileSingleDimTransformer tiler(stage.name(), item.first, item.second);
         *schedule_ = tiler.Visit(*schedule_).get_schedule();
       }
     }

@@ -21,12 +21,12 @@ namespace cinn {
  * - when reach a band node, search the statement and dimension in the partial schedule, if found, map it to
  *   { [i] -> [i/k] }, create a new partial schedule and insert the new partial schedule.
  */
-struct TileTransformer : public ScheduleNodeRewriter<TileTransformer> {
-  using BaseTy = ScheduleNodeRewriter<TileTransformer>;
+struct TileSingleDimTransformer : public ScheduleNodeRewriter<TileSingleDimTransformer> {
+  using BaseTy = ScheduleNodeRewriter<TileSingleDimTransformer>;
   BaseTy& GetBase() { return *this; }
   const BaseTy& GetBase() const { return *this; }
 
-  TileTransformer(const std::string& statement, const std::string& iterator, int size)
+  TileSingleDimTransformer(const std::string& statement, const std::string& iterator, int size)
       : statement_(statement), iterator_(iterator), tile_size_(size) {}
 
   /**
@@ -61,6 +61,42 @@ struct TileTransformer : public ScheduleNodeRewriter<TileTransformer> {
   int tile_size_;
   // A flag to avoid duplication.
   bool tiled_ = false;
+};
+
+/**
+ * Tile several dimensions one time.
+ */
+struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
+  using BaseTy = ScheduleNodeRewriter<TileDimsTransformer>;
+  BaseTy& GetBase() { return *this; }
+  const BaseTy& GetBase() const { return *this; }
+
+  TileDimsTransformer(const std::string& statement, const std::vector<int>& size)
+      : statement_(statement), tile_sizes_(size) {}
+
+  isl::schedule_node VisitBand(const isl::schedule_node& node);
+
+  isl::schedule_node VisitFilter(const isl::schedule_node& node) {
+    CollectFilter(node);
+    return Visit(node.first_child()).parent();
+  }
+
+  /**
+   * Tile a schedule node.
+   * @param node The node to tile.
+   * @param id An name to identifies this tiling and mark it in the generated AST.
+   * @param tile_sizes Specify the tile sizes.
+   * @param default_tile_size A default tiling size for dimensions that are not covered by the tile_sizes vector.
+   */
+  isl::schedule_node TileNode(isl::schedule_node node,
+                              const std::string& id,
+                              const std::vector<int>& tile_sizes,
+                              int default_tile_size);
+
+ private:
+  bool tiled_{false};
+  std::vector<int> tile_sizes_;
+  std::string statement_;
 };
 
 /**
@@ -131,8 +167,6 @@ struct UnrollTransformer : public ScheduleNodeRewriter<UnrollTransformer> {
   int tile_size_;
   // A flag to avoid duplication.
   bool tiled_ = false;
-  // The statements the latest filter collects.
-  std::map<std::string, isl::set> statements_filter_collected_;
 };
 
 /**
@@ -187,5 +221,30 @@ struct TransposeTransformer : public ScheduleNodeRewriter<TransposeTransformer> 
   // A flag to avoid duplication.
   bool tiled_ = false;
 };
+
+isl::schedule_node IsolateFullPartialTiles(isl::schedule_node node, int vector_width);
+
+/**
+ * Make the last dimension of set to take values from 0 to vector_width -1.
+ * @param set The set to be modified.
+ * @param vector_width A parameter determines the constraint.
+ */
+isl::set AddExtentConstraints(isl::set set, int vector_width);
+
+/**
+ * Build the set of partial tile prefixes.
+ * @param schedule_range A range of a map, which describes a prefix schedule relation.
+ * @param vector_width
+ * @return
+ */
+isl::set GetPartialTilePrefixes(isl::set schedule_range, int vector_width);
+
+/**
+ * Create an isl::union_set which describes the isolate option based on isolate_domain.
+ * @param isolate_domain
+ * @param out_dims_num
+ * @return
+ */
+isl::union_set GetIsolateOptions(isl::set isolate_domain, unsigned out_dims_num);
 
 }  // namespace cinn

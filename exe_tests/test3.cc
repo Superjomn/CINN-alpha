@@ -8,24 +8,24 @@
 namespace cinn {
 
 Stage MatMul(Function& fn, Expr& A, Expr& B, Expr& C, Var& m, Var& n, Var& k) {
-  auto s0 = fn.AddStage(  //
-      C[m][n] += A[m][k] * B[k][n]);
+  Stage s0(C[m][n] += A[m][k] * B[k][n], {m, n, k});
+  s0 = fn.AddStage(s0);
   return s0;
 }
 
 // A[m,n]
 // Bias[n]
 Stage AddBias(Function& fn, Expr& A, Expr& Bias, Var& m, Var& n) {
-  auto s0 = fn.AddStage(  //
-      A[m][n] += Bias[n]);
+  Stage s0(A[m][n] += Bias[n], {m, n});
+  s0 = fn.AddStage(s0);
   return s0;
 }
 
 // A[m,n]
 // Scale: float32
 Stage Scale(Function& fn, Expr& A, Expr& scale, Var& m, Var& n) {
-  auto s0 = fn.AddStage(  //
-      A[m][n] *= scale);
+  Stage s0(A[m][n] *= scale, {m, n});
+  s0 = fn.AddStage(s0);
   return s0;
 }
 
@@ -49,10 +49,10 @@ TEST(cinn, complex_nn) {
     auto s2 = Scale(fn, C, scale_ratio, m, n);
 
     s2.FuseWith(s1);
-    // s0.Tile({32, 32});
+    s0.Tile({32, 32});
     // s1.Tile({32, 32});
-    s0.Tile(n, 32);
-    s0.Tile(k, 32);
+    // s0.Tile(n, 32);
+    // s0.Tile(k, 32);
     s0.Interchange(m, k);
 
     fn.Inputs({A, B, Bias});

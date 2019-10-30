@@ -13,7 +13,7 @@ std::string::size_type FindDimension(const isl::union_pw_aff& aff, const std::st
   return pos;
 }
 
-isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
+isl::schedule_node TileSingleDimTransformer::VisitBand(const isl::schedule_node& node) {
   LOG_INDENT(0);
   CINN_DEBUG(0) << "tile " << statement_ << " " << iterator_ << " " << tile_size_;
 
@@ -62,7 +62,7 @@ isl::schedule_node TileTransformer::VisitBand(const isl::schedule_node& node) {
   return Visit(new_node.first_child()).parent();
 }
 
-bool TileTransformer::IsBandTileable(const isl::schedule_node& node) {
+bool TileSingleDimTransformer::IsBandTileable(const isl::schedule_node& node) {
   if (isl_schedule_node_get_type(node.get()) != isl_schedule_node_band) return false;
   if (isl_schedule_node_n_children(node.get()) != 1) return false;
   if (!isl_schedule_node_band_get_permutable(node.get())) return false;
@@ -74,7 +74,7 @@ bool TileTransformer::IsBandTileable(const isl::schedule_node& node) {
   return IsSimpleInnermostBand(node);
 }
 
-bool TileTransformer::IsSimpleInnermostBand(const isl::schedule_node& node) {
+bool TileSingleDimTransformer::IsSimpleInnermostBand(const isl::schedule_node& node) {
   CHECK(isl_schedule_node_get_type(node.get()) == isl_schedule_node_band);
   CHECK_EQ(isl_schedule_node_n_children(node.get()), 1);
   auto child_type = isl_schedule_node_get_type(node.child(0).get());
@@ -91,7 +91,7 @@ bool TileTransformer::IsSimpleInnermostBand(const isl::schedule_node& node) {
   return true;
 }
 
-isl::schedule_node TileTransformer::VisitFilter(const isl::schedule_node& node) {
+isl::schedule_node TileSingleDimTransformer::VisitFilter(const isl::schedule_node& node) {
   CollectFilter(node);
   return Visit(node.first_child()).parent();
 }
@@ -159,11 +159,8 @@ isl::union_set GetUnrollOption(const std::string& statement, isl::union_set doma
                                        Concat(range_dims, ", ").c_str());
     isl::map t2(domain.ctx(), t2_repr);
     // t2 = isl::manage(isl_map_set_tuple_name(t2.release(), isl_dim_in, "isolate"));
-    LOG(INFO) << "set: " << set;
-    LOG(INFO) << "t2: " << t2;
     set = set.apply(t2);
     //"{[i1, j1] -> [[i1,j1]->[a,b]]}");
-    LOG(INFO) << "get set " << set;
     set = isl::manage(isl_set_set_tuple_name(set.release(), "isolate"));
     isl::union_set result = isl::manage(isl_union_set_from_set(set.release()));
     return result;
@@ -252,6 +249,103 @@ void CollectFilter(const isl::schedule_node& node, std::map<std::string, isl::se
 isl::schedule_node TransposeTransformer::VisitFilter(const isl::schedule_node& node) {
   CollectFilter(node);
   return Visit(node.first_child()).parent();
+}
+
+isl::schedule_node TileDimsTransformer::VisitBand(const isl::schedule_node& node) {
+  if (tiled_ || !collected_statements_.count(statement_)) {
+    return Visit(node.first_child()).parent();
+  }
+  auto new_node = TileNode(node, "tile", tile_sizes_, 1);
+
+  tiled_ = true;
+  return Visit(new_node.first_child()).parent();
+}
+
+isl::schedule_node TileDimsTransformer::TileNode(isl::schedule_node node,
+                                                 const std::string& id,
+                                                 const std::vector<int>& tile_sizes,
+                                                 int default_tile_size) {
+  LOG_INDENT(4);
+  CHECK(isl_schedule_node_get_type(node.get()) == isl_schedule_node_band);
+  auto space = isl::manage(isl_schedule_node_band_get_space(node.get()));
+  int dims = isl_space_dim(space.get(), isl_dim_set);
+  auto sizes = isl::multi_val::zero(space);
+  sizes = sizes.add(default_tile_size);
+  int tile_start_point = dims - tile_sizes.size();
+  for (unsigned i = 0; i < tile_sizes.size(); i++) {
+    sizes = sizes.set_at(tile_start_point + i, isl::val(node.ctx(), tile_sizes[i]));
+  }
+  CINN_DEBUG(2) << "tile sizes " << sizes;
+  auto tile_loop_marker = isl::manage(isl_id_alloc(node.ctx().get(), (id + " - tiles").c_str(), nullptr));
+  node = node.insert_mark(tile_loop_marker);
+  node = node.first_child();
+
+  node = node.as<isl::schedule_node_band>().tile(sizes);
+  node = node.first_child();
+
+  auto pointer_loop_marker = isl::manage(isl_id_alloc(node.ctx().get(), (id + " - points").c_str(), nullptr));
+  node = node.insert_mark(pointer_loop_marker);
+
+  return node.first_child();
+}
+
+isl::schedule_node IsolateFullPartialTiles(isl::schedule_node node, int vector_width) {
+  CHECK(isl_schedule_node_get_type(node.get()) == isl_schedule_node_band);
+  node = node.first_child().first_child();
+  isl::union_map schedule_relu_map = isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
+  isl::map schedule_relation = isl::manage(isl_map_from_union_map(schedule_relu_map.copy()));
+  isl::set schedule_range = isl::manage(isl_map_range(schedule_relation.copy()));
+}
+
+isl::set AddExtentConstraints(isl::set set, int vector_width) {
+  LOG_INDENT(0);
+  unsigned dims = isl_set_dim(set.get(), isl_dim_set);
+  isl::space space = set.get_space();
+  isl_local_space* local_space = isl_local_space_from_space(isl_space_copy(space.get()));
+  isl_constraint* ext_constr = isl_constraint_alloc_inequality(local_space);
+  // dims[-1] > 0
+  ext_constr = isl_constraint_set_constant_si(ext_constr, 0);
+  ext_constr = isl_constraint_set_coefficient_si(ext_constr, isl_dim_set, dims - 1, 1);
+  LOG(INFO) << "set " << set;
+  set = isl::manage(isl_set_add_constraint(set.release(), ext_constr));
+  LOG(INFO) << "set1 " << set;
+  // dims[-1] <= vector_width
+  local_space = isl_local_space_from_space(isl_space_copy(space.get()));
+  ext_constr = isl_constraint_alloc_inequality(local_space);
+  ext_constr = isl_constraint_set_constant_si(ext_constr, vector_width - 1);
+  ext_constr = isl_constraint_set_coefficient_si(ext_constr, isl_dim_set, dims - 1, -1);
+  return isl::manage(isl_set_add_constraint(set.release(), ext_constr));
+}
+
+isl::set GetPartialTilePrefixes(isl::set schedule_range, int vector_width) {
+  LOG_INDENT(0);
+  unsigned dims = isl_set_dim(schedule_range.get(), isl_dim_set);
+  isl::set loop_prefix =
+      isl::manage(isl_set_drop_constraints_involving_dims(schedule_range.copy(), isl_dim_set, dims - 1, 1));
+  CINN_DEBUG(1) << "loop_prefix " << loop_prefix;
+  // get { 0 <= dims[-1] <= vector_width-1 }
+  auto extent_prefixes = AddExtentConstraints(loop_prefix, vector_width);
+  CINN_DEBUG(1) << "extent_prefixes " << extent_prefixes;
+  // get { ; out of extent_prefixes }
+  CINN_DEBUG(1) << "schedule_range " << schedule_range;
+  isl::set bad_prefixes = isl::manage(isl_set_subtract(extent_prefixes.release(), schedule_range.release()));
+  bad_prefixes = isl::manage(isl_set_project_out(bad_prefixes.release(), isl_dim_set, dims - 1, 1));
+  CINN_DEBUG(1) << "bad_prefixes " << bad_prefixes;
+  loop_prefix = isl::manage(isl_set_project_out(loop_prefix.release(), isl_dim_set, dims - 1, 1));
+  CINN_DEBUG(1) << "loop_prefix " << loop_prefix;
+  return isl::manage(isl_set_subtract(loop_prefix.release(), bad_prefixes.release()));
+}
+
+isl::union_set GetIsolateOptions(isl::set isolate_domain, unsigned out_dims_num) {
+  unsigned dims = isl_set_dim(isolate_domain.get(), isl_dim_set);
+  CHECK_LE(out_dims_num, dims);
+  isl::map isolate_relation = isl::manage(isl_map_from_domain(isolate_domain.release()));
+  isolate_relation = isl::manage(
+      isl_map_move_dims(isolate_relation.release(), isl_dim_out, 0, isl_dim_in, dims - out_dims_num, out_dims_num));
+  isl::set isolate_option = isl::manage(isl_map_wrap(isolate_relation.release()));
+  isl::id id = isl::manage(isl_id_alloc(isolate_option.ctx().get(), "isolate", nullptr));
+  isolate_option = isl::manage(isl_set_set_tuple_id(isolate_option.release(), id.release()));
+  return isl::union_set(isolate_option);
 }
 
 }  // namespace cinn

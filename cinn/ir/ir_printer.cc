@@ -396,5 +396,7 @@ void IRPrinter::Visit(const DivAssign *op) {
   os_ << ";";
 }
 
+void IRPrinter::Visit(const Mark *op) { os_ << "// " << op->content; }
+
 }  // namespace ir
 }  // namespace cinn
