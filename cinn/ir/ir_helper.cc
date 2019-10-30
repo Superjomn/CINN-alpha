@@ -332,6 +332,12 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     if (a == b) return true;
     return a->val() == b->val();
   }
+
+  bool Visit(const Mark* a, const Expr* expr) override {
+    auto* b = expr->As<Mark>();
+    if (a == b) return true;
+    return a->content == b->content;
+  }
 };
 
 bool IREquals(const Expr& a, const Expr& b) {

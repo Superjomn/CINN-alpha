@@ -58,6 +58,13 @@ isl_ast_build *__isl_give isl_ast_build_set_iterators(__isl_take isl_ast_build *
 
 __isl_give isl_schedule_node *tile_band(__isl_take isl_schedule_node *node, __isl_take isl_multi_val *sizes);
 
+static std::string DumpSchedule(const isl::schedule &schedule) {
+  isl_printer *printer = isl_printer_to_str(schedule.ctx().get());
+  printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
+  printer = isl_printer_print_schedule(printer, schedule.get());
+  return isl_printer_get_str(printer);
+}
+
 struct isl_map_list_guard {
  private:
   isl_map_list *x{};
@@ -187,13 +194,6 @@ class union_map : public isl::union_map {
 static isl_ctx *global_isl_ctx() {
   thread_local isl_ctx *x = isl_ctx_alloc();
   return x;
-}
-
-static std::string DumpSchedule(isl_ctx *ctx, const isl::schedule &schedule) {
-  isl_printer *printer = isl_printer_to_str(ctx);
-  printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
-  printer = isl_printer_print_schedule(printer, schedule.get());
-  return isl_printer_get_str(printer);
 }
 
 //! Check whether the set has the dimension having a specific name.

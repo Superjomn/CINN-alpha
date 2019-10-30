@@ -826,7 +826,7 @@ TEST(isl, schedule_tree) {
     LOG(INFO) << "node type: " << isl_schedule_node_get_type(root.get());
 
     LOG(INFO) << "schedule tree:";
-    cinn::isl_utils::DumpSchedule(ctx, schedule);
+    cinn::DumpSchedule(schedule);
   }
   {
     LOG(INFO) << "compute schedule";
@@ -839,7 +839,7 @@ TEST(isl, schedule_tree) {
     sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.copy()));
     sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.copy()));
     isl::schedule schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc.copy()));
-    LOG(INFO) << "original schedule: " << cinn::isl_utils::DumpSchedule(ctx, schedule);
+    LOG(INFO) << "original schedule: " << cinn::DumpSchedule(schedule);
     LOG(INFO) << "original C code:\n" << ScheduleGenC(ctx, schedule);
 
     // Add some transformation
@@ -850,7 +850,7 @@ TEST(isl, schedule_tree) {
     LOG(INFO) << "sc1.coincidence: " << sc1.get_coincidence();
     LOG(INFO) << "sc1.validity: " << sc1.get_validity();
     schedule = isl::manage(isl_schedule_constraints_compute_schedule(sc1.release()));
-    LOG(INFO) << "transformed schedule: " << cinn::isl_utils::DumpSchedule(ctx, schedule);
+    LOG(INFO) << "transformed schedule: " << cinn::DumpSchedule(schedule);
     LOG(INFO) << "transformed schedule: " << ScheduleGenC(ctx, schedule);
   }
 }
@@ -918,7 +918,7 @@ TEST(isl, schedule_tile) {
   tiles["j"] = 8;
   cinn::IslTileGenerator::Global().set_tiles(tiles);
   DisplayScheduleC(schedule.get());
-  LOG(INFO) << "schedule:\n" << cinn::isl_utils::DumpSchedule(schedule.ctx().get(), schedule);
+  LOG(INFO) << "schedule:\n" << cinn::DumpSchedule(schedule);
   root = isl_schedule_node_map_descendant_bottom_up(root, cinn::node_tiler, nullptr);
   schedule = isl::manage(isl_schedule_node_get_schedule(root));
   // LOG(INFO) << "schedule:\n" << cinn::isl_utils::DumpSchedule(schedule.ctx().get(), schedule);

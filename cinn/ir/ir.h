@@ -757,6 +757,19 @@ class Sigmoid : public ir::ExprNode<Tanh> {
   static const NodeTy node_type = NodeTy::Sigmoid;
 };
 
+class Mark : public ir::ExprNode<Mark> {
+ public:
+  std::string content;
+
+  static Expr make(const std::string& content) {
+    auto node = std::make_shared<Mark>();
+    node->content = content;
+    return Expr(node);
+  }
+
+  static const NodeTy node_type = NodeTy::Mark;
+};
+
 //! Extract the Vars from a expression.
 std::vector<Var> ExtractVarsFromExpr(const Expr& expr);
 

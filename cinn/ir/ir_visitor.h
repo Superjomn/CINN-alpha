@@ -28,6 +28,7 @@ struct IRVisitorBase {
       __(Var);
       __(Param);
       __(Tensor);
+      __(Mark);
 
       //__(Reference);
       case ir::NodeTy::Reference:
@@ -130,6 +131,8 @@ struct IRVisitorBase {
 
   virtual RetTy Visit(const Tanh* op, Args... args) = 0;
   virtual RetTy Visit(const Sigmoid* op, Args... args) = 0;
+
+  virtual RetTy Visit(const Mark* op, Args... args) = 0;
 };
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
@@ -185,6 +188,8 @@ class IRVisitor : public IRVisitorBase<void> {
 
   virtual void Visit(const Tanh* op);
   virtual void Visit(const Sigmoid* op);
+
+  virtual void Visit(const Mark* op);
 };
 
 }  // namespace ir

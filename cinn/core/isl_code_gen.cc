@@ -15,14 +15,16 @@ using ir::Expr;
 
 std::vector<std::string> forloop_indice_stack;
 
-// Eat an isl block node.
+//! Eat an isl block node.
 void EatBlock(const isl::ast_node& node, ir::Expr* expr);
-// Eat an isl user node.
+//! Eat an isl user node.
 void EatUser(const isl::ast_node& node, ir::Expr* expr);
-// Eat an isl for node.
+//! Eat an isl for node.
 void EatFor(const isl::ast_node& node, ir::Expr* expr);
-// Eat an isl `if` node.
+//! Eat an isl `if` node.
 void EatIf(const isl::ast_node& node, ir::Expr* expr);
+//! Eat an isl mark node.
+void EatMark(const isl::ast_node& node, ir::Expr* expr);
 
 void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
   LOG_INDENT(6);
@@ -45,6 +47,10 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
     case isl_ast_node_user: {
       CINN_DEBUG(3) << "get isl user node";
       EatUser(node, expr);
+    } break;
+    case isl_ast_node_mark: {
+      CINN_DEBUG(3) << "get isl mark";
+      EatMark(node, expr);
     } break;
     default:
       LOG(FATAL) << "Unexpected ISL node type " << isl_ast_node_get_type(node.get());
@@ -144,6 +150,14 @@ void EatIf(const isl::ast_node& node, ir::Expr* expr) {
   } else {
     *expr = ir::IfThenElse::make(ir_condition, ir_then_body);
   }
+}
+
+void EatMark(const isl::ast_node& node, ir::Expr* expr) {
+  Expr mark = ir::Mark::make(isl_id_get_name(isl_ast_node_mark_get_id(node.get())));
+  Expr child;
+  auto child_node = isl::manage(isl_ast_node_mark_get_node(node.get()));
+  IslAstNodeToCinnExpr(child_node, &child);
+  *expr = ir::Block::make({mark, child});
 }
 
 void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
@@ -522,7 +536,8 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
 }
 
 void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
-  LOG_INDENT(3);
+  LOG_INDENT(4);
+  CINN_DEBUG(0) << "\n" << ir::Dump(root);
   CINN_DEBUG(0) << "*** Attach " << stage_name;
   auto stage = Generator::Global().GetStageByName(stage_name);
 

@@ -59,5 +59,7 @@ void IRVisitor::Visit(const Reference *op) {
   }
 }
 
+void IRVisitor::Visit(const Mark *op) {}
+
 }  // namespace ir
 }  // namespace cinn
