@@ -36,7 +36,7 @@ TEST(tile, tile_from_tail) {
   sc = sc.set_validity(validity);
   isl::schedule schedule = sc.compute_schedule();
 
-  TileTransformer2 appler("A", {32, 32});
+  TileUnrollTransformer appler("A", {32, 32});
   schedule = appler.Visit(schedule).get_schedule();
   LOG(INFO) << "schedule: \n" << schedule;
   LOG(INFO) << "final schedule: \n" << schedule.root();

@@ -170,7 +170,7 @@ isl::union_set GetUnrollOption(const std::string& statement, isl::union_set doma
   return gen_transform(statement_set);
 }
 
-isl::schedule_node TileTransformer2::VisitBand(const isl::schedule_node& node) {
+isl::schedule_node TileUnrollTransformer::VisitBand(const isl::schedule_node& node) {
   LOG_INDENT(0);
   if (tiled_ || !collected_statements_.count(statement_)) return Visit(node.first_child()).parent();
 
