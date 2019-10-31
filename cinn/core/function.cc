@@ -317,8 +317,7 @@ void Snippet::ApplyTiles() {
                 << " tile_sizes " << stage.tile_sizes().size();
       if (!stage.tile_sizes().empty()) {
         if (stage.unroll()) {
-          LOG(INFO) << "********************************* call TileTransformer2";
-          TileTransformer2 tiler(stage.name(), stage.tile_sizes());
+          TileUnrollTransformer tiler(stage.name(), stage.tile_sizes());
           *schedule_ = tiler.Visit(*schedule_).get_schedule();
         } else {
           TileDimsTransformer tiler(stage.name(), stage.tile_sizes(), stage.unroll());

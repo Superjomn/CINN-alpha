@@ -102,14 +102,14 @@ struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
 };
 
 /**
- * Tile the dimensions from the tail of a band node.
+ * Tile the dimensions and unroll the last tile dims of a band node.
  */
-struct TileTransformer2 : public ScheduleNodeRewriter<TileTransformer2> {
-  using BaseTy = ScheduleNodeRewriter<TileTransformer2>;
+struct TileUnrollTransformer : public ScheduleNodeRewriter<TileUnrollTransformer> {
+  using BaseTy = ScheduleNodeRewriter<TileUnrollTransformer>;
   BaseTy& GetBase() { return *this; }
   const BaseTy& GetBase() const { return *this; }
 
-  TileTransformer2(const std::string& statement, const std::vector<int>& size)
+  TileUnrollTransformer(const std::string& statement, const std::vector<int>& size)
       : statement_(statement), tile_sizes_(size) {}
 
   isl::schedule_node VisitBand(const isl::schedule_node& node);
