@@ -316,9 +316,14 @@ void Snippet::ApplyTiles() {
       LOG(INFO) << stage.name() << " "
                 << " tile_sizes " << stage.tile_sizes().size();
       if (!stage.tile_sizes().empty()) {
-        // TileTransformer2 tiler(stage.name(), stage.tile_sizes());
-        TileDimsTransformer tiler(stage.name(), stage.tile_sizes());
-        *schedule_ = tiler.Visit(*schedule_).get_schedule();
+        if (stage.unroll()) {
+          LOG(INFO) << "********************************* call TileTransformer2";
+          TileTransformer2 tiler(stage.name(), stage.tile_sizes());
+          *schedule_ = tiler.Visit(*schedule_).get_schedule();
+        } else {
+          TileDimsTransformer tiler(stage.name(), stage.tile_sizes(), stage.unroll());
+          *schedule_ = tiler.Visit(*schedule_).get_schedule();
+        }
       }
     }
     {
