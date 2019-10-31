@@ -66,6 +66,8 @@ class Stage {
     // Tile from the tail.
     std::vector<int> tile_sizes_;
 
+    bool unroll_{false};
+
     //! the dimensions to transpose.
     std::vector<std::pair<std::string, std::string>> transposes_;
 
@@ -187,7 +189,16 @@ class Stage {
    * Tile the last several loop levels with tile sizes set by `sizes`.
    * @param sizes the sizes to tile.
    */
-  void Tile(std::vector<int> sizes);
+  void Tile(const std::vector<int>& sizes);
+
+  /**
+   * Tile the forloop and unroll the last level.
+   * @param sizes the tile sizes.
+   */
+  void TileUnroll(const std::vector<int>& sizes) {
+    data_->unroll_ = true;
+    data_->tile_sizes_ = sizes;
+  }
 
   //! Skew in the loop level `i`.
   void Skew(ir::Var i);
@@ -205,6 +216,8 @@ class Stage {
     InitFromAssignExpr(x);
     return *this;
   }
+
+  bool unroll() const { return data_->unroll_; }
 
   // Dump the schedule to ISL C code.
   std::string DumpIslC() const;

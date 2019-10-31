@@ -263,7 +263,7 @@ void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
 
 void Stage::Tile(ir::Var i, size_t w) { data_->tiles[i.name()] = w; }
 
-void Stage::Tile(std::vector<int> sizes) { data_->tile_sizes_ = sizes; }
+void Stage::Tile(const std::vector<int>& sizes) { data_->tile_sizes_ = sizes; }
 
 void Stage::Split(const ir::Var& iter, int size) {
   LOG_INDENT(6);

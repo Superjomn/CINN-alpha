@@ -71,8 +71,8 @@ struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
   BaseTy& GetBase() { return *this; }
   const BaseTy& GetBase() const { return *this; }
 
-  TileDimsTransformer(const std::string& statement, const std::vector<int>& size)
-      : statement_(statement), tile_sizes_(size) {}
+  TileDimsTransformer(const std::string& statement, const std::vector<int>& size, bool unroll = false)
+      : statement_(statement), tile_sizes_(size), unroll_(unroll) {}
 
   isl::schedule_node VisitBand(const isl::schedule_node& node);
 
@@ -81,6 +81,7 @@ struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
     return Visit(node.first_child()).parent();
   }
 
+ private:
   /**
    * Tile a schedule node.
    * @param node The node to tile.
@@ -97,6 +98,7 @@ struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
   bool tiled_{false};
   std::vector<int> tile_sizes_;
   std::string statement_;
+  bool unroll_;
 };
 
 /**
@@ -121,7 +123,6 @@ struct TileTransformer2 : public ScheduleNodeRewriter<TileTransformer2> {
   bool tiled_{false};
   std::vector<int> tile_sizes_;
   std::string statement_;
-  std::map<std::string, isl::set> collected_statements_;
 };
 
 /**
@@ -191,27 +192,7 @@ struct TransposeTransformer : public ScheduleNodeRewriter<TransposeTransformer> 
   isl::schedule_node VisitFilter(const isl::schedule_node& node);
 
  private:
-  isl::pw_multi_aff PrepareTransform() {
-    auto it = collected_statements_.find(statement_);
-    auto set = it->second;
-
-    std::vector<std::string> iterators;
-    for (int i = 0; i < isl_set_n_dim(set.get()); i++) {
-      iterators.push_back(isl_set_get_dim_name(set.get(), isl_dim_set, i));
-    }
-
-    auto left = StringFormat("[ %s ]", Concat(iterators, ", ").c_str());
-
-    auto it0 = std::find(iterators.begin(), iterators.end(), iterators_.first);
-    auto it1 = std::find(iterators.begin(), iterators.end(), iterators_.second);
-    std::swap(*it0, *it1);
-
-    auto right = StringFormat("[ %s ]", Concat(iterators, ", ").c_str());
-
-    auto transform_repr = StringFormat("{ %s -> %s }", left.c_str(), right.c_str());
-    isl::pw_multi_aff t(set.ctx(), transform_repr);
-    return t;
-  }
+  isl::pw_multi_aff PrepareTransform();
 
  private:
   // The statement to tile.

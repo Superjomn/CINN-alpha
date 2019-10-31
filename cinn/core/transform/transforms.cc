@@ -250,12 +250,47 @@ isl::schedule_node TransposeTransformer::VisitFilter(const isl::schedule_node& n
   CollectFilter(node);
   return Visit(node.first_child()).parent();
 }
+isl::pw_multi_aff TransposeTransformer::PrepareTransform() {
+  auto it = collected_statements_.find(statement_);
+  auto set = it->second;
+
+  std::vector<std::string> iterators;
+  for (int i = 0; i < isl_set_n_dim(set.get()); i++) {
+    iterators.push_back(isl_set_get_dim_name(set.get(), isl_dim_set, i));
+  }
+
+  auto left = StringFormat("[ %s ]", Concat(iterators, ", ").c_str());
+
+  auto it0 = std::find(iterators.begin(), iterators.end(), iterators_.first);
+  auto it1 = std::find(iterators.begin(), iterators.end(), iterators_.second);
+  std::swap(*it0, *it1);
+
+  auto right = StringFormat("[ %s ]", Concat(iterators, ", ").c_str());
+
+  auto transform_repr = StringFormat("{ %s -> %s }", left.c_str(), right.c_str());
+  isl::pw_multi_aff t(set.ctx(), transform_repr);
+  return t;
+}
 
 isl::schedule_node TileDimsTransformer::VisitBand(const isl::schedule_node& node) {
   if (tiled_ || !collected_statements_.count(statement_)) {
     return Visit(node.first_child()).parent();
   }
-  auto new_node = TileNode(node, "tile", tile_sizes_, 1);
+
+  isl::schedule_node new_node;
+
+  if (unroll_) {
+    new_node = TileNode(node, "tile-unroll", tile_sizes_, 1);
+    auto child = new_node.first_child();
+    new_node =
+        new_node.as<isl::schedule_node_band>().set_ast_build_options(isl::union_set(new_node.ctx(), "{separate[x]}"));
+  } else {
+    new_node = TileNode(node, "tile", tile_sizes_, 1);
+  }
+
+  auto schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(new_node.get()));
+  LOG(INFO) << "schedule_relation: " << schedule_relation;
+  LOG(INFO) << "schedule_domain: " << isl::manage(isl_schedule_node_get_domain(new_node.get()));
 
   tiled_ = true;
   return Visit(new_node.first_child()).parent();
@@ -265,7 +300,7 @@ isl::schedule_node TileDimsTransformer::TileNode(isl::schedule_node node,
                                                  const std::string& id,
                                                  const std::vector<int>& tile_sizes,
                                                  int default_tile_size) {
-  LOG_INDENT(4);
+  LOG_INDENT(0);
   CHECK(isl_schedule_node_get_type(node.get()) == isl_schedule_node_band);
   auto space = isl::manage(isl_schedule_node_band_get_space(node.get()));
   int dims = isl_space_dim(space.get(), isl_dim_set);
