@@ -7,12 +7,6 @@
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/string.h"
 
-struct isl_set_cmp {
-  bool operator()(const isl::set& a, const isl::set& b) {
-    return strcmp(isl_set_get_tuple_name(a.get()), isl_set_get_tuple_name(b.get())) < 0;
-  }
-};
-
 namespace cinn {
 
 /**
@@ -81,7 +75,6 @@ struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
     return Visit(node.first_child()).parent();
   }
 
- private:
   /**
    * Tile a schedule node.
    * @param node The node to tile.
@@ -89,10 +82,10 @@ struct TileDimsTransformer : public ScheduleNodeRewriter<TileDimsTransformer> {
    * @param tile_sizes Specify the tile sizes.
    * @param default_tile_size A default tiling size for dimensions that are not covered by the tile_sizes vector.
    */
-  isl::schedule_node TileNode(isl::schedule_node node,
-                              const std::string& id,
-                              const std::vector<int>& tile_sizes,
-                              int default_tile_size);
+  static isl::schedule_node TileNode(isl::schedule_node node,
+                                     const std::string& id,
+                                     const std::vector<int>& tile_sizes,
+                                     int default_tile_size);
 
  private:
   bool tiled_{false};
@@ -171,14 +164,47 @@ struct UnrollTransformer : public ScheduleNodeRewriter<UnrollTransformer> {
 };
 
 /**
+ * Lower the last forloop level to use the device SIMD instructions.
+ *
+ * It takes to the following phases:
+ *
+ * 1. Tile the last loop level by the vector width.
+ * 2. Mark the band node as the vectorize node.
+ *
+ * The transformed ISL AST will be lowered by CINN IR latter into the real SIMD instructions.
+ */
+struct VectorizeTransform : public ScheduleNodeRewriter<VectorizeTransform> {
+  VectorizeTransform(const std::string& statement, int vector_width)
+      : statement_(statement), vector_width_(vector_width) {}
+
+  isl::schedule_node operator()(const isl::schedule& schedule) { return Visit(schedule); }
+
+ private:
+  isl::schedule_node VisitBand(const isl::schedule_node& node);
+
+  isl::schedule_node VisitFilter(const isl::schedule_node& node) {
+    CollectFilter(node);
+    return Visit(node.first_child()).parent();
+  }
+
+  friend class ScheduleTreeWriter;
+  friend class ScheduleTreeVisitor;
+
+ private:
+  int vector_width_;
+  std::string statement_;
+  bool tiled_{false};
+};
+
+/**
  * Loop transpose on two specific iterators.
  */
-struct TransposeTransformer : public ScheduleNodeRewriter<TransposeTransformer> {
-  using BaseTy = ScheduleNodeRewriter<TransposeTransformer>;
+struct InterchangeTransformer : public ScheduleNodeRewriter<InterchangeTransformer> {
+  using BaseTy = ScheduleNodeRewriter<InterchangeTransformer>;
   BaseTy& GetBase() { return *this; }
   const BaseTy& GetBase() const { return *this; }
 
-  TransposeTransformer(const std::string& statement, const std::string& iter0, const std::string& iter1)
+  InterchangeTransformer(const std::string& statement, const std::string& iter0, const std::string& iter1)
       : statement_(statement), iterators_(std::make_pair(iter0, iter1)) {}
 
   /**

@@ -1104,3 +1104,29 @@ TEST(isl, concat_cond) {
   isl::set set(ctx.get(), "{ A[i,j] : 0 < i < j < 100 }");
   set = isl::manage(cinn::isl_set_append_cond(set.release(), "i % 2 = 0"));
 }
+
+TEST(isl, schedule_map) {
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::union_set domain(ctx, "{ A[x,i,j]: 0<=x,i,j<100; B[x,i,j,k]: 0<=x,i,j,k<100 }");
+  isl::union_map schedule(
+      ctx, "{ A[x,i,j] -> [x,0,i',j',i,j,0]: i'=4*floor(i/4) and j'=4*floor(j/4); B[x,i,j,k] -> [x,i,j,k] }");
+
+  LOG(INFO) << "domain: " << domain;
+
+  isl::set context(ctx, "{:}");
+
+  schedule = schedule.intersect_domain(domain);
+  LOG(INFO) << "schedule: " << schedule;
+
+  auto build = isl::ast_build::from_context(context);
+  // isl::union_map build_options(ctx, "{ [x,i,j,k] -> unroll[1] }");
+  // build = isl::manage(isl_ast_build_set_options(build.get(), build_options.release()));
+  auto ast = build.node_from_schedule_map(schedule);
+  isl_options_set_ast_build_group_coscheduled(ctx.get(), 1);
+  isl_options_set_ast_build_exploit_nested_bounds(ctx.get(), 1);
+
+  auto *p = isl_printer_to_str(ast.ctx().get());
+  p = isl_printer_set_output_format(p, ISL_FORMAT_C);
+  p = isl_printer_print_ast_node(p, ast.release());
+  LOG(INFO) << "code:\n" << isl_printer_get_str(p);
+}

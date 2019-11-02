@@ -66,6 +66,9 @@ class Stage {
     // Tile from the tail.
     std::vector<int> tile_sizes_;
 
+    // The size to vectorize.
+    int vector_width_{-1};
+
     bool unroll_{false};
 
     //! the dimensions to transpose.
@@ -166,6 +169,8 @@ class Stage {
 
   const std::vector<std::pair<std::string, std::string>>& transposes() const { return data_->transposes_; }
 
+  int vector_width() const { return data_->vector_width_; }
+
   const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
 
   //! Set the extra condition of the iterators.
@@ -207,7 +212,7 @@ class Stage {
   void Reverse(ir::Var i);
 
   //! Vectorize the loop level `i`.
-  void Vectorize(ir::Var i, size_t vec_size);
+  void Vectorize(size_t vector_size);
 
   // After transformations.
   isl::map GetTransformedSchedule();

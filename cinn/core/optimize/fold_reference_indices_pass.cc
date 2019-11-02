@@ -139,22 +139,20 @@ class Mutator : public ir::IRMutator {
     Visit(&a->a, &a->a);                                                                     \
     Visit(&a->b, &a->b);                                                                     \
   }
-#define OP_1PARAM(op__)                                     \
-  void Visit(const ir::op__ *op, Expr *expr) override {     \
-    CHECK(op);                                              \
-    if (inside_reference_) {                                \
-      std::string key = DumpIR(op);                         \
-      LOG(INFO) << "checking " << key;                      \
-      const auto &block_statis = statis[cur_block];         \
-      auto it = block_statis.pieces.find(key);              \
-      if (it != block_statis.pieces.end()) {                \
-        LOG(INFO) << cur_block << " replace " << it->first; \
-        *expr = ir::CopyExpr(it->second);                   \
-        return;                                             \
-      }                                                     \
-    }                                                       \
-    auto *a = expr->As<ir::op__>();                         \
-    Visit(&a->a, &a->a);                                    \
+#define OP_1PARAM(op__)                                 \
+  void Visit(const ir::op__ *op, Expr *expr) override { \
+    CHECK(op);                                          \
+    if (inside_reference_) {                            \
+      std::string key = DumpIR(op);                     \
+      const auto &block_statis = statis[cur_block];     \
+      auto it = block_statis.pieces.find(key);          \
+      if (it != block_statis.pieces.end()) {            \
+        *expr = ir::CopyExpr(it->second);               \
+        return;                                         \
+      }                                                 \
+    }                                                   \
+    auto *a = expr->As<ir::op__>();                     \
+    Visit(&a->a, &a->a);                                \
   }
   OP_1_ARGS_FOR_EACH(OP_1PARAM);
   OP_2_ARGS_FOR_EACH(OP_2PARAM);

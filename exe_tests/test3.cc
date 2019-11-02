@@ -50,11 +50,12 @@ TEST(cinn, complex_nn) {
 
     s2.FuseWith(s1);
     s0.Tile({32, 32});
-    s1.TileUnroll({32, 4});
+    s0.Vectorize(8);
+    s1.TileUnroll({32, 32});
     // s1.Tile({32, 32});
     // s0.Tile(n, 32);
     // s0.Tile(k, 32);
-    s0.Interchange(m, k);
+    // s0.Interchange(m, k);
 
     fn.Inputs({A, B, Bias});
     fn.Outputs({C});

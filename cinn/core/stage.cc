@@ -243,27 +243,15 @@ void Stage::Interchange(const std::string& dim0, const std::string& dim1) {
   data_->transposes_.push_back(std::make_pair(dim0, dim1));
 }
 
-/*
-void Stage::Tile(ir::Var i, size_t iw, ir::Var j, size_t jw) {
-  LOG_INDENT(6);
-  int posi = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, i.name());
-  int posj = isl_map_get_dim_pos_by_name(schedule().get(), isl_dim_out, j.name());
-
-  CHECK_NE(posi, -1) << "No iterator called " << i.name() << " in schedule " << schedule();
-  CHECK_NE(posj, -1) << "No iterator called " << j.name() << " in schedule " << schedule();
-  CHECK_EQ(posi + 1, posj) << "i and j should be ajacement";
-
-  Split(i, iw);
-  Split(j, jw);
-  CINN_DEBUG(3) << "final schedule: " << schedule();
-
-  CINN_DEBUG(3) << "ISL C: \n" << DumpIslC();
-}
- */
-
 void Stage::Tile(ir::Var i, size_t w) { data_->tiles[i.name()] = w; }
 
 void Stage::Tile(const std::vector<int>& sizes) { data_->tile_sizes_ = sizes; }
+
+void Stage::Vectorize(size_t vector_size) {
+  CHECK_GT(vector_size, 1);
+  CHECK_LT(vector_size, 30);
+  data_->vector_width_ = vector_size;
+}
 
 void Stage::Split(const ir::Var& iter, int size) {
   LOG_INDENT(6);

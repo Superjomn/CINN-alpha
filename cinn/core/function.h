@@ -89,6 +89,8 @@ class Snippet {
   //! Apply the transpose transformations to the schedule.
   void ApplyTransposes();
 
+  void ApplyVectorize();
+
   //! Fuse the stages if set with Stage::FuseWith.
   void BuildFusion();
 

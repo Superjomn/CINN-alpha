@@ -221,7 +221,7 @@ isl::schedule_node TileUnrollTransformer::VisitBand(const isl::schedule_node& no
   return Visit(inner_band.first_child().parent());
 }
 
-isl::schedule_node TransposeTransformer::VisitBand(const isl::schedule_node& node) {
+isl::schedule_node InterchangeTransformer::VisitBand(const isl::schedule_node& node) {
   LOG_INDENT(0);
   if (!collected_statements_.count(statement_)) return Visit(node.first_child());
   CINN_DEBUG(0) << "collected filter " << collected_statements_.size();
@@ -246,11 +246,11 @@ isl::schedule_node TransposeTransformer::VisitBand(const isl::schedule_node& nod
 
 void CollectFilter(const isl::schedule_node& node, std::map<std::string, isl::set>* collected_statements) {}
 
-isl::schedule_node TransposeTransformer::VisitFilter(const isl::schedule_node& node) {
+isl::schedule_node InterchangeTransformer::VisitFilter(const isl::schedule_node& node) {
   CollectFilter(node);
   return Visit(node.first_child()).parent();
 }
-isl::pw_multi_aff TransposeTransformer::PrepareTransform() {
+isl::pw_multi_aff InterchangeTransformer::PrepareTransform() {
   auto it = collected_statements_.find(statement_);
   auto set = it->second;
 
@@ -317,6 +317,18 @@ isl::schedule_node TileDimsTransformer::TileNode(isl::schedule_node node,
 
   node = node.as<isl::schedule_node_band>().tile(sizes);
   node = node.first_child();
+  LOG(INFO) << "tiled node.domain " << isl::manage(isl_schedule_node_get_domain(node.get()));
+  LOG(INFO) << "tiled node.prefix_schedule " << isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
+  LOG(INFO) << "tiled node.prefix_union_map "
+            << isl::manage(isl_schedule_node_get_prefix_schedule_union_map(node.get()));
+  LOG(INFO) << "tiled node.prefix_schedule_multi_union_pw_aff "
+            << isl::manage(isl_schedule_node_get_prefix_schedule_multi_union_pw_aff(node.get()));
+  LOG(INFO) << "tiled band.get_partial_schedule "
+            << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
+  isl::union_map schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
+  LOG(INFO) << "** relation: " << schedule_relation.space();
+  LOG(INFO) << "relation dim: " << isl_space_dim(schedule_relation.space().get(), isl_dim_in);
+  // node = node.as<isl::schedule_node_band>().set_ast_build_options(isl::union_set(node.ctx(), "{  unroll[x] }"));
 
   auto pointer_loop_marker = isl::manage(isl_id_alloc(node.ctx().get(), (id + " - points").c_str(), nullptr));
   node = node.insert_mark(pointer_loop_marker);
@@ -381,6 +393,16 @@ isl::union_set GetIsolateOptions(isl::set isolate_domain, unsigned out_dims_num)
   isl::id id = isl::manage(isl_id_alloc(isolate_option.ctx().get(), "isolate", nullptr));
   isolate_option = isl::manage(isl_set_set_tuple_id(isolate_option.release(), id.release()));
   return isl::union_set(isolate_option);
+}
+
+isl::schedule_node VectorizeTransform::VisitBand(const isl::schedule_node& node) {
+  if (tiled_ || !collected_statements_.count(statement_)) {
+    return Visit(node.first_child()).parent();
+  }
+
+  auto new_node = TileDimsTransformer::TileNode(node, "vectorize", {vector_width_}, 1);
+  // tiled_ = true;
+  return Visit(new_node.first_child()).parent();
 }
 
 }  // namespace cinn
