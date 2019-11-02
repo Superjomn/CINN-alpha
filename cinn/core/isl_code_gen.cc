@@ -494,7 +494,7 @@ std::map<std::string, ir::Expr> ExprAttachIslIndices(ir::Expr expr, isl::set dom
 }
 
 std::map<std::string, ir::Expr> ExprAttachIslIndices(ir::Expr expr, isl::set domain, const ir::Call& call) {
-  LOG_INDENT(2);
+  LOG_INDENT(6);
   CHECK_EQ(isl_set_dim(domain.get(), isl_dim_set), call.arguments.size()) << "dimension not match";
   // construct the map from name of cinn vars to isl iterator.
   std::map<std::string, ir::Expr> cinn2isl_exprs;
@@ -549,7 +549,7 @@ void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
     void Visit(const Expr* op, Expr* expr) override { IRMutator::Visit(op, expr); }
 
     void Visit(const ir::Call* op, Expr* expr) override {
-      LOG_INDENT(2);
+      LOG_INDENT(6);
       auto* m_op = expr->As<ir::Call>();
       auto stage = Generator::Global().GetStageByName(statement_);
 

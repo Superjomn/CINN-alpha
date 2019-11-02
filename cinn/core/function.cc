@@ -301,8 +301,8 @@ void Snippet::ComputeSchedule() {
   CINN_DEBUG(3) << "schedule:\n" << DumpSchedule(*schedule_);
 
   ApplyTransposes();
-
   ApplyTiles();
+  ApplyVectorize();
 }
 
 void Snippet::ApplyTiles() {
@@ -320,7 +320,7 @@ void Snippet::ApplyTiles() {
           TileUnrollTransformer tiler(stage.name(), stage.tile_sizes());
           *schedule_ = tiler.Visit(*schedule_).get_schedule();
         } else {
-          TileDimsTransformer tiler(stage.name(), stage.tile_sizes(), stage.unroll());
+          TileDimsTransformer tiler(stage.name(), stage.tile_sizes());
           *schedule_ = tiler.Visit(*schedule_).get_schedule();
         }
       }
@@ -340,16 +340,28 @@ void Snippet::ApplyTiles() {
 
 void Snippet::ApplyTransposes() {
   if (!is_polyhedral()) return;
-  CHECK(schedule_) << "schedule tree should be build first before tile";
+  CHECK(schedule_) << "schedule tree should be built first";
 
   for (auto& stage : stages_) {
     for (auto& item : stage.transposes()) {
       LOG(INFO) << "Transposing " << stage.name() << " with " << item.first << " " << item.second;
-      TransposeTransformer applyer(stage.name(), item.first, item.second);
+      InterchangeTransformer applyer(stage.name(), item.first, item.second);
       *schedule_ = applyer.Visit(*schedule_).get_schedule();
     }
   }
   LOG(INFO) << "final schedule: " << schedule_->get_root();
+}
+
+void Snippet::ApplyVectorize() {
+  if (!is_polyhedral()) return;
+  CHECK(schedule_) << "schedule tree should be built first";
+
+  for (auto& stage : stages_) {
+    if (stage.vector_width() > 0) {
+      VectorizeTransform applyer(stage.name(), stage.vector_width());
+      *schedule_ = applyer(*schedule_).get_schedule();
+    }
+  }
 }
 
 void Snippet::BuildFusion() {
