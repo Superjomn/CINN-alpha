@@ -57,6 +57,8 @@ class Graph {
    */
   void Build(const Program& program, const Session& session);
 
+  void Compile();
+
   /**
    * Get all the nodes.
    */
@@ -116,6 +118,13 @@ class Graph {
   const Session* session_;
   ArgumentRegistry arguments_;
 };
+
+/**
+ * Compile a graph to a library.
+ * @param graph
+ * @param file
+ */
+void Compile(Graph* graph, const std::string& file);
 
 }  // namespace hlir
 }  // namespace cinn

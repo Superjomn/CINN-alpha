@@ -15,24 +15,24 @@ class MatMulOp : public Operator {
 
  protected:
   void Resize() override {
-    auto& input0 = GetInput("X");
-    auto& W = GetInput("W");
+    auto* input0 = GetInput("X");
+    auto* W = GetInput("W");
     auto& output0 = GetOutput("Out");
 
-    CHECK_EQ(input0.shape().size(), 2UL);
-    CHECK_EQ(W.shape().size(), 2UL);
+    CHECK_EQ(input0->shape().size(), 2UL);
+    CHECK_EQ(W->shape().size(), 2UL);
 
-    std::vector<int> shape({input0.shape()[0], W.shape()[1]});
+    std::vector<int> shape({input0->shape()[0], W->shape()[1]});
     output0.set_shape(shape);
   }
 
   void CompileImpl() override {
     LOG_INDENT(1);
-    auto& input0 = GetInput("X");
-    auto& W = GetInput("W");
+    auto* input0 = GetInput("X");
+    auto* W = GetInput("W");
     auto& output0 = GetOutput("Out");
 
-    ir::Expr x = input0.expr(), w = W.expr(), out = output0.expr();
+    ir::Expr x = input0->expr(), w = W->expr(), out = output0.expr();
     CINN_DEBUG(2) << "x.expr: " << ir::Dump(x);
     CINN_DEBUG(2) << "w.expr: " << ir::Dump(w);
     CINN_DEBUG(2) << "out.expr: " << ir::Dump(out);

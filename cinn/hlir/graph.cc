@@ -1,4 +1,7 @@
 #include "cinn/hlir/graph.h"
+#include <algorithm>
+#include "cinn/backends/code_gen_c.h"
+#include "cinn/hlir/graph_util.h"
 #include "cinn/utils/logging.h"
 
 namespace cinn {
@@ -88,10 +91,8 @@ void Graph::NewTensorNode(const std::string& name) {
 std::set<const Node*> Graph::Inputs() const {
   std::set<const Node*> result;
   for (auto& node : nodes()) {
-    if (node->is_tensor()) {
-      if (node->inlinks.empty()) {
-        result.insert(node.get());
-      }
+    if (node->is_tensor() && node->inlinks.empty()) {
+      result.insert(node.get());
     }
   }
   return result;
@@ -100,10 +101,8 @@ std::set<const Node*> Graph::Inputs() const {
 std::set<const Node*> Graph::Outputs() const {
   std::set<const Node*> result;
   for (auto& node : nodes()) {
-    if (node->is_tensor()) {
-      if (node->outlinks.empty()) {
-        result.insert(node.get());
-      }
+    if (node->is_tensor() && node->outlinks.empty()) {
+      result.insert(node.get());
     }
   }
   return result;
@@ -112,10 +111,8 @@ std::set<const Node*> Graph::Outputs() const {
 std::set<Node*> Graph::Inputs() {
   std::set<Node*> result;
   for (auto& node : nodes()) {
-    if (node->is_tensor()) {
-      if (node->inlinks.empty()) {
-        result.insert(node.get());
-      }
+    if (node->is_tensor() && node->inlinks.empty()) {
+      result.insert(node.get());
     }
   }
   return result;
@@ -124,10 +121,8 @@ std::set<Node*> Graph::Inputs() {
 std::set<Node*> Graph::Outputs() {
   std::set<Node*> result;
   for (auto& node : nodes()) {
-    if (node->is_tensor()) {
-      if (node->outlinks.empty()) {
-        result.insert(node.get());
-      }
+    if (node->is_tensor() && node->outlinks.empty()) {
+      result.insert(node.get());
     }
   }
   return result;
@@ -138,5 +133,52 @@ Node* Graph::GetTensor(const std::string& name) {
   CHECK(it != vars_.end());
   return it->second;
 }
+
+void Graph::Compile() {
+  LOG_INDENT(0);
+  std::vector<Function> fns;
+  fns.emplace_back(NameGenerator::Global().NewFuncionName());
+
+  std::vector<ir::Expr> fn_inputs, fn_outputs;
+  auto inputs = Inputs();
+  auto outputs = Outputs();
+
+  std::transform(
+      inputs.begin(), inputs.end(), std::back_inserter(fn_inputs), [](Node* node) { return node->tensor->expr(); });
+  std::transform(
+      outputs.begin(), outputs.end(), std::back_inserter(fn_outputs), [](Node* node) { return node->tensor->expr(); });
+
+  CINN_DEBUG(1) << "inputs.size " << fn_inputs.size();
+  CINN_DEBUG(1) << "outputs.size " << fn_outputs.size();
+
+  Node* last_node{};
+  for (Node& node : GraphTraits::TS(*this)) {
+    if (!node.is_tensor()) continue;
+
+    for (const Stage& stage : node.tensor->stages()) {
+      CINN_DEBUG(2) << "add stage: " << ir::Dump(stage.expr());
+      fns.back().AddStage(stage);
+    }
+
+    if (node.outlinks.size() > 1) {
+      fns.back().Inputs(fn_inputs);
+      fns.back().Outputs(fn_outputs);
+      fns.back().EndDefinition();
+      fns.emplace_back(NameGenerator::Global().NewFuncionName());
+      last_node = &node;
+    }
+  }
+
+  fns.back().Inputs(fn_inputs);
+  fns.back().Outputs(fn_outputs);
+  fns.back().EndDefinition();
+
+  std::vector<ir::Expr> exprs;
+  std::transform(fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
+  auto block = ir::Block::make(std::move(exprs));
+
+  backends::CompileAsC(block, "1.h", "1.cc");
+}
+
 }  // namespace hlir
 }  // namespace cinn
