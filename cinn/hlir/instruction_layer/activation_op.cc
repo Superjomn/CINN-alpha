@@ -17,6 +17,7 @@ class ActivationBase : public Operator {
     const auto* x = GetInput("X");
     auto& out = GetOutput("Out");
     out.set_shape(x->shape());
+    out.set_iterators(x->iterators());
   }
 };
 
