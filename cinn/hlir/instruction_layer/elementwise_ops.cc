@@ -19,6 +19,18 @@ class ElementwiseBase : public Operator {
     auto& output = GetOutput("Out");
 
     output.set_shape(x->shape());
+    // check the reversed dimensions matches.
+    CHECK_LE(y->shape().size(), x->shape().size());
+    auto y_it = y->shape().rbegin();
+    auto x_it = x->shape().rbegin();
+    for (int i = 0; i < y->shape().size(); i++) {
+      CHECK_EQ(*(y_it + i), *(x_it + i));
+    }
+
+    // share the iterators.
+    y->set_iterators(std::vector<ir::Expr>(x->iterators().begin() + x->iterators().size() - y->iterators().size(),
+                                           x->iterators().end()));
+    output.set_iterators(x->iterators());
   }
 };
 

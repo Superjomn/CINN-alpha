@@ -53,10 +53,7 @@ class Tensor {
    * Set the iterators manually, be sure that the iterators empty.
    * @param iterators
    */
-  void set_iterators(const std::vector<ir::Expr>& iterators) {
-    CHECK(iterators_.empty());
-    iterators_ = iterators;
-  }
+  void set_iterators(const std::vector<ir::Expr>& iterators) const { iterators_ = iterators; }
 
   /**
    * Get the iterator Vars of this tensor.
