@@ -40,11 +40,11 @@ TEST(matmul_op, test) {
 
   backends::C_CodeGen gen;
   gen.Print(fn.ir_function());
-  std::string target = R"ROC(void complex (cinn_float32_t* tensor0, cinn_float32_t* tensor1, cinn_float32_t* tensor2) {
+  std::string target = R"ROC(void complex (cinn_float32_t* x0, cinn_float32_t* w1, cinn_float32_t* out2) {
   for (int c0 = 0; (c0 <= 19); c0 += 1) {
     for (int c1 = 0; (c1 <= 39); c1 += 1) {
       for (int c2 = 0; (c2 <= 29); c2 += 1) {
-        tensor2[c0, c1] += (tensor0[c0, c2] * tensor1[c2, c1]);
+        out2[c0, c1] += (x0[c0, c2] * w1[c2, c1]);
       }
     }
   }

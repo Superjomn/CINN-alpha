@@ -31,7 +31,7 @@ struct IndicesMutator : public ir::IRMutator {
       for (size_t j = 1; j < op->iterators.size(); j++) {
         new_iterator = new_iterator * tensor->dims()[j];
       }
-      new_iterator = new_iterator + op->iterators[i];
+      new_iterator = ir::Add::make(new_iterator, op->iterators[i]);
     }
 
     // replace the iterator.

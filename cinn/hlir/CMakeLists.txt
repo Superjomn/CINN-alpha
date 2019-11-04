@@ -6,6 +6,7 @@ cc_library(variable SRCS variable.cc DEPS hlir_util)
 cc_library(session SRCS session.cc DEPS hlir_util)
 cc_library(op_registry SRCS op_registry.cc)
 cc_library(buffer SRCS buffer.cc)
+cc_library(network SRCS network.cc DEPS hlir_util program)
 
 set(instruction_ops CACHE INTERNAL "instruction ops")
 add_subdirectory(instruction_layer)
@@ -18,5 +19,6 @@ add_subdirectory(optimize)
 
 
 message(STATUS "instruction_ops: ${instruction_ops}")
-cc_test(test_graph SRCS graph_test.cc DEPS ${instruction_ops} graph session op_registry operator cinn_lib)
+cc_test(test_graph SRCS graph_test.cc DEPS ${instruction_ops} graph session op_registry operator cinn_lib graph_util)
 cc_test(test_graph_util SRCS graph_util_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops})
+cc_test(test_network SRCS network_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops} network graph)

@@ -52,7 +52,7 @@ class Operator {
    * @param argument
    * @return the corresponding tensor.
    */
-  const Tensor& GetInput(const std::string& argument) const;
+  const Tensor* GetInput(const std::string& argument) const;
 
   /**
    * Set a output argument.

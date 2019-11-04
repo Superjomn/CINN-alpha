@@ -48,7 +48,8 @@ void Tensor::InitExpr() {
     for (int v : shape()) {
       ir_shape.emplace_back(v);
     }
-    ir_inner_name_ = NameGenerator::Global().NewNamed("tensor");
+    ir_inner_name_ =
+        name_.empty() ? NameGenerator::Global().NewNamed("tensor") : NameGenerator::Global().NewNamed(name_);
     expr_ = ir::Expr(ir_shape, primitive_t::float32, ir_inner_name());
   }
 }

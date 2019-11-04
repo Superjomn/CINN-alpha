@@ -16,13 +16,13 @@ class Pad : public Operator {
 
  protected:
   void Resize() override {
-    auto& input0 = GetInput("X");
+    auto* input0 = GetInput("X");
     auto& output0 = GetOutput("Out");
     auto& the_param = param<PadParam>();
 
     std::vector<int> ir_shape;
-    for (int i = 0; i < input0.shape().size(); i++) {
-      ir_shape.emplace_back(input0.shape()[i] + the_param.padding[i][0].int32_val() +
+    for (int i = 0; i < input0->shape().size(); i++) {
+      ir_shape.emplace_back(input0->shape()[i] + the_param.padding[i][0].int32_val() +
                             the_param.padding[i][1].int32_val());
     }
 
@@ -32,12 +32,12 @@ class Pad : public Operator {
  protected:
   void CompileImpl() override {
     LOG_INDENT(0);
-    auto& input0 = GetInput("X");
+    auto* input0 = GetInput("X");
     auto& output0 = GetOutput("Out");
     auto& the_param = param<PadParam>();
     CHECK(!output0.shape().empty());
 
-    CHECK_EQ(input0.shape().size(), output0.shape().size());
+    CHECK_EQ(input0->shape().size(), output0.shape().size());
     CHECK_EQ(output0.iterators().size(), the_param.padding.size());
 
     // pad in each dimension

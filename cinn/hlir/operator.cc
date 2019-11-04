@@ -9,17 +9,17 @@ void Operator::SetInput(const std::string &argument, const std::string &value) {
   input_argument2value_[argument] = value;
 }
 
-const Tensor &Operator::GetInput(const std::string &argument) const {
+const Tensor *Operator::GetInput(const std::string &argument) const {
   CHECK(session_);
   auto it = input_argument2value_.find(argument);
-  CHECK(it != input_argument2value_.end());
-  return *session_->GetTensor(it->second);
+  if (it == input_argument2value_.end()) return nullptr;
+  return session_->GetTensor(it->second);
 }
 
 Tensor &Operator::GetOutput(const std::string &argument) {
   CHECK(session_);
   auto it = output_argument2value_.find(argument);
-  CHECK(it != output_argument2value_.end());
+  CHECK(it != output_argument2value_.end()) << argument << " not exists in the session";
   return *session_->GetTensor(it->second);
 }
 

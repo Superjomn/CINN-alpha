@@ -20,10 +20,10 @@ class Reshape : public Operator {
   }
 
   void CompileImpl() override {
-    auto& input0 = GetInput("X");
+    auto* input0 = GetInput("X");
     auto& output0 = GetOutput("Out");
     // TODO(Superjomn) check the shape.
-    input0.ShareBufferWith(&output0);
+    input0->ShareBufferWith(&output0);
   }
 };
 
