@@ -32,18 +32,18 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   CINN_DEBUG(1) << "expr.type: " << ir::GetNodeTyRepr(x.type());
   CINN_DEBUG(1) << "expr: " << ir::Dump(x);
 
-  if (iterators_in_order_.empty()) {
-    CINN_DEBUG(3) << "collect " << iterators_in_order_.size() << " iterators";
+  if (iterators_in_order.empty()) {
+    CINN_DEBUG(3) << "collect " << iterators_in_order.size() << " iterators";
     std::vector<const ir::Var*> iterators = ir::CollectExprNode<ir::Var>(expr());
-    std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterators_in_order_), [](const ir::Var* x) {
+    std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterators_in_order), [](const ir::Var* x) {
       return *x;
     });
   }
-  if (iterators_in_order_.empty()) return;
+  if (iterators_in_order.empty()) return;
   // construct the set
   std::vector<std::string> iterator_names;
   std::transform(
-      iterators_in_order_.begin(), iterators_in_order_.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
+      iterators_in_order.begin(), iterators_in_order.end(), std::back_inserter(iterator_names), [](const ir::Var& x) {
         return x.name();
       });
 
@@ -83,7 +83,7 @@ void Stage::ExtractDomainFromExpr(Expr x) {
     std::string transform_repr =
         StringFormat("{ [%s] -> [%s] }",
                      Concat(ref_iterators, ", ").c_str(),
-                     Join<ir::Var>(iterators_in_order_, ", ", [](const ir::Var& x) { return x.name(); }).c_str());
+                     Join<ir::Var>(iterators_in_order, ", ", [](const ir::Var& x) { return x.name(); }).c_str());
     isl::map transform(isl_utils::global_isl_ctx(), transform_repr.c_str());
     CINN_DEBUG(3) << "transform: " << transform;
     ref_domain = ref_domain.apply(transform);
@@ -99,9 +99,9 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 
   data_->iter_domain = isl::manage(isl_set_set_tuple_name(data_->iter_domain.release(), name().c_str()));
   // set dim name
-  for (int i = 0; i < iterators_in_order_.size(); i++) {
+  for (int i = 0; i < iterators_in_order.size(); i++) {
     data_->iter_domain = isl::manage(
-        isl_set_set_dim_name(data_->iter_domain.release(), isl_dim_set, i, iterators_in_order_[i].name().c_str()));
+        isl_set_set_dim_name(data_->iter_domain.release(), isl_dim_set, i, iterators_in_order[i].name().c_str()));
   }
 
   CINN_DEBUG(3) << "get Stage's domain: " << iterator_domain();
@@ -111,7 +111,7 @@ Stage::Stage(Expr expr, const std::vector<ir::Var>& iterators) {
   LOG_INDENT(6);
   InitData();
   data_->expr = expr;
-  iterators_in_order_ = iterators;
+  iterators_in_order = iterators;
   set_name(NameGenerator::Global().NewStageName());
   CINN_DEBUG(2) << "stage set name " << name();
 
@@ -240,17 +240,17 @@ std::set<std::string> Stage::Data::names;
 void Stage::Interchange(ir::Var i, ir::Var j) { Interchange(i.name(), j.name()); }
 
 void Stage::Interchange(const std::string& dim0, const std::string& dim1) {
-  data_->transposes_.push_back(std::make_pair(dim0, dim1));
+  data_->transposes.push_back(std::make_pair(dim0, dim1));
 }
 
 void Stage::Tile(ir::Var i, size_t w) { data_->tiles[i.name()] = w; }
 
-void Stage::Tile(const std::vector<int>& sizes) { data_->tile_sizes_ = sizes; }
+void Stage::Tile(const std::vector<int>& sizes) { data_->tile_sizes = sizes; }
 
 void Stage::Vectorize(size_t vector_size) {
   CHECK_GT(vector_size, 1);
   CHECK_LT(vector_size, 30);
-  data_->vector_width_ = vector_size;
+  data_->vector_width = vector_size;
 }
 
 void Stage::Split(const ir::Var& iter, int size) {
@@ -417,6 +417,18 @@ Stage::Type Stage::type() const {
       LOG(INFO) << "type: " << expr().type();
       return Type::unk;
   }
+}
+
+void Stage::ClearTransforms() {
+  data_->tiles.clear();
+  data_->tile_sizes.clear();
+  data_->transposes.clear();
+  data_->stages_fuse_with.clear();
+}
+
+void Stage::TileUnroll(const std::vector<int>& sizes) {
+  data_->unroll = true;
+  data_->tile_sizes = sizes;
 }
 
 std::ostream& operator<<(std::ostream& os, Stage::Type t) {

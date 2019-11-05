@@ -57,7 +57,17 @@ class Graph {
    */
   void Build(const Program& program, const Session& session);
 
-  void Compile();
+  /**
+   * Partition the graph and generate functions.
+   */
+  std::vector<Function> PartitionFunctions();
+
+  /**
+   * Compile a graph to lower compiler.
+   * @param finalize_function Call EndDefinition in Function, if true, the further modification on Stages is not
+   * allowed.
+   */
+  void Compile(bool finalize_function = true);
 
   /**
    * Get all the nodes.

@@ -22,3 +22,5 @@ message(STATUS "instruction_ops: ${instruction_ops}")
 cc_test(test_graph SRCS graph_test.cc DEPS ${instruction_ops} graph session op_registry operator cinn_lib graph_util)
 cc_test(test_graph_util SRCS graph_util_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops})
 cc_test(test_network SRCS network_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops} network graph)
+
+cc_library(hlir_lib SRCS hlir.cc DEPS operator tensor graph network graph_util ${instruction_ops})

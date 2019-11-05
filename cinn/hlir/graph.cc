@@ -134,7 +134,7 @@ Node* Graph::GetTensor(const std::string& name) {
   return it->second;
 }
 
-void Graph::Compile() {
+std::vector<Function> Graph::PartitionFunctions() {
   LOG_INDENT(0);
   std::vector<Function> fns;
   fns.emplace_back(NameGenerator::Global().NewFuncionName());
@@ -171,7 +171,16 @@ void Graph::Compile() {
 
   fns.back().Inputs(fn_inputs);
   fns.back().Outputs(fn_outputs);
-  fns.back().EndDefinition();
+  return fns;
+}
+
+void Graph::Compile(bool finalize_function) {
+  auto fns = PartitionFunctions();
+
+  CHECK(!fns.empty());
+  for (auto& fn : fns) {
+    fn.EndDefinition();
+  }
 
   std::vector<ir::Expr> exprs;
   std::transform(fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });

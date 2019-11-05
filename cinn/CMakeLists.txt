@@ -51,5 +51,6 @@ add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(core)
 add_subdirectory(hlir)
+add_subdirectory(autotuner)
 
 cc_library(cinn_lib SRCS cinn.cc DEPS ir code_gen_c code_gen_llvm ${llvm_libs} ops_overload transforms function)

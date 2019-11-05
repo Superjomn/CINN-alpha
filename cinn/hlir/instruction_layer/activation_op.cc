@@ -2,6 +2,7 @@
 #include "cinn/hlir/op_registry.h"
 #include "cinn/hlir/operator.h"
 #include "cinn/ir/ir.h"
+#include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
