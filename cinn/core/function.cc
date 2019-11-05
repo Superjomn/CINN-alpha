@@ -295,7 +295,7 @@ void Snippet::ComputeSchedule() {
   if (!proximity.is_null()) sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.release()));
   // sc = isl::manage(isl_schedule_constraints_apply(sc.release(), transform_->copy()));
 
-  CINN_DEBUG(3) << "schedule constraints:\n" << sc;
+  LOG(INFO) << "schedule constraints:\n" << sc;
 
   *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.release()));
   CINN_DEBUG(3) << "schedule:\n" << DumpSchedule(*schedule_);
@@ -309,7 +309,7 @@ void Snippet::ApplyTiles() {
   if (!is_polyhedral()) return;
   CHECK(schedule_) << "schedule tree should be build first before tile";
 
-  LOG(INFO) << "original schedule " << schedule_->get_root();
+  // LOG(INFO) << "original schedule " << schedule_->get_root();
 
   for (auto& stage : stages_) {
     {
@@ -333,8 +333,7 @@ void Snippet::ApplyTiles() {
         *schedule_ = tiler.Visit(*schedule_).get_schedule();
       }
     }
-
-    LOG(INFO) << "final schedule: " << schedule_->get_root();
+    // LOG(INFO) << "final schedule: " << schedule_->get_root();
   }
 }
 
@@ -349,7 +348,7 @@ void Snippet::ApplyTransposes() {
       *schedule_ = applyer.Visit(*schedule_).get_schedule();
     }
   }
-  LOG(INFO) << "final schedule: " << schedule_->get_root();
+  // LOG(INFO) << "final schedule: " << schedule_->get_root();
 }
 
 void Snippet::ApplyVectorize() {

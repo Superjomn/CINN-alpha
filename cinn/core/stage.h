@@ -56,7 +56,7 @@ class Stage {
     std::string name;
 
     // statements' indice map from CINN to isl ast.
-    std::map<std::string, ir::Expr> indice_map_;
+    std::map<std::string, ir::Expr> indice_map;
 
     static std::set<std::string> names;
 
@@ -64,22 +64,22 @@ class Stage {
     std::map<std::string, int> tiles;
 
     // Tile from the tail.
-    std::vector<int> tile_sizes_;
+    std::vector<int> tile_sizes;
 
     // The size to vectorize.
-    int vector_width_{-1};
+    int vector_width{-1};
 
-    bool unroll_{false};
+    bool unroll{false};
 
     //! the dimensions to transpose.
-    std::vector<std::pair<std::string, std::string>> transposes_;
+    std::vector<std::pair<std::string, std::string>> transposes;
 
     // The names of the stages try to fuse with.
     std::set<std::string> stages_fuse_with;
   };
 
   //! The iterators in order, the statement. It is used only once in the ExtractDomainFromExpr, so it is not in data_.
-  std::vector<ir::Var> iterators_in_order_;
+  std::vector<ir::Var> iterators_in_order;
 
  public:
   Stage() { InitData(); }
@@ -165,11 +165,11 @@ class Stage {
 
   const std::map<std::string, int> tiles() const { return data_->tiles; }
 
-  const std::vector<int>& tile_sizes() const { return data_->tile_sizes_; }
+  const std::vector<int>& tile_sizes() const { return data_->tile_sizes; }
 
-  const std::vector<std::pair<std::string, std::string>>& transposes() const { return data_->transposes_; }
+  const std::vector<std::pair<std::string, std::string>>& transposes() const { return data_->transposes; }
 
-  int vector_width() const { return data_->vector_width_; }
+  int vector_width() const { return data_->vector_width; }
 
   const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
 
@@ -200,10 +200,10 @@ class Stage {
    * Tile the forloop and unroll the last level.
    * @param sizes the tile sizes.
    */
-  void TileUnroll(const std::vector<int>& sizes) {
-    data_->unroll_ = true;
-    data_->tile_sizes_ = sizes;
-  }
+  void TileUnroll(const std::vector<int>& sizes);
+
+  //! Clear all the transforms on the stage.
+  void ClearTransforms();
 
   //! Skew in the loop level `i`.
   void Skew(ir::Var i);
@@ -214,6 +214,8 @@ class Stage {
   //! Vectorize the loop level `i`.
   void Vectorize(size_t vector_size);
 
+  void ResetTransforms() {}
+
   // After transformations.
   isl::map GetTransformedSchedule();
 
@@ -222,7 +224,7 @@ class Stage {
     return *this;
   }
 
-  bool unroll() const { return data_->unroll_; }
+  bool unroll() const { return data_->unroll; }
 
   // Dump the schedule to ISL C code.
   std::string DumpIslC() const;
@@ -230,8 +232,8 @@ class Stage {
   // Dump to C-like code.
   std::string DumpAsC() const;
 
-  void SetIndiceMap(std::map<std::string, ir::Expr>&& indice_map) { data_->indice_map_ = std::move(indice_map); }
-  const std::map<std::string, ir::Expr>& indice_map() const { return data_->indice_map_; }
+  void SetIndiceMap(std::map<std::string, ir::Expr>&& indice_map) { data_->indice_map = std::move(indice_map); }
+  const std::map<std::string, ir::Expr>& indice_map() const { return data_->indice_map; }
 
  private:
   void InitData();

@@ -42,6 +42,7 @@ class Snippet {
         memory_dependencies_(new isl::union_map),
         schedule_(new isl::schedule),
         ctx_(isl_ctx_alloc()) {}
+
   //! Add a stage to snippet.
   void AddStage(const Stage& stage);
 
@@ -186,6 +187,8 @@ struct Function {
     Expr ir_function;
 
     isl_ctx* ctx{nullptr};
+
+    bool end_definition{false};
   };
 
  private:
@@ -233,8 +236,10 @@ struct Function {
   const std::vector<ir::Expr>& inputs() const { return data_->inputs; }
   const std::vector<ir::Expr>& outputs() const { return data_->outputs; }
   const std::vector<Stage>& stages() const { return data_->stages; }
+  std::vector<Stage>& stages() { return data_->stages; }
   const isl::schedule& schedule() const { return data_->schedule; }
   isl_ctx* ctx() { return data_->ctx; }
+  bool end_definition() const { return data_->end_definition; }
 
   //! Define a function.
   static std::shared_ptr<Function> make(const std::string& name,
@@ -263,6 +268,16 @@ struct Function {
   void EndDefinition() {
     BuildSnippets();
     data_->ir_function = ir::Function::make(name(), data_->inputs, data_->outputs, ComputeTransformedExpr());
+    data_->end_definition = true;
+  }
+
+  /**
+   * Clear the build definitions, only the stages is kept, the stages and computed ir are cleard.
+   */
+  void ResetDefintion() {
+    data_->snippets.clear();
+    data_->ir_function = ir::Expr();
+    data_->end_definition = false;
   }
 
   void BuildSnippets();

@@ -4,30 +4,16 @@
 #include "cinn/hlir/graph.h"
 #include "cinn/hlir/graph_util.h"
 #include "cinn/hlir/instruction_layer/use_ops.h"
+#include "cinn/hlir/network_test_util.h"
 
 namespace cinn {
 namespace hlir {
 
 TEST(network, basic) {
   Session session;
-
   Network net("tmp", &session);
-  net.AddMatMul("x0", "w", "y0");
-  net.AddElementwise(Network::ElementwiseOpKind::kAdd, "y0", "b", "y1");
-  net.AddTanh("y1", "y2");
 
-  auto* x0 = session.NewTensor("x0");
-  x0->set_shape({30, 40});
-
-  auto* w = session.NewTensor("w");
-  w->set_shape({40, 50});
-
-  auto* b = session.NewTensor("b");
-  b->set_shape({50});
-
-  auto* y0 = session.NewTensor("y0");
-  auto* y1 = session.NewTensor("y1");
-  auto* y2 = session.NewTensor("y2");
+  BuildNetwork0(&net, &session);
 
   auto program = net.Compile();
 
@@ -39,9 +25,11 @@ TEST(network, basic) {
     if (node.is_op()) node.op->Compile();
   }
 
+  graph.PartitionFunctions();
+
   LOG(INFO) << "DOT:\n" << graph.dot();
 
-  graph.Compile();
+  graph.Compile(false);
 }
 
 }  // namespace hlir
