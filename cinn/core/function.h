@@ -266,6 +266,7 @@ struct Function {
    * Finalize the definition of a Function, new stages cann't add to this function latter.
    */
   void EndDefinition() {
+    data_->transformed_expr = Expr();
     BuildSnippets();
     data_->ir_function = ir::Function::make(name(), data_->inputs, data_->outputs, ComputeTransformedExpr());
     data_->end_definition = true;

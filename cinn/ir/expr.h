@@ -89,6 +89,8 @@ class IRHandle {
     return nullptr;
   }
 
+  void Reset() { ptr_.reset(); }
+
   const std::shared_ptr<IRNode>& ptr() const { return ptr_; }
 };
 

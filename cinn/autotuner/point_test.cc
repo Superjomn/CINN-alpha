@@ -64,5 +64,60 @@ TEST(Point, basic) {
   EXPECT_EQ(generated_code, target);
 }
 
+TEST(Point, multiple) {
+  hlir::Session session;
+  hlir::Network net("tmp", &session);
+
+  hlir::BuildNetwork0(&net, &session);
+
+  auto program = net.Compile();
+
+  hlir::Graph graph;
+  graph.Build(program, session);
+
+  for (hlir::Node& node : hlir::GraphTraits::TS(graph)) {
+    LOG(INFO) << "visiting node " << node.name;
+    if (node.is_op()) node.op->Compile();
+  }
+
+  auto fns = graph.PartitionFunctions();
+
+  ASSERT_EQ(fns.size(), 1UL);
+  ASSERT_EQ(fns.front().stages().size(), 3UL);
+
+  {
+    Point point(&fns);
+    point.Fuse(fns.front().stages()[0].name(), fns.front().stages()[1].name());
+    point.Fuse(fns.front().stages()[1].name(), fns.front().stages()[2].name());
+    point.BuildFns();
+
+    std::vector<ir::Expr> exprs;
+    std::transform(
+        fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
+    auto block = ir::Block::make(std::move(exprs));
+
+    backends::C_CodeGen gen;
+    gen(block);
+    auto generated_code = gen.compiled_code();
+    LOG(INFO) << "compiled code:\n" << generated_code;
+  }
+
+  {
+    Point point(&fns);
+    point.TileUnroll(fns.front().stages()[0].name(), {32, 32});
+    point.BuildFns();
+
+    std::vector<ir::Expr> exprs;
+    std::transform(
+        fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
+    auto block = ir::Block::make(std::move(exprs));
+
+    backends::C_CodeGen gen;
+    gen(block);
+    auto generated_code = gen.compiled_code();
+    LOG(INFO) << "tile compiled code:\n" << generated_code;
+  }
+}
+
 }  // namespace autotuner
 }  // namespace cinn
