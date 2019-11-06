@@ -21,6 +21,7 @@ bool Point::BuildFns() {
 void Point::CollectResetStages() {
   LOG_INDENT(0);
   for (auto& fn : *fns) {
+    fn.ResetDefintion();
     for (auto& stage : fn.stages()) {
       CINN_DEBUG(2) << "add stage " << stage.name();
       stage.ClearTransforms();

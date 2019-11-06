@@ -317,17 +317,18 @@ isl::schedule_node TileDimsTransformer::TileNode(isl::schedule_node node,
 
   node = node.as<isl::schedule_node_band>().tile(sizes);
   node = node.first_child();
-  LOG(INFO) << "tiled node.domain " << isl::manage(isl_schedule_node_get_domain(node.get()));
-  LOG(INFO) << "tiled node.prefix_schedule " << isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
-  LOG(INFO) << "tiled node.prefix_union_map "
-            << isl::manage(isl_schedule_node_get_prefix_schedule_union_map(node.get()));
-  LOG(INFO) << "tiled node.prefix_schedule_multi_union_pw_aff "
-            << isl::manage(isl_schedule_node_get_prefix_schedule_multi_union_pw_aff(node.get()));
-  LOG(INFO) << "tiled band.get_partial_schedule "
-            << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
+  // LOG(INFO) << "tiled node.domain " << isl::manage(isl_schedule_node_get_domain(node.get()));
+  // LOG(INFO) << "tiled node.prefix_schedule " <<
+  // isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
+  // LOG(INFO) << "tiled node.prefix_union_map "
+  //           << isl::manage(isl_schedule_node_get_prefix_schedule_union_map(node.get()));
+  // LOG(INFO) << "tiled node.prefix_schedule_multi_union_pw_aff "
+  //           << isl::manage(isl_schedule_node_get_prefix_schedule_multi_union_pw_aff(node.get()));
+  // LOG(INFO) << "tiled band.get_partial_schedule "
+  //           << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
   isl::union_map schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
-  LOG(INFO) << "** relation: " << schedule_relation.space();
-  LOG(INFO) << "relation dim: " << isl_space_dim(schedule_relation.space().get(), isl_dim_in);
+  // LOG(INFO) << "** relation: " << schedule_relation.space();
+  // LOG(INFO) << "relation dim: " << isl_space_dim(schedule_relation.space().get(), isl_dim_in);
   // node = node.as<isl::schedule_node_band>().set_ast_build_options(isl::union_set(node.ctx(), "{  unroll[x] }"));
 
   auto pointer_loop_marker = isl::manage(isl_id_alloc(node.ctx().get(), (id + " - points").c_str(), nullptr));
