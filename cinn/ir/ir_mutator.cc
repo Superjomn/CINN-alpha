@@ -62,5 +62,10 @@ void IRMutator::Visit(const Call* op, Expr* expr) {
   }
 }
 
+void IRMutator::Visit(const BufferOpr* op, Expr* expr) {
+  auto* m_op = expr->As<BufferOpr>();
+  Visit(m_op, expr);
+}
+
 }  // namespace ir
 }  // namespace cinn

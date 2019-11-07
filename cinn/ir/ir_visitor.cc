@@ -60,6 +60,7 @@ void IRVisitor::Visit(const Reference *op) {
 }
 
 void IRVisitor::Visit(const Mark *op) {}
+void IRVisitor::Visit(const BufferOpr *op) {}
 
 }  // namespace ir
 }  // namespace cinn
