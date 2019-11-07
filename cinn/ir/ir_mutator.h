@@ -89,6 +89,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const Allocate* op, Expr* expr) override;
 
   void Visit(const Mark* p, Expr* expr) override {}
+  void Visit(const BufferOpr* op, Expr* expr) override;
 };
 
 }  // namespace ir

@@ -396,6 +396,20 @@ void IRPrinter::Visit(const DivAssign *op) {
   os_ << ";";
 }
 
+void IRPrinter::Visit(const BufferOpr *op) {
+  switch (op->operation) {
+    case BufferOpr::Opr::kCreate:
+      os_ << StringFormat("%s = create_buffer()", op->name.c_str());
+      break;
+    case BufferOpr::Opr::kDestroy:
+      os_ << StringFormat("destroy_buffer(%s)", op->name.c_str());
+      break;
+    case BufferOpr::Opr::kReference:
+      os_ << StringFormat("%s", op->name.c_str());
+      break;
+  }
+}
+
 void IRPrinter::Visit(const Mark *op) { os_ << "// " << op->content; }
 
 }  // namespace ir

@@ -403,6 +403,36 @@ Var::Var(const std::string &name, int32_t lower_bound, int32_t upper_bound) {
   CheckNameValid(name);
 }
 
+Var::Var() {
+  InitData();
+  // set as iterator by default.
+  set_ptype(primitive_t::int32);
+  data_->name_ = NameGenerator::Global().NewIteratorName();
+}
+
+Var::Var(const std::string &name, primitive_t dtype) {
+  InitData();
+  data_->name_ = name;
+  CheckNameValid(name);
+  set_ptype(dtype);
+}
+
+Var::Var(const std::string &name, primitive_t type, const Interval &interval) {
+  InitData();
+  data_->name_ = name;
+  set_ptype(type);
+  data_->interval_ = interval;
+  CheckNameValid(data_->name_);
+}
+
+Var::Var(const std::string &name, primitive_t type, Constant lower_bound, Constant upper_bound) {
+  InitData();
+  data_->name_ = name;
+  set_ptype(type);
+  data_->interval_ = Interval(lower_bound, upper_bound);
+  CheckNameValid(name);
+}
+
 Expr Call::make(const std::string &caller, std::vector<Expr> arguments) {
   for (auto &v : arguments) {
     CHECK(v.valid());
@@ -760,5 +790,32 @@ isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const 
 
 std::string GenIndexedIteratorName(int id) { return StringFormat("ii%d", id); }
 
+std::string Interval::__str__() const {
+  std::stringstream ss;
+  ss << "Interval";
+  if (lower_bound().valid()) ss << "(" << lower_bound().__str__();
+  if (upper_bound().valid()) ss << ", " << upper_bound().__str__() << ")";
+  return ss.str();
+}
+
+Expr BufferOpr::make(Target target, Expr size, Opr operation, primitive_t type, const std::string &name) {
+  auto buffer = std::make_shared<BufferOpr>();
+  buffer->target = target;
+  buffer->size = size;
+  buffer->operation = operation;
+  buffer->name = name.empty() ? NameGenerator::Global().NewBuffer() : name;
+  buffer->set_ptype(type);
+  return Expr(buffer);
+}
+
+Expr Let::make(Expr a, Expr b) {
+  auto node = std::make_shared<Let>();
+  node->a = a;
+  node->b = b;
+  CHECK(!b.is_unk());
+  node->set_ptype(b.ptype());
+  a.set_ptype(b.ptype());
+  return Expr(node);
+}
 }  // namespace ir
 }  // namespace cinn

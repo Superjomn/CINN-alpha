@@ -30,47 +30,45 @@ struct IRVisitorBase {
       __(Tensor);
       __(Mark);
 
-      //__(Reference);
-      case ir::NodeTy::Reference:
-        return Visit(expr->As<Reference>(), args...);
+      __(Reference);
 
-        __(Statement);
-        __(Allocate);
+      __(Statement);
+      __(Allocate);
 
-        __(Add);
-        __(Sub);
-        __(Mul);
-        __(Div);
-        __(Mod);
-        __(Minus);
-        __(EQ);
-        __(NE);
-        __(LT);
-        __(LE);
-        __(GT);
-        __(GE);
-        __(And);
-        __(Or);
-        __(Exp);
-        __(Assign);
-        __(SumAssign);
-        __(SubAssign);
-        __(MulAssign);
-        __(DivAssign);
-        __(Let);
+      __(Add);
+      __(Sub);
+      __(Mul);
+      __(Div);
+      __(Mod);
+      __(Minus);
+      __(EQ);
+      __(NE);
+      __(LT);
+      __(LE);
+      __(GT);
+      __(GE);
+      __(And);
+      __(Or);
+      __(Exp);
+      __(Assign);
+      __(SumAssign);
+      __(SubAssign);
+      __(MulAssign);
+      __(DivAssign);
+      __(Let);
 
-        __(For);
-        __(IfThenElse);
-        __(Block);
-        __(Call);
+      __(For);
+      __(IfThenElse);
+      __(Block);
+      __(Call);
 
-        __(Tanh);
-        __(Sigmoid);
-        __(Max);
-        __(Min)
+      __(Tanh);
+      __(Sigmoid);
+      __(Max);
+      __(Min)
 
-      case ir::NodeTy::Function:
-        return Visit(expr->As<Function>(), args...);
+      __(BufferOpr);
+      __(Function);
 
       case ir::NodeTy::Parameter:
         return Visit(expr->As<ir::Constant>(), args...);
@@ -133,6 +131,7 @@ struct IRVisitorBase {
   virtual RetTy Visit(const Sigmoid* op, Args... args) = 0;
 
   virtual RetTy Visit(const Mark* op, Args... args) = 0;
+  virtual RetTy Visit(const BufferOpr* op, Args... args) = 0;
 };
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
@@ -190,6 +189,7 @@ class IRVisitor : public IRVisitorBase<void> {
   virtual void Visit(const Sigmoid* op);
 
   virtual void Visit(const Mark* op);
+  virtual void Visit(const BufferOpr* op);
 };
 
 }  // namespace ir

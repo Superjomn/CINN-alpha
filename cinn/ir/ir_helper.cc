@@ -316,6 +316,10 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     return true;
   }
 
+  bool Visit(const BufferOpr* a, const Expr* expr) {
+    auto* b = expr->As<BufferOpr>();
+    return a->name == b->name && a->operation == b->operation;
+  }
   bool Visit(const Stmt* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
   bool Visit(const Tensor* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
   bool Visit(const Statement* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }

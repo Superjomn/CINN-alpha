@@ -2,6 +2,7 @@
 
 namespace cinn {
 
+/*
 ir::Expr Buffer::size() const {
   Expr result(primitive_bytes(ptype_));
   for (auto& dim : dims_) {
@@ -9,5 +10,6 @@ ir::Expr Buffer::size() const {
   }
   return result;
 }
+ */
 
 }  // namespace cinn

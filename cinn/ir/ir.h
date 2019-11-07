@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include "cinn/ir/expr.h"
+#include "cinn/target.h"
 #include "cinn/type.h"
 #include "cinn/utils/any.h"
 #include "cinn/utils/isl_utils.h"
@@ -12,10 +13,9 @@
 
 namespace cinn {
 
-struct Buffer;
-
 namespace ir {
 struct Expr;
+struct Buffer;
 
 /**
  * A constant value of some primitive type.
@@ -91,13 +91,7 @@ class Interval {
     return lower_bound() == other.lower_bound() && upper_bound() == other.upper_bound();
   }
 
-  std::string __str__() const {
-    std::stringstream ss;
-    ss << "Interval";
-    if (lower_bound().valid()) ss << "(" << lower_bound().__str__();
-    if (upper_bound().valid()) ss << ", " << upper_bound().__str__() << ")";
-    return ss.str();
-  }
+  std::string __str__() const;
 
  private:
   Constant lower_bound_;
@@ -135,12 +129,7 @@ class Var : public ExprNode<Var> {
   static std::set<std::string> name_set_;  // All registerred var's name here.
 
  public:
-  Var() {
-    InitData();
-    // set as iterator by default.
-    set_ptype(primitive_t::int32);
-    data_->name_ = NameGenerator::Global().NewIteratorName();
-  }
+  Var();
 
   //! Create a varaible with UNK data type. The dtype should be inferenced latter with the context.
   Var(const std::string& name) {
@@ -151,31 +140,14 @@ class Var : public ExprNode<Var> {
     CheckNameValid(name);
   }
 
-  Var(const std::string& name, primitive_t dtype) {
-    InitData();
-    data_->name_ = name;
-    CheckNameValid(name);
-    set_ptype(dtype);
-  }
+  Var(const std::string& name, primitive_t dtype);
 
   // make a variable with name and interval set.
-  Var(const std::string& name, primitive_t type, const Interval& interval) {
-    InitData();
-    data_->name_ = name;
-    set_ptype(type);
-    data_->interval_ = interval;
-    CheckNameValid(data_->name_);
-  }
+  Var(const std::string& name, primitive_t type, const Interval& interval);
 
   Var(const std::string& name, int32_t lower_bound, int32_t upper_bound);
 
-  Var(const std::string& name, primitive_t type, Constant lower_bound, Constant upper_bound) {
-    InitData();
-    data_->name_ = name;
-    set_ptype(type);
-    data_->interval_ = Interval(lower_bound, upper_bound);
-    CheckNameValid(name);
-  }
+  Var(const std::string& name, primitive_t type, Constant lower_bound, Constant upper_bound);
 
   Var(const Var& other) {
     data_ = other.data_;
@@ -217,7 +189,6 @@ class Var : public ExprNode<Var> {
  */
 class Expr : public IRHandle {
   std::vector<Var> iterators_;
-  Buffer* buffer_{nullptr};
 
  public:
   Expr() : IRHandle() {}
@@ -275,9 +246,6 @@ class Expr : public IRHandle {
   bool is_unk() const { return ptr_->is_unk(); }
   bool is_boolean() const { return ptr_->is_boolean(); }
 
-  void Bind(Buffer& buffer) { buffer_ = &buffer; }
-  bool buffer_binded() const { return buffer_; }
-
   /**
    * Assign an Expr from other or create an ir::Assign node representing the assignment of an ir::Reference node.
    *
@@ -320,6 +288,39 @@ class Expr : public IRHandle {
 
   // Inference the dimention indice on the id-th dimention.
   void InferenceIteratorDomain();
+};
+
+/**
+ * BufferOpr is the set of operations on Buffer, we combine multiple operations into this single IR node.
+ */
+struct BufferOpr : public ExprNode<BufferOpr> {
+  enum class Opr {
+    //! Creation of a buffer.
+    kCreate = 0,
+    //! Destroy a buffer.
+    kDestroy,
+    //! Reference a buffer.
+    kReference,
+  };
+
+  //! Destination of this buffer.
+  Target target;
+  //! Size of buffer.
+  Expr size;
+  //! Operation this node represents.
+  Opr operation;
+  //! Name of this buffer.
+  std::string name;
+  //! Element's primitive type.
+  primitive_t ptype;
+
+  static Expr make(Target target, Expr size, Opr operation, primitive_t type, const std::string& name = "");
+
+  bool is_create() const { return operation == Opr::kCreate; }
+  bool is_destroy() const { return operation == Opr::kDestroy; }
+  bool is_reference() const { return operation == Opr::kReference; }
+
+  static const NodeTy node_type = NodeTy::BufferOpr;
 };
 
 /**
@@ -617,15 +618,7 @@ struct Let : public ExprNode<Let> {
   Expr a;
   Expr b;
 
-  static Expr make(Expr a, Expr b) {
-    auto node = std::make_shared<Let>();
-    node->a = a;
-    node->b = b;
-    CHECK(!b.is_unk());
-    node->set_ptype(b.ptype());
-    a.set_ptype(b.ptype());
-    return Expr(node);
-  }
+  static Expr make(Expr a, Expr b);
 
   static const NodeTy node_type = NodeTy::Let;
 };
