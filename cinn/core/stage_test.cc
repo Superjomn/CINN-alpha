@@ -207,6 +207,34 @@ TEST(Stage, cond) {
   EXPECT_EQ(log, target);
 }
 
+// Test the condition represented by Expr.
+TEST(Stage, cond_expr) {
+  Constant I("I", 100);
+  Constant J("J", 200);
+  Constant M("M", 300);
+
+  Var i, j, k;
+
+  Expr A(std::vector<Constant>({I, M}), primitive_t::float32, "A");
+  Expr B(std::vector<Constant>({M, J}), primitive_t::float32, "B");
+  Expr C(std::vector<Constant>({I, J}), primitive_t::float32, "C");
+
+  Stage s0 = C[i][j].Assign(A[i][k] * B[k][j]);
+  s0.set_name("S0");
+  s0.SetCond(i % 2 == 0 && i > 10 && i + j == 20);
+
+  auto log = s0.DumpAsC();
+  LOG(INFO) << "s0:\n" << log;
+
+  std::string target = R"ROC(for(c0, 12, (c0 <= 20), 2) {
+  for(c2, 0, (c2 <= 299), 1) {
+    S0(c0,((-c0) + 20),c2)
+  }
+})ROC";
+
+  EXPECT_EQ(log, target);
+}
+
 TEST(Stage, SetIterators) {
   Constant M(20);
   Constant K(10);

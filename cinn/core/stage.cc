@@ -147,6 +147,7 @@ std::string Stage::DumpIslC() const {
 }
 
 std::string Stage::DumpAsC() const {
+  LOG_INDENT(0);
   CHECK(data_->ctx);
   CHECK(data_->iter_domain.get());
   isl::map schedule =
@@ -195,6 +196,30 @@ void Stage::set_name(const std::string& name) {
   CHECK(!data_->names.count(name)) << "duplicate name for Computation, " << name;
   data_->name = name;
   data_->names.insert(data_->name);
+  if (!data_->iter_domain.is_null()) {
+    data_->iter_domain = isl::manage(isl_set_set_tuple_name(data_->iter_domain.release(), name.c_str()));
+  }
+
+  auto update_access_name = [](isl::union_map& access, const std::string& name) {
+    if (!access.is_null()) {
+      isl::union_map umap;
+      for (int i = 0; i < isl_union_map_n_map(access.get()); i++) {
+        isl_map_list* map_list = isl_union_map_get_map_list(access.get());
+        isl::map map = isl::manage(isl_map_list_get_at(map_list, i));
+        map = isl::manage(isl_map_set_tuple_name(map.release(), isl_dim_in, name.c_str()));
+        umap = umap.is_null() ? isl::manage(isl_union_map_from_map(map.release()))
+                              : isl::manage(isl_union_map_add_map(umap.release(), map.release()));
+      }
+    }
+  };
+
+  update_access_name(data_->read_access, name);
+  update_access_name(data_->write_access, name);
+
+  if (!data_->schedule.is_null()) {
+    data_->schedule = isl::manage(isl_map_set_tuple_name(data_->schedule.release(), isl_dim_in, name.c_str()));
+    data_->schedule = isl::manage(isl_map_set_tuple_name(data_->schedule.release(), isl_dim_out, name.c_str()));
+  }
 }
 
 void Stage::InitData() {
@@ -389,6 +414,12 @@ void Stage::SetCond(const ir::Expr& expr, const std::string& cond) {
       BuildWithCond(data_->iter_domain.release(), StringFormat("%s %s", ir::Dump(expr).c_str(), cond.c_str()));
 }
 
+void Stage::SetCond(const std::string& x) {
+  LOG_INDENT(0);
+  data_->iter_domain = BuildWithCond(data_->iter_domain.release(), x);
+  CINN_DEBUG(2) << "build extra condition: " << data_->iter_domain;
+}
+
 Stage::Type Stage::type() const {
   if (expr().is_assign_derived()) return Type::polyhedral;
   switch (expr().type()) {
@@ -426,6 +457,35 @@ std::ostream& operator<<(std::ostream& os, Stage::Type t) {
       break;
   }
   return os;
+}
+
+class IslPrinter : public ir::IRPrinter {
+ public:
+  IslPrinter(std::ostream& os) : IRPrinter(os) {}
+
+  void Visit(const ir::EQ* op) override {
+    Print(op->a);
+    os_ << "=";
+    Print(op->b);
+  }
+  void Visit(const ir::Or* op) override {
+    Print(op->a);
+    os_ << " or ";
+    Print(op->b);
+  }
+  void Visit(const ir::And* op) override {
+    Print(op->a);
+    os_ << " and ";
+    Print(op->b);
+  }
+};
+
+void Stage::SetCond(ir::Expr expr) {
+  std::stringstream os;
+  IslPrinter printer(os);
+  printer.Print(expr);
+  std::string cond = os.str();
+  SetCond(cond);
 }
 
 }  // namespace cinn
