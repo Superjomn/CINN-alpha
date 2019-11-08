@@ -243,6 +243,9 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           ops.erase(ops.begin());
           *expr = ir::Call::make(caller, ops);
         } break;
+        case isl_ast_op_fdiv_q:
+          *expr = ir::Div::make(ops[0], ops[1]);
+          break;
         default:
           LOG(FATAL) << "unsupported op " << op_type;
       }

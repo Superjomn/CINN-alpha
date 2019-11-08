@@ -158,4 +158,29 @@ TEST(Function, syntax) {
   LOG(INFO) << "matmul_fn: \n" << ir::Dump(matmul_fn);
 }
 
+TEST(Function, any_constant) {
+  Function softmax_fn("softmax");
+  {
+    Constant N("N", primitive_t::int32);
+    Constant D("D", primitive_t::int32);
+    Expr I(cs({N, D}), primitive_t::float32);
+    Expr expsum(cs({N}), primitive_t::float32);
+    Expr O(cs({N, D}), primitive_t::float32);
+
+    softmax_fn.Inputs({I});
+    softmax_fn.Outputs({expsum, O});
+
+    Var n, d;
+
+    auto s0 = softmax_fn.AddStage(  //
+        expsum[n].Assign(expsum[n] + ir::exp(I[n][d])));
+    auto s1 = softmax_fn.AddStage(  //
+        O[n][d].Assign(exp(I[n][d]) / expsum[n]));
+
+    softmax_fn.EndDefinition();
+  }
+
+  LOG(INFO) << "softmax: \n" << ir::Dump(softmax_fn);
+}
+
 }  // namespace cinn

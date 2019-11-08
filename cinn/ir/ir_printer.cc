@@ -158,11 +158,16 @@ void IRPrinter::Visit(const Or *op) {
 }
 
 void IRPrinter::Visit(const Tensor *op) {
-  std::vector<int> dims;
-  std::transform(
-      op->dims().begin(), op->dims().end(), std::back_inserter(dims), [](const Constant &x) { return x.int32_val(); });
+  std::vector<std::string> dims;
+  for (auto &constant : op->dims()) {
+    if (constant.value_set()) {
+      dims.push_back(std::to_string(constant.int_val()));
+    } else {
+      dims.push_back(constant.name());
+    }
+  }
   CHECK(!dims.empty()) << "the Tensor don't has shape";
-  os_ << op->name() << StringFormat("<%s>", Concat(ToString(dims), ",").c_str());
+  os_ << op->name() << StringFormat("<%s>", Concat(dims, ",").c_str());
 }
 
 void IRPrinter::Visit(const For *op) {
@@ -243,12 +248,16 @@ void IRPrinter::Visit(const Block *op) {
   // os_ << "}%_B" << indent_size_;
 }
 void IRPrinter::Visit(const Constant *op) {
+  if (!op->value_set()) {
+    os_ << op->name();
+    return;
+  }
   switch (op->ptype()) {
     case primitive_t::int32:
-      os_ << op->As<int32_t>();
+      os_ << op->int32_val();
       break;
     case primitive_t::int64:
-      os_ << op->As<int64_t>();
+      os_ << op->int64_val();
       break;
     default:
       LOG(FATAL) << "unsupported type " << op->ptype();

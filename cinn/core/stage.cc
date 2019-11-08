@@ -53,26 +53,6 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   auto references = ir::CollectExprNode<ir::Reference>(x);
   CHECK(!references.empty());
 
-  /*
-  std::set<std::string> var_names;
-  for (auto& ref : references) {
-    // get constant iterator
-    if (ref.domain.is_null()) {
-      CINN_DEBUG(3) << "domain is empty, skip collecting";
-      continue;
-    }
-
-    CINN_DEBUG(3) << "reference domain: " << ref.domain;
-
-    for (int i = 0; i < isl_set_dim(ref.domain.get(), isl_dim_set); i++) {
-      var_names.insert(isl_set_get_dim_name(ref.domain.get(), isl_dim_set, i));
-    }
-  }
-  CHECK(!var_names.empty());
-  std::vector<std::string> var_names_in_order(var_names.begin(), var_names.end());
-  CINN_DEBUG(3) << "variable names collected from all the References: " << Concat(var_names_in_order, ", ");
-   */
-
   // make all the reference's the same space
   for (const auto* ref : references) {
     if (ref->domain.is_null()) continue;  // skip constant iterators.
@@ -315,8 +295,10 @@ class ReferenceCollector : public ir::IRPrinter {
   std::stringstream& ss_;
 
  public:
-  ReferenceCollector(std::stringstream& os, std::set<std::string>& statements)
-      : ss_(os), ir::IRPrinter(os), statements(statements) {
+  ReferenceCollector(std::stringstream& os, std::set<std::string>& statements)  // NOLINT
+      : ss_(os),
+        ir::IRPrinter(os),
+        statements(statements) {
     set_reference_braces("[]");
   }
 
