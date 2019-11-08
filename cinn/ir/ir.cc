@@ -132,34 +132,6 @@ Expr Minus::make(Expr a) {
 size_t Var::counter_ = 0;
 
 template <>
-Constant::Constant(const std::string &name, int32_t val) : name_(name) {
-  set_ptype(primitive_t::int32);
-  int32_val_ = val;
-  name_ = NameGenerator::Global().NewParameterName();
-}
-
-template <>
-Constant::Constant(const std::string &name, float val) : name_(name) {
-  set_ptype(primitive_t::float32);
-  fp32_val_ = val;
-  name_ = NameGenerator::Global().NewParameterName();
-}
-
-template <>
-Constant::Constant(int32_t val) : name_(DefaultUniqueName()) {
-  set_ptype(primitive_t::int32);
-  int32_val_ = val;
-  name_ = NameGenerator::Global().NewParameterName();
-}
-
-template <>
-Constant::Constant(float val) : name_(DefaultUniqueName()) {
-  set_ptype(primitive_t::float32);
-  fp32_val_ = val;
-  name_ = NameGenerator::Global().NewParameterName();
-}
-
-template <>
 int32_t Constant::As<int32_t>() const {
   CHECK_EQ(ptype(), primitive_t::int32);
   return int32_val_;
@@ -167,7 +139,7 @@ int32_t Constant::As<int32_t>() const {
 template <>
 float Constant::As<float>() const {
   CHECK(ptype() == primitive_t::float32);
-  return fp32_val_;
+  return float32_val_;
 }
 template <>
 int64_t Constant::As<int64_t>() const {
@@ -178,7 +150,7 @@ int64_t Constant::As<int64_t>() const {
 template <>
 double Constant::As<double>() const {
   CHECK(ptype() == primitive_t::float64);
-  return fp64_val_;
+  return float64_val_;
 }
 
 unsigned int Constant::counter = 0;
@@ -201,6 +173,7 @@ std::string Constant::__str__() const {
 
 Constant::Constant(const Constant &other) {
   name_ = other.name_;
+  value_set_ = other.value_set_;
   set_ptype(other.ptype());
   switch (ptype()) {
     case primitive_t::int8:
@@ -213,10 +186,10 @@ Constant::Constant(const Constant &other) {
       int64_val_ = other.int64_val_;
       break;
     case primitive_t::float32:
-      fp32_val_ = other.fp32_val_;
+      float32_val_ = other.float32_val_;
       break;
     case primitive_t::float64:
-      fp64_val_ = other.fp64_val_;
+      float64_val_ = other.float64_val_;
       break;
     case primitive_t::unk:
       break;
@@ -252,6 +225,18 @@ bool Constant::operator==(const Constant &other) const {
       LOG(FATAL) << "unsupported primitive type: " << ptype();
   }
   return false;
+}
+
+int64_t Constant::int_val() const {
+  CHECK(is_integer());
+  switch (ptype()) {
+    case primitive_t::int32:
+      return int32_val_;
+    case primitive_t::int16:
+      return int16_val_;
+    case primitive_t::int64:
+      return int64_val_;
+  }
 }
 
 Expr Mul::make(Expr a, Expr b) {
@@ -692,19 +677,30 @@ std::vector<Var> ExtractVarsFromExpr(const Expr &expr) {
 }
 
 isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std::vector<std::string> &iterators) {
-  LOG_INDENT(6);
+  LOG_INDENT(0);
   CHECK(!dims.empty());
 
   std::vector<std::string> constraints;
+  std::set<std::string> params;
   for (size_t i = 0; i < dims.size(); i++) {
     // collect constraints
     CHECK(dims[i].is_integer());
-    auto constraint = StringFormat("0<= %s < %d", iterators[i].c_str(), dims[i].As<int32_t>());
+    std::string constraint;
+    if (dims[i].value_set()) {
+      constraint = StringFormat("0<= %s <%d", iterators[i].c_str(), dims[i].int32_val());
+    } else {
+      constraint = StringFormat("0<= %s <%s", iterators[i].c_str(), dims[i].name().c_str());
+      params.insert(dims[i].name());
+    }
+    CINN_DEBUG(2) << "constraint: " << constraint;
     constraints.push_back(constraint);
   }
+  if (params.empty()) params.insert("");
 
-  std::string repr =
-      StringFormat("{ [%s] : %s }", Concat(iterators, ", ").c_str(), Concat(constraints, " and ").c_str());
+  std::string repr = StringFormat("[%s] -> { [%s] : %s }",
+                                  Concat(params, ", ").c_str(),
+                                  Concat(iterators, ", ").c_str(),
+                                  Concat(constraints, " and ").c_str());
   CINN_DEBUG(3) << "repr: " << repr;
 
   isl::set result(isl_utils::global_isl_ctx(), repr);
@@ -815,6 +811,33 @@ Expr Let::make(Expr a, Expr b) {
   CHECK(!b.is_unk());
   node->set_ptype(b.ptype());
   a.set_ptype(b.ptype());
+  return Expr(node);
+}
+
+#define __(t__)                                                   \
+  template <>                                                     \
+  void Constant::SetValue<t__##_t>(t__##_t v) {                   \
+    if (ptype() == primitive_t::unk) set_ptype(primitive_t::t__); \
+    CHECK(ptype() == primitive_t::t__);                           \
+    value_set_ = true;                                            \
+    t__##_val_ = v;                                               \
+  }
+
+__(int32);
+__(int64);
+__(float32);
+__(float64);
+
+Expr Exp::make(Expr a) {
+  CHECK(!a.is_unk());
+  auto node = std::make_shared<Exp>();
+  node->a = a;
+  node->set_ptype(a.ptype());
+  return Expr(node);
+}
+
+Expr Tensor::make(const std::vector<Constant> &dims, primitive_t type, const std::string &name) {
+  auto node = std::make_shared<Tensor>(name.empty() ? NameGenerator::Global().NewVarName() : name, type, dims);
   return Expr(node);
 }
 }  // namespace ir

@@ -6,6 +6,9 @@
 
 namespace cinn {
 
+using float32_t = float;
+using float64_t = double;
+
 enum class type_code_t {
   Int,
   Float,

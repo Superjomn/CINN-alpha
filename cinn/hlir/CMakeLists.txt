@@ -5,7 +5,7 @@ cc_library(placeholder SRCS placeholder.cc DEPS hlir_util)
 cc_library(variable SRCS variable.cc DEPS hlir_util)
 cc_library(session SRCS session.cc DEPS hlir_util)
 cc_library(op_registry SRCS op_registry.cc)
-cc_library(buffer SRCS buffer.cc)
+#cc_library(buffer SRCS buffer.cc)
 cc_library(network SRCS network.cc DEPS hlir_util program)
 
 set(instruction_ops CACHE INTERNAL "instruction ops")

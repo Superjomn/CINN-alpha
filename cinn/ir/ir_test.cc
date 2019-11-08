@@ -1,5 +1,6 @@
 #include "cinn/ir/ir.h"
 #include <gtest/gtest.h>
+#include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
 namespace cinn {
@@ -131,6 +132,16 @@ TEST(ir, type_inference) {
 
   auto e0 = c + 1;
   CHECK_EQ(e0.ptype(), primitive_t::int32);
+}
+
+TEST(ir, constant) {
+  Constant M("M", primitive_t::int32);
+  Constant K("K", primitive_t::int32);
+  LOG(INFO) << "M: " << ir::Dump(M);
+
+  Expr A({M, K}, primitive_t::float32, "A");
+
+  LOG(INFO) << "Tensor: " << ir::Dump(A);
 }
 
 }  // namespace ir

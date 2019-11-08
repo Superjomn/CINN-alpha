@@ -24,22 +24,36 @@ class Constant : public ExprNode<Constant> {
   std::string name_;
   union {
     int8_t int8_val_;
+    int16_t int16_val_;
     int32_t int32_val_;
     int64_t int64_val_;
-    float fp32_val_;
-    double fp64_val_;
+    float float32_val_;
+    double float64_val_;
   };
+  bool value_set_{false};
 
  public:
   Constant() = default;
   Constant(const std::string& name, primitive_t type) : name_(name) { set_ptype(type); }
-  Constant(const std::string& name, int32_t val) : name_(name), int32_val_(val) { set_ptype(primitive_t::int32); }
+  Constant(const std::string& name, int32_t val) : name_(name), int32_val_(val), value_set_(true) {
+    set_ptype(primitive_t::int32);
+  }
   Constant(const Constant& other);
 
   template <typename T>
-  Constant(const std::string& name, T val);
+  Constant(const std::string& name, T val) {
+    name_ = name;
+    SetValue(val);
+  }
   template <typename T>
-  Constant(T val);
+  Constant(T val) {
+    SetValue(val);
+  }
+
+  template <typename T>
+  void SetValue(T v);
+
+  const std::string& name() const { return name_; }
 
   operator Expr();
 
@@ -59,8 +73,21 @@ class Constant : public ExprNode<Constant> {
    */
   bool operator==(const Constant& other) const;
 
-  int32_t int32_val() const { return int32_val_; }
-  float fp32_val() const { return fp32_val_; }
+  int64_t int_val() const;
+#define __(type__)                         \
+  int32_t type__##_val() const {           \
+    CHECK(ptype() == primitive_t::type__); \
+    CHECK(value_set_);                     \
+    return type__##_val_;                  \
+  }
+  __(int16)
+  __(int32)
+  __(int64)
+  __(float32)
+  __(float64)
+#undef __
+
+  bool value_set() const { return value_set_; }
 
   std::string __str__() const;
 
@@ -407,10 +434,7 @@ class Tensor : public ExprNode<Tensor> {
   const std::string& name() const { return name_; }
   const std::vector<Constant>& dims() const { return dims_; }
 
-  static Expr make(const std::vector<Constant>& dims, primitive_t type, const std::string& name) {
-    auto node = std::make_shared<Tensor>(name.empty() ? NameGenerator::Global().NewVarName() : name, type, dims);
-    return Expr(node);
-  }
+  static Expr make(const std::vector<Constant>& dims, primitive_t type, const std::string& name);
 
   static const NodeTy node_type = NodeTy::Tensor;
 };
@@ -484,13 +508,7 @@ struct Minus : public ExprNode<Minus> {
 struct Exp : public ExprNode<Exp> {
   Expr a;
 
-  static Expr make(Expr a) {
-    CHECK(!a.is_unk());
-    auto node = std::make_shared<Exp>();
-    node->a = a;
-    node->set_ptype(a.ptype());
-    return Expr(node);
-  }
+  static Expr make(Expr a);
 
   static const NodeTy node_type = NodeTy::Exp;
 };
