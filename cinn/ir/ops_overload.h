@@ -27,7 +27,6 @@ inline Expr operator/(Expr a, T b) {
 }
 template <typename T>
 inline Expr operator%(Expr a, T b) {
-  LOG(INFO) << "get a mod%";
   return Mod::make(a, Expr(b));
 }
 
@@ -54,6 +53,15 @@ inline Expr operator==(Expr a, T b) {
 template <typename T>
 inline Expr operator!=(Expr a, T b) {
   return NE::make(a, Expr(b));
+}
+
+template <typename T>
+inline Expr operator&&(Expr a, T b) {
+  return And::make(a, Expr(b));
+}
+template <typename T>
+inline Expr operator||(Expr a, T b) {
+  return Or::make(a, Expr(b));
 }
 
 ir::Expr Tanh_(const ir::Expr &e);

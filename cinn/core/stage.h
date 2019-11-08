@@ -138,6 +138,12 @@ class Stage {
    */
   void SetCond(const ir::Expr& expr, const std::string& cond);
 
+  /**
+   * Set a condition represented by Expr.
+   * @param expr the condition to set.
+   */
+  void SetCond(ir::Expr expr);
+
   //! Tell whether this stage is an Assign stage.
   bool is_assign() const;
   //! Tell whether this stage is an Allocate stage.
@@ -163,7 +169,7 @@ class Stage {
 
   const isl_utils::map& schedule() const { return data_->schedule; }
 
-  const std::map<std::string, int> tiles() const { return data_->tiles; }
+  const std::map<std::string, int>& tiles() const { return data_->tiles; }
 
   const std::vector<int>& tile_sizes() const { return data_->tile_sizes; }
 
