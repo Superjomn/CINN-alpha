@@ -50,6 +50,7 @@ add_subdirectory(backends)
 add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(core)
+add_subdirectory(model_loader)
 add_subdirectory(hlir)
 add_subdirectory(autotuner)
 
