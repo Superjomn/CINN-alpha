@@ -781,6 +781,33 @@ class Mark : public ir::ExprNode<Mark> {
   static const NodeTy node_type = NodeTy::Mark;
 };
 
+/**
+ * Cast a Expr from the original type to the another type.
+ *
+ * NOTE Cast op will expand the expression inplace.
+ */
+struct Cast : public ir::ExprNode<Cast> {
+  Expr expr;
+  primitive_t target_type;
+
+  static Expr make(Expr expr, primitive_t type) {
+    if (expr.ptype() == type) return expr;
+
+    CHECK(CheckTypeCastable(expr.ptype(), type));
+    auto node = std::make_shared<Cast>();
+    node->expr = expr;
+    node->set_ptype(type);
+    return Expr(node);
+  }
+
+  static bool CheckTypeCastable(primitive_t s, primitive_t t) {
+    // TODO(Superjomn) Implement it latter.
+    return true;
+  }
+
+  static const NodeTy node_type = NodeTy::Cast;
+};
+
 //! Extract the Vars from a expression.
 std::vector<Var> ExtractVarsFromExpr(const Expr& expr);
 

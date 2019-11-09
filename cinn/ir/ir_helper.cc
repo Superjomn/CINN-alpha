@@ -342,6 +342,13 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     if (a == b) return true;
     return a->content == b->content;
   }
+
+  bool Visit(const Cast* a, const Expr* expr) override {
+    auto* b = expr->As<Cast>();
+    if (a == b) return true;
+    if (a->target_type != b->target_type) return false;
+    return Visit(&a->expr, &b->expr);
+  }
 };
 
 bool IREquals(const Expr& a, const Expr& b) {
