@@ -61,6 +61,7 @@ void IRVisitor::Visit(const Reference *op) {
 
 void IRVisitor::Visit(const Mark *op) {}
 void IRVisitor::Visit(const BufferOpr *op) {}
+void IRVisitor::Visit(const Cast *op) {}
 
 }  // namespace ir
 }  // namespace cinn
