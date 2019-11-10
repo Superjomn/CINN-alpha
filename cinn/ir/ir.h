@@ -297,6 +297,7 @@ class Expr : public IRHandle {
     return type() == ir::NodeTy::Assign || type() == ir::NodeTy::SumAssign || type() == ir::NodeTy::SubAssign ||
            type() == ir::NodeTy::MulAssign || type() == ir::NodeTy::DivAssign;
   }
+
 #define IS_TYPE(m__, ty__) \
   bool is_##m__() const { return type() == ir::NodeTy::ty__; }
   IS_TYPE(var, Var)
@@ -311,6 +312,16 @@ class Expr : public IRHandle {
   IS_TYPE(tensor, Tensor)
   IS_TYPE(function, Function)
   IS_TYPE(block, Block)
+  IS_TYPE(mark, Mark)
+  IS_TYPE(simd_opr, SIMDOpr)
+  IS_TYPE(buffer_opr, BufferOpr)
+  IS_TYPE(array, Array)
+  IS_TYPE(for_, For)
+  IS_TYPE(le, LE)
+  IS_TYPE(lt, LT)
+  IS_TYPE(eq, EQ)
+  IS_TYPE(int_imm, IntImm);
+  IS_TYPE(float_imm, FloatImm);
 #undef IS_TYPE
 
   // Inference the dimention indice on the id-th dimention.
@@ -319,6 +330,7 @@ class Expr : public IRHandle {
 
 /**
  * BufferOpr is the set of operations on Buffer, we combine multiple operations into this single IR node.
+ * A buffer created by BufferOpr is a continuous memory allocated in heap.
  */
 struct BufferOpr : public ExprNode<BufferOpr> {
   enum class Opr {
@@ -348,6 +360,24 @@ struct BufferOpr : public ExprNode<BufferOpr> {
   bool is_reference() const { return operation == Opr::kReference; }
 
   static const NodeTy node_type = NodeTy::BufferOpr;
+};
+
+/**
+ * Array is similar to array in C/C++ language, it is a continuous memory allocated in stack. It should keep small.
+ */
+struct Array : public ExprNode<Array> {
+  //! Size of the array, different from Buffer, the size should be constant.
+  Expr size;
+  std::string name;
+
+  static Expr make(Expr size, primitive_t ptype, const std::string& name = "");
+
+  static bool CheckExprIsConstant(Expr e) {
+    // TODO(Superjomn) Implement it latter.
+    return true;
+  }
+
+  static const NodeTy node_type = NodeTy::Array;
 };
 
 /**
@@ -806,6 +836,31 @@ struct Cast : public ir::ExprNode<Cast> {
   }
 
   static const NodeTy node_type = NodeTy::Cast;
+};
+
+/// Lower IR instructions such as SIMD
+struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
+  enum class Opr {
+    kAdd = 0,
+    kSub,
+    kMul,
+    kDiv,
+  };
+
+  int vector_width;
+  Opr opr;
+  Expr a, b;
+
+  static Expr make(int vector_width, Opr opr, Expr a, Expr b) {
+    auto node = std::make_shared<SIMDOpr>();
+    node->vector_width = vector_width;
+    node->opr = opr;
+    node->a = a;
+    node->b = b;
+    return Expr(node);
+  }
+
+  static const NodeTy node_type = NodeTy::SIMDOpr;
 };
 
 //! Extract the Vars from a expression.

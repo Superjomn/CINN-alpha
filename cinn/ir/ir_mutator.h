@@ -62,6 +62,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   OP_2PARAM(MulAssign);
   OP_2PARAM(DivAssign);
   OP_2PARAM(Let);
+  OP_2PARAM(SIMDOpr);
 
   OP_1PARAM(Exp);
   OP_1PARAM(Tanh);
@@ -91,6 +92,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const Mark* p, Expr* expr) override {}
   void Visit(const BufferOpr* op, Expr* expr) override;
   void Visit(const Cast* op, Expr* expr) override;
+  void Visit(const Array* op, Expr* expr) override;
 };
 
 }  // namespace ir
