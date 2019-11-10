@@ -50,6 +50,16 @@ class VectorizeMutator : public ir::IRMutator {
     ir::IRMutator::Visit(op, expr);
     inside_reference_ = false;
   }
+  void Visit(const ir::For *op, Expr *expr) override {
+    if (to_vectorize_) {
+      auto *for_ = expr->As<ir::For>();
+      auto &for_block = for_->body;
+      *expr = for_block;
+      Visit(expr->As<ir::Block>(), expr);
+    } else {
+      IRMutator::Visit(op, expr);
+    }
+  }
 
   void Visit(const ir::Block *op, Expr *expr) override {
     auto *block = expr->As<ir::Block>();
