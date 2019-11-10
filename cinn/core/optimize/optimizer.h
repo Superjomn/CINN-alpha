@@ -43,6 +43,7 @@ class IrOptimizer : public Optimizer<ir::Expr> {
             "nested_block_clean",          //
             "indices_to_absolute_offset",  //
             "fold_reference_indices",      //
+            "vectorize",                   //
         }) {}
 };
 

@@ -2,6 +2,7 @@
 
 #include <stdarg.h>  // For va_start, etc.
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -73,4 +74,16 @@ static std::string StringFormat(const std::string fmt_str, ...) {
   }
   return std::string(formatted.get());
 }
+
+/**
+ * Returns whether the string `s` contains the `str`.
+ * @param s
+ * @param str
+ * @return
+ */
+static bool Contains(const std::string& s, const std::string& str) {
+  auto it = s.find(str);
+  return it != std::string::npos;
+}
+
 }  // namespace cinn

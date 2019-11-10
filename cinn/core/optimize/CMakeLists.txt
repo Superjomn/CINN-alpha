@@ -5,6 +5,7 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
         increment_assign_compose_pass.cc
         fold_reference_indices_pass.cc
         nested_block_clean_pass.cc
+        vectorize_pass.cc
         DEPS pass pass_registry)
 
 cc_library(optimizer SRCS optimizer.cc DEPS ir passes pass_registry)

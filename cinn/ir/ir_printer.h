@@ -81,8 +81,10 @@ class IRPrinter : public IRVisitor {
   void Visit(const DivAssign *op) override;
 
   void Visit(const BufferOpr *op) override;
+  void Visit(const Array *op) override;
 
   void Visit(const Mark *op) override;
+  void Visit(const SIMDOpr *op) override;
 
   void indent_left() { indent_size_--; }
   void indent_right() { indent_size_++; }

@@ -60,7 +60,7 @@
   NODETY_CONTROL_OP_FOR_EACH(macro__)     \
   NODETY_DS_FOR_EACH(macro__)             \
   NODETY_MATH_FUNCTION_FOR_EACH(macro__)  \
-  macro__(Mark) macro__(BufferOpr) macro__(Cast)
+  macro__(Mark) macro__(BufferOpr) macro__(Array) macro__(Cast) macro__(SIMDOpr)
 
 // clang-format off
 #define OP_2_ARGS_FOR_EACH(macro__) \

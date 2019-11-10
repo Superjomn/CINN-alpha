@@ -69,8 +69,10 @@ struct IRVisitorBase {
 
       __(BufferOpr);
       __(Cast);
-
+      __(Array);
       __(Function);
+
+      __(SIMDOpr);
 
       case ir::NodeTy::Parameter:
         return Visit(expr->As<ir::Constant>(), args...);
@@ -135,6 +137,8 @@ struct IRVisitorBase {
   virtual RetTy Visit(const Mark* op, Args... args) = 0;
   virtual RetTy Visit(const BufferOpr* op, Args... args) = 0;
   virtual RetTy Visit(const Cast* op, Args... args) = 0;
+  virtual RetTy Visit(const Array* op, Args... args) = 0;
+  virtual RetTy Visit(const SIMDOpr* op, Args... args) = 0;
 };
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
@@ -194,6 +198,9 @@ class IRVisitor : public IRVisitorBase<void> {
   virtual void Visit(const Mark* op);
   virtual void Visit(const BufferOpr* op);
   virtual void Visit(const Cast* op);
+  virtual void Visit(const Array* op);
+
+  virtual void Visit(const SIMDOpr* op);
 };
 
 }  // namespace ir

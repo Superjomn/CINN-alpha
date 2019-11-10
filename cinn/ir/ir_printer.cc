@@ -421,5 +421,31 @@ void IRPrinter::Visit(const BufferOpr *op) {
 
 void IRPrinter::Visit(const Mark *op) { os_ << "// " << op->content; }
 
+void IRPrinter::Visit(const Array *op) {
+  os_ << op->name << "<";
+  Print(op->size);
+  os_ << ">";
+}
+
+void IRPrinter::Visit(const SIMDOpr *op) {
+  switch (op->opr) {
+    case ir::SIMDOpr::Opr::kAdd:
+      os_ << "simd_add_" << op->vector_width << "(";
+      break;
+    case ir::SIMDOpr::Opr::kSub:
+      os_ << "simd_sub_" << op->vector_width << "(";
+      break;
+    case ir::SIMDOpr::Opr::kMul:
+      os_ << "simd_mul_" << op->vector_width << "(";
+      break;
+    case ir::SIMDOpr::Opr::kDiv:
+      os_ << "simd_div_" << op->vector_width << "(";
+      break;
+  }
+  Print(op->a);
+  os_ << ", ";
+  Print(op->b);
+  os_ << ")";
+}
 }  // namespace ir
 }  // namespace cinn

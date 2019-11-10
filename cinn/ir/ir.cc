@@ -840,5 +840,14 @@ Expr Tensor::make(const std::vector<Constant> &dims, primitive_t type, const std
   auto node = std::make_shared<Tensor>(name.empty() ? NameGenerator::Global().NewVarName() : name, type, dims);
   return Expr(node);
 }
+
+Expr Array::make(Expr size, primitive_t ptype, const std::string &name) {
+  auto node = std::make_shared<Array>();
+  node->size = size;
+  node->set_ptype(ptype);
+  node->name = name.empty() ? NameGenerator::Global().NewArray() : name;
+  CHECK(CheckExprIsConstant(node->size));
+  return Expr(node);
+}
 }  // namespace ir
 }  // namespace cinn

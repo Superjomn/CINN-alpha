@@ -318,8 +318,18 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
 
   bool Visit(const BufferOpr* a, const Expr* expr) {
     auto* b = expr->As<BufferOpr>();
-    return a->name == b->name && a->operation == b->operation;
+    if (a->getptr() == b->getptr()) return true;
+    if (a->name != b->name || a->operation != b->operation) return false;
+    return Visit(&a->size, &b->size);
   }
+
+  bool Visit(const Array* a, const Expr* expr) {
+    auto* b = expr->As<BufferOpr>();
+    if (a->getptr() == b->getptr()) return true;
+    if (a->name != b->name) return false;
+    return Visit(&a->size, &b->size);
+  }
+
   bool Visit(const Stmt* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
   bool Visit(const Tensor* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
   bool Visit(const Statement* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
@@ -348,6 +358,13 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     if (a == b) return true;
     if (a->target_type != b->target_type) return false;
     return Visit(&a->expr, &b->expr);
+  }
+
+  bool Visit(const SIMDOpr* a, const Expr* expr) override {
+    auto* b = expr->As<SIMDOpr>();
+    if (a == b) return true;
+    if (a->vector_width != b->vector_width || a->opr != b->opr) return false;
+    return Visit(&a->a, &b->a) && Visit(&a->b, &b->b);
   }
 };
 

@@ -14,3 +14,4 @@ cc_test(test3_c_launcher SRCS test3_c_launcher.cc)
 
 cc_test(exe_test4 SRCS test4.cc DEPS cinn_lib)
 cc_test(exe_test5 SRCS test5.cc DEPS cinn_lib)
+cc_test(exe_test6_vectorize SRCS test6_vectorize.cc DEPS cinn_lib)
