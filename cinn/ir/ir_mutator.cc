@@ -8,41 +8,58 @@ namespace cinn {
 namespace ir {
 
 void IRMutator::Visit(const ir::Expr* expr, ir::Expr* op) { IRVisitorBase::Visit(expr, op); }
-void IRMutator::Visit(const Stmt* op, ir::Expr* expr) {}
+void IRMutator::Visit(const Stmt* op, ir::Expr* expr) { NOT_IMPLEMENT }
 void IRMutator::Visit(const Tensor* op, ir::Expr* expr) {}
-void IRMutator::Visit(const Statement* op, ir::Expr* expr) {}
-void IRMutator::Visit(const Allocate* op, ir::Expr* expr) {}
+void IRMutator::Visit(const Statement* op, ir::Expr* expr) { NOT_IMPLEMENT }
+void IRMutator::Visit(const Allocate* op, ir::Expr* expr) {
+  auto* node = expr->As<Allocate>();
+  LazyUpdateExpr(&node->size, VisitBasicExpr(&node->size));
+  Visit(&node->size, &node->size);
+}
 
 void IRMutator::Visit(const ir::Reference* op, ir::Expr* expr) {
   ir::Reference* m_op = expr->As<ir::Reference>();
   Visit(&m_op->target, &m_op->target);
   for (auto& iter_expr : m_op->iterators) {
+    LazyUpdateExpr(&iter_expr, VisitBasicExpr(&iter_expr));
     Visit(&iter_expr, &iter_expr);
   }
 }
 
 void IRMutator::Visit(const Function* op, ir::Expr* expr) {
-  for (auto& arg : op->inputs) {
+  auto* node = expr->As<Function>();
+  for (auto& arg : node->inputs) {
+    LazyUpdateExpr(&arg, VisitBasicExpr(&arg));
     Visit(&arg, const_cast<Expr*>(&arg));
   }
-  for (auto& arg : op->outputs) {
-    Visit(&arg, const_cast<Expr*>(&arg));
+  for (auto& arg : node->outputs) {
+    LazyUpdateExpr(&arg, VisitBasicExpr(&arg));
+    Visit(&arg, &arg);
   }
-  auto* body = const_cast<Expr*>(&op->body);
-  Visit(body, body);
+  Visit(&node->body, &node->body);
 }
 
 void IRMutator::Visit(const For* op, Expr* expr) {
   For* m_op = expr->As<For>();
+  LazyUpdateExpr(&m_op->iter_init, VisitBasicExpr(&m_op->iter_init));
   Visit(&m_op->iter_init, &m_op->iter_init);
+
+  LazyUpdateExpr(&m_op->iter_cond, VisitBasicExpr(&m_op->iter_cond));
   Visit(&m_op->iter_cond, &m_op->iter_cond);
+
+  LazyUpdateExpr(&m_op->iter_inc, VisitBasicExpr(&m_op->iter_inc));
   Visit(&m_op->iter_inc, &m_op->iter_inc);
+
+  LazyUpdateExpr(&m_op->body, VisitBasicExpr(&m_op->body));
   Visit(&m_op->body, &m_op->body);
 }
 
 void IRMutator::Visit(const IfThenElse* op, Expr* expr) {
   auto* m_op = expr->As<IfThenElse>();
+
+  LazyUpdateExpr(&m_op->condition, VisitBasicExpr(&m_op->condition));
   Visit(&m_op->condition, &m_op->condition);
+
   CHECK(op->true_block.valid());
   Visit(&m_op->true_block, &m_op->true_block);
   if (op->false_block.valid()) Visit(&m_op->false_block, &m_op->false_block);
@@ -58,17 +75,20 @@ void IRMutator::Visit(const Block* op, Expr* expr) {
 void IRMutator::Visit(const Call* op, Expr* expr) {
   auto* m_op = expr->As<Call>();
   for (auto& arg : m_op->arguments) {
+    LazyUpdateExpr(&arg, VisitBasicExpr(&arg));
     Visit(&arg, &arg);
   }
 }
 
 void IRMutator::Visit(const BufferOpr* op, Expr* expr) {
   auto* m_op = expr->As<BufferOpr>();
+  LazyUpdateExpr(&m_op->size, VisitBasicExpr(&m_op->size));
   Visit(&m_op->size, &m_op->size);
 }
 
 void IRMutator::Visit(const Array* op, Expr* expr) {
   auto* m_op = expr->As<Array>();
+  LazyUpdateExpr(&m_op->size, VisitBasicExpr(&m_op->size));
   Visit(&m_op->size, &m_op->size);
 }
 

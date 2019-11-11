@@ -86,7 +86,6 @@ struct IRVisitorBase {
 
  protected:
   virtual RetTy Visit(const ir::Var* op, Args... args) = 0;
-
   virtual RetTy Visit(const Param* op, Args... args) = 0;
   virtual RetTy Visit(const Stmt* op, Args... args) = 0;
   virtual RetTy Visit(const Add* op, Args... args) = 0;
