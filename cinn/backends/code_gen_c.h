@@ -66,15 +66,26 @@ class C_CodeGen : public ir::IRPrinter {
   void Visit(const ir::Tensor* op) override;
   void Visit(const ir::Block* op) override;
   void Visit(const ir::Let* op) override;
+  void Visit(const ir::SIMDOpr* op) override;
 
+ public:
+  void Visit(const ir::Cast* op) override;
+
+ private:
   /**
    * Print the primitive type in code.
    * @param ptype
    */
   void PrintPType(primitive_t ptype);
 
- public:
   void Visit(const ir::Reference* op) override;
+
+  static const char* simd_128_type;
+  static const std::vector<std::string> simd_128_intrics;
+
+ private:
+  //! We record the last block to help preappend some let expression of temporary variables.
+  ir::Block* last_block_{};
 };
 
 /**

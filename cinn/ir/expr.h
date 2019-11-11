@@ -44,19 +44,25 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
 
   NodeTy type() const { return type_; }
 
-  //! primitive type of this expr. Each expr has a type, even the operators, so that it can convert to a LLVM IR which
+  //! Get the primitive type of this expr. Each expr has a type, even the operators, so that it can convert to a LLVM IR
+  //! which
   //! has type.
   primitive_t ptype() const { return ptype_; }
-  //! Get the primitive type of this node.
+  composite_t ctype() const { return ctype_; }
+
   void set_ptype(primitive_t type) { ptype_ = type; }
+  void set_ctype(composite_t type) { ctype_ = type; }
+
   bool is_unk() const { return ptype() == primitive_t::unk; }
   bool is_boolean() const { return ptype() == primitive_t::boolean; }
+  bool is_m128() const { return ctype_ == composite_t::simd128; }
 
   virtual ~IRNode() = default;
 
  protected:
   NodeTy type_{NodeTy::Var};
   primitive_t ptype_{primitive_t::unk};
+  composite_t ctype_{composite_t::primitive};
 };
 
 /// A handle to store any expression.

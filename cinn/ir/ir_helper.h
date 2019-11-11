@@ -24,5 +24,7 @@ static Expr exp(Expr x) { return Exp::make(x); }
  */
 bool IREquals(const Expr& a, const Expr& b);
 
+ir::Expr IRDeepCopy(const Expr& a);
+
 }  // namespace ir
 }  // namespace cinn

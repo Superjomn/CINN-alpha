@@ -374,9 +374,20 @@ void IRPrinter::PrintIndent(bool avoid_continuous_indent) {
 
 void IRPrinter::Visit(const Let *op) {
   CHECK(!op->is_unk());
-  os_ << op->ptype() << " ";
+  // print type
+  os_ << op->ctype() << " ";
+  os_ << op->ptype();
+
+  // print var
+  CHECK(op->a.is_var());
+  if (op->a.As<ir::Var>()->is_reference()) {
+    os_ << "&";
+  }
+  os_ << " ";
   Print(op->a);
+
   os_ << " = ";
+
   Print(op->b);
   os_ << ";";
 }
@@ -447,5 +458,13 @@ void IRPrinter::Visit(const SIMDOpr *op) {
   Print(op->b);
   os_ << ")";
 }
+
+void IRPrinter::Visit(const Cast *op) {
+  os_ << "cast<" << op->ptype() << ", " << op->ctype() << ">";
+  os_ << "(";
+  Print(op->expr);
+  os_ << ")";
+}
+
 }  // namespace ir
 }  // namespace cinn

@@ -97,5 +97,33 @@ void IRMutator::Visit(const Cast* op, Expr* expr) {
   Visit(&m_op->expr, &m_op->expr);
 }
 
+bool IRMutator::LazyUpdateExpr(Expr* expr, const Expr& e) {
+  if (expr->ptr() != e.ptr()) {
+    *expr = e;
+  }
+}
+
+void IRMutator::Visit(const ir::Let* op, ir::Expr* expr) {
+  // LOG(INFO) << "mutate let: " << ir::Dump(*expr);
+  CHECK(op->a.valid());
+  CHECK(op->b.valid());
+  auto* node = expr->As<ir::Let>();
+  // LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));
+  // LazyUpdateExpr(&node->b, VisitBasicExpr(&node->b));
+  Visit(&node->a, &node->a);
+  Visit(&node->b, &node->b);
+}
+
+void IRMutator::Visit(const ir::Add* op, ir::Expr* expr) {
+  // LOG(INFO) << "mutate let: " << ir::Dump(*expr);
+  CHECK(op->a.valid());
+  CHECK(op->b.valid());
+  auto* node = expr->As<ir::Add>();
+
+  // LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));
+  // LazyUpdateExpr(&node->b, VisitBasicExpr(&node->b));
+  Visit(&node->a, &node->a);
+  Visit(&node->b, &node->b);
+}
 }  // namespace ir
 }  // namespace cinn

@@ -148,11 +148,12 @@ class Var : public ExprNode<Var> {
     Interval interval_;
     std::string name_;
     std::unique_ptr<isl::set> domain_;
+    // Is a reference of an expression.
+    bool is_reference{false};
   };
 
   std::shared_ptr<Data> data_;
 
-  static size_t counter_;
   static std::set<std::string> name_set_;  // All registerred var's name here.
 
  public:
@@ -179,6 +180,7 @@ class Var : public ExprNode<Var> {
   Var(const Var& other) {
     data_ = other.data_;
     set_ptype(other.ptype());
+    set_ctype(other.ctype());
   }
 
   operator Expr();
@@ -187,10 +189,11 @@ class Var : public ExprNode<Var> {
     return data_ == other.data_ || (name() == other.name() && interval() == other.interval());
   }
 
+  void set_is_reference(bool x = true) { data_->is_reference = x; }
+  bool is_reference() const { return data_->is_reference; }
+
   const std::string& name() const { return data_->name_; }
   void set_name(const std::string& name) { data_->name_ = name; }
-
-  static const NodeTy node_type = NodeTy::Var;
 
   const Interval& interval() const { return data_->interval_; }
 
@@ -205,6 +208,8 @@ class Var : public ExprNode<Var> {
   }
 
   std::string __repr__() const;
+
+  static const NodeTy node_type = NodeTy::Var;
 
  private:
   void InitData() { data_ = std::make_shared<Data>(); }
@@ -270,6 +275,10 @@ class Expr : public IRHandle {
 
   primitive_t ptype() const { return ptr_->ptype(); }
   void set_ptype(primitive_t type) { ptr_->set_ptype(type); }
+
+  composite_t ctype() const { return ptr_->ctype(); }
+  void set_ctype(composite_t type) { ptr_->set_ctype(type); }
+
   bool is_unk() const { return ptr_->is_unk(); }
   bool is_boolean() const { return ptr_->is_boolean(); }
 
@@ -818,19 +827,21 @@ class Mark : public ir::ExprNode<Mark> {
  */
 struct Cast : public ir::ExprNode<Cast> {
   Expr expr;
-  primitive_t target_type;
 
-  static Expr make(Expr expr, primitive_t type) {
-    if (expr.ptype() == type) return expr;
-
-    CHECK(CheckTypeCastable(expr.ptype(), type));
+  static Expr make(Expr expr, primitive_t type, composite_t ctype = composite_t::primitive) {
+    CHECK(CheckPTypeCastable(expr.ptype(), type));
     auto node = std::make_shared<Cast>();
     node->expr = expr;
     node->set_ptype(type);
+    node->set_ctype(ctype);
     return Expr(node);
   }
 
-  static bool CheckTypeCastable(primitive_t s, primitive_t t) {
+  static bool CheckPTypeCastable(primitive_t s, primitive_t t) {
+    // TODO(Superjomn) Implement it latter.
+    return true;
+  }
+  static bool CheckCTypeCastable(composite_t s, composite_t t) {
     // TODO(Superjomn) Implement it latter.
     return true;
   }
@@ -857,6 +868,7 @@ struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
     node->opr = opr;
     node->a = a;
     node->b = b;
+    if (node->vector_width == 4) node->set_ctype(composite_t::simd128);
     return Expr(node);
   }
 

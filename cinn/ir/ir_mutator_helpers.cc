@@ -15,5 +15,15 @@ Expr IRVarReplacer::VisitBasicExpr(Expr *expr) {
   }
 }
 
+IRExprReplacer::IRExprReplacer(const ir::Expr &source, const ir::Expr &target) : target_(target) {
+  source_ = ir::Dump(source);
+}
+
+Expr IRExprReplacer::VisitBasicExpr(Expr *expr) {
+  if (ir::Dump(*expr) == source_) {
+    *expr = target_;
+  }
+}
+
 }  // namespace ir
 }  // namespace cinn

@@ -32,6 +32,11 @@ enum class primitive_t : int {
   void_,  // control statement without primitive return, such as function, for, if, allocate and so on.
 };
 
+enum class composite_t : int {
+  primitive = 0,
+  simd128,
+};
+
 //! Get a string representation of a primitive type.
 static std::string ptype_to_str(primitive_t type) {
   switch (type) {
@@ -61,6 +66,7 @@ static bool is_integer(primitive_t ptype) {
 static bool is_float(primitive_t ptype) { return ptype == primitive_t::float32 || ptype == primitive_t::float64; }
 
 std::ostream& operator<<(std::ostream& os, primitive_t t);
+std::ostream& operator<<(std::ostream& os, composite_t t);
 
 enum class memory_location_t {
   host = 0,

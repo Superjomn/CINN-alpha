@@ -129,8 +129,6 @@ Expr Minus::make(Expr a) {
   return Expr(node);
 }
 
-size_t Var::counter_ = 0;
-
 template <>
 int32_t Constant::As<int32_t>() const {
   CHECK_EQ(ptype(), primitive_t::int32);
@@ -369,6 +367,8 @@ Expr IfThenElse::make(Expr condition, Expr true_block, Expr false_block) {
 Var::operator Expr() {
   auto node =
       std::make_shared<Var>(data_->name_, ptype(), data_->interval_.lower_bound(), data_->interval_.upper_bound());
+  node->set_ctype(ctype());
+  node->set_is_reference(is_reference());
   return Expr(node);
 }
 

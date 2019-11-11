@@ -49,4 +49,17 @@ std::ostream &operator<<(std::ostream &os, primitive_t t) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, composite_t t) {
+  switch (t) {
+#define __(type)          \
+  case composite_t::type: \
+    os << #type;          \
+    break;
+
+    __(primitive)
+    __(simd128)
+#undef __
+  }
+}
+
 }  // namespace cinn
