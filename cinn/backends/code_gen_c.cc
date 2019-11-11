@@ -12,6 +12,11 @@
 namespace cinn {
 namespace backends {
 
+const char *C_CodeGen::simd_128_type = "__m128";
+const std::vector<std::string> C_CodeGen::simd_128_intrics{{
+    "_mm_add_ps", "_mm_sub_ps", "_mm_mul_ps", "_mm_div_ps",
+}};
+
 void C_CodeGen::PrintHeader() {
   os_ << "#include <math.h>\n";
   os_ << "#include <stdio.h>\n";
@@ -197,6 +202,32 @@ void C_CodeGen::PrintPType(primitive_t ptype) {
     default:
       LOG(FATAL) << "Unsupported type " << ptype;
   }
+}
+
+void C_CodeGen::Visit(const ir::SIMDOpr *op) {
+  if (op->vector_width == 4) {  // m128
+    switch (op->opr) {
+      case ir::SIMDOpr::Opr::kAdd:
+        os_ << simd_128_intrics[0] << "(";
+        break;
+      case ir::SIMDOpr::Opr::kSub:
+        os_ << simd_128_intrics[1] << "(";
+        break;
+      case ir::SIMDOpr::Opr::kMul:
+        os_ << simd_128_intrics[2] << "(";
+        break;
+      case ir::SIMDOpr::Opr::kDiv:
+        os_ << simd_128_intrics[3] << "(";
+        break;
+    }
+  } else {
+    NOT_IMPLEMENT
+  }
+
+  Print(op->a);
+  os_ << ", ";
+  Print(op->b);
+  os_ << ")";
 }
 
 }  // namespace backends
