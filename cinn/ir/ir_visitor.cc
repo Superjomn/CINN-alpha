@@ -17,7 +17,7 @@ namespace ir {
 
 OP_2_ARGS_FOR_EACH(OP_2_ARGS_VISIT);
 
-void IRVisitor::Visit(const Stmt *op) {}
+void IRVisitor::Visit(const Stmt *op) { NOT_IMPLEMENT }
 
 void IRVisitor::Visit(const Call *op) {
   for (auto &node : op->arguments) {
@@ -33,11 +33,34 @@ void IRVisitor::Visit(const FloatImm *op) {}
 void IRVisitor::Visit(const Tensor *op) {}
 void IRVisitor::Visit(const Var *op) {}
 void IRVisitor::Visit(const Constant *op) {}
-void IRVisitor::Visit(const For *op) {}
-void IRVisitor::Visit(const Block *op) {}
-void IRVisitor::Visit(const IfThenElse *op) {}
-void IRVisitor::Visit(const Function *op) {}
-void IRVisitor::Visit(const Statement *op) {}
+void IRVisitor::Visit(const For *op) {
+  Visit(&op->iter_init);
+  Visit(&op->iter_cond);
+  Visit(&op->iter_inc);
+  Visit(&op->body);
+}
+void IRVisitor::Visit(const Block *op) {
+  for (auto &expr : op->exprs) {
+    Visit(&expr);
+  }
+}
+void IRVisitor::Visit(const IfThenElse *op) {
+  Visit(&op->condition);
+  Visit(&op->true_block);
+  if (op->false_block.valid()) {
+    Visit(&op->false_block);
+  }
+}
+void IRVisitor::Visit(const Function *op) {
+  for (auto &arg : op->inputs) {
+    Visit(&arg);
+  }
+  for (auto &arg : op->outputs) {
+    Visit(&arg);
+  }
+  Visit(&op->body);
+}
+void IRVisitor::Visit(const Statement *op) { NOT_IMPLEMENT }
 void IRVisitor::Visit(const Allocate *op) {}
 void IRVisitor::Visit(const Param *op) {}
 void IRVisitor::Visit(const Tanh *op) {
@@ -60,7 +83,7 @@ void IRVisitor::Visit(const Reference *op) {
 }
 
 void IRVisitor::Visit(const Mark *op) {}
-void IRVisitor::Visit(const BufferOpr *op) {}
+void IRVisitor::Visit(const BufferOpr *op) { Visit(&op->size); }
 void IRVisitor::Visit(const Cast *op) {}
 void IRVisitor::Visit(const Array *op) {}
 void IRVisitor::Visit(const SIMDOpr *op) {
