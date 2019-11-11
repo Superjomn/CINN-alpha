@@ -177,6 +177,177 @@ std::vector<const Var*> CollectExprNode<Var>(const Expr& expr) {
   return collector.iterators();
 }
 
+struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
+  void Visit(const Expr* a, Expr* b) override { IRVisitorBase::Visit(a, b); }
+
+#define OP_2PARAM(op__)                          \
+  void Visit(const ir::op__* op, ir::Expr* to) { \
+    ir::Expr a, b;                               \
+    Visit(&op->a, &a);                           \
+    Visit(&op->b, &b);                           \
+    *to = ir::op__::make(a, b);                  \
+  }
+#define OP_1PARAM(op__)                          \
+  void Visit(const ir::op__* op, ir::Expr* to) { \
+    ir::Expr a;                                  \
+    Visit(&op->a, &a);                           \
+    *to = ir::op__::make(a);                     \
+  }
+
+  OP_2PARAM(Add);
+  OP_2PARAM(Sub);
+  OP_2PARAM(Mul);
+  OP_2PARAM(Div);
+  OP_2PARAM(Mod);
+  OP_1PARAM(Minus);
+  OP_2PARAM(EQ);
+  OP_2PARAM(NE);
+  OP_2PARAM(LT);
+  OP_2PARAM(LE);
+  OP_2PARAM(GT);
+  OP_2PARAM(GE);
+  OP_2PARAM(And);
+  OP_2PARAM(Or);
+
+  OP_2PARAM(Min);
+  OP_2PARAM(Max);
+
+  OP_2PARAM(Assign);
+  OP_2PARAM(Let);
+  OP_2PARAM(SumAssign);
+  OP_2PARAM(SubAssign);
+  OP_2PARAM(MulAssign);
+  OP_2PARAM(DivAssign);
+
+  OP_1PARAM(Exp);
+  OP_1PARAM(Tanh);
+  OP_1PARAM(Sigmoid);
+
+#undef OP_2PARAM
+#undef OP_1PARAM
+
+ protected:
+  void Visit(const ir::Var* op, Expr* to) override {
+    Var a(*op);
+    *to = Expr(a);
+  }
+  void Visit(const Param* op, Expr* to) override { NOT_IMPLEMENT }
+  void Visit(const Stmt* op, Expr* to) override { NOT_IMPLEMENT }
+  void Visit(const For* op, Expr* to) override {
+    Expr init, cond, inc, body;
+    Visit(&op->iter_cond, &cond);
+    Visit(&op->iter_inc, &inc);
+    Visit(&op->iter_init, &init);
+    Visit(&op->body, &body);
+    Var iter = op->iterator;
+    *to = For::make(init, cond, inc, body, iter);
+  }
+  void Visit(const IfThenElse* op, Expr* to) override {
+    Expr cond, true_block, false_block;
+    Visit(&op->condition, &cond);
+    Visit(&op->true_block, &true_block);
+    if (op->false_block.valid()) {
+      Visit(&op->false_block, &false_block);
+      *to = IfThenElse::make(cond, true_block, false_block);
+    } else {
+      *to = IfThenElse::make(cond, true_block);
+    }
+  }
+  void Visit(const Block* op, Expr* to) override {
+    std::vector<ir::Expr> exprs;
+    for (auto& expr : op->exprs) {
+      Expr e;
+      Visit(&expr, &e);
+      exprs.emplace_back(e);
+    }
+
+    *to = Block::make(std::move(exprs));
+  }
+  void Visit(const IntImm* op, Expr* to) override {
+    auto b = std::make_shared<IntImm>(*op);
+    *to = Expr(b);
+  }
+  void Visit(const FloatImm* op, Expr* to) override {
+    auto b = std::make_shared<FloatImm>(*op);
+    *to = Expr(b);
+  }
+  void Visit(const Tensor* op, Expr* to) override { *to = Tensor::make(op->dims(), op->ptype(), op->name()); }
+  void Visit(const Constant* op, Expr* to) override {
+    auto x = std::make_shared<Constant>(*op);
+    *to = Expr(x);
+  }
+  void Visit(const Reference* op, Expr* to) override {
+    Expr target;
+    std::vector<Expr> iters;
+    Visit(&op->target, &target);
+    for (auto& iter : op->iterators) {
+      Expr i;
+      Visit(&iter, &i);
+      iters.emplace_back(i);
+    }
+    *to = Reference::make(target, std::move(iters));
+  }
+  void Visit(const Call* op, Expr* to) override {
+    std::vector<Expr> iters;
+    for (auto& iter : op->arguments) {
+      Expr i;
+      Visit(&iter, &i);
+      iters.emplace_back(i);
+    }
+    *to = Reference::make(op->caller, std::move(iters));
+  }
+  void Visit(const Function* op, Expr* to) override {
+    std::vector<Expr> inputs, outputs;
+    Expr body;
+
+    std::transform(op->inputs.begin(), op->inputs.end(), std::back_inserter(inputs), [this](const Expr& arg) {
+      Expr x;
+      Visit(&arg, &x);
+      return x;
+    });
+    std::transform(op->outputs.begin(), op->outputs.end(), std::back_inserter(outputs), [this](const Expr& arg) {
+      Expr x;
+      Visit(&arg, &x);
+      return x;
+    });
+
+    Visit(&op->body, &body);
+
+    *to = Function::make(op->name(), inputs, outputs, body);
+  }
+  void Visit(const Statement* op, Expr* to) override { NOT_IMPLEMENT }
+  void Visit(const Allocate* op, Expr* to) override {
+    Expr size;
+    Visit(&op->size, &size);
+    *to = Allocate::make(op->buffer_name, size, op->dtype);
+  }
+  void Visit(const Mark* op, Expr* to) override { *to = Mark::make(op->content); }
+  void Visit(const BufferOpr* op, Expr* to) override {
+    Expr size;
+    Visit(&op->size, &size);
+
+    *to = BufferOpr::make(op->target, size, op->operation, op->ptype, op->name);
+  }
+  void Visit(const Cast* op, Expr* to) override {
+    Expr expr;
+    Visit(&op->expr, &expr);
+
+    *to = Cast::make(expr, op->ptype(), op->ctype());
+  }
+  void Visit(const Array* op, Expr* to) override {
+    Expr size;
+    Visit(&op->size, &size);
+
+    *to = Array::make(size, op->ptype(), op->name);
+  }
+  void Visit(const SIMDOpr* op, Expr* to) override {
+    Expr a, b;
+    Visit(&op->a, &a);
+    Visit(&op->b, &b);
+    *to = SIMDOpr::make(op->vector_width, op->opr, a, b);
+  }
+};
+
 struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
   bool Visit(const Expr* a, const Expr* b) override { return a == b || IRVisitorBase::Visit(a, b); }
 
@@ -185,7 +356,6 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     auto* b = expr->As<ir::op__>();                                \
     return a == b || (Visit(&a->a, &b->a) && Visit(&a->b, &b->b)); \
   }
-
 #define OP_1PARAM(op__)                                      \
   bool Visit(const ir::op__* a, const Expr* expr) override { \
     auto* b = expr->As<ir::op__>();                          \
@@ -356,7 +526,8 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
   bool Visit(const Cast* a, const Expr* expr) override {
     auto* b = expr->As<Cast>();
     if (a == b) return true;
-    if (a->target_type != b->target_type) return false;
+    if (a->ptype() != b->ptype()) return false;
+    if (a->ctype() != b->ctype()) return false;
     return Visit(&a->expr, &b->expr);
   }
 
@@ -372,6 +543,13 @@ bool IREquals(const Expr& a, const Expr& b) {
   if (a.ptr() == b.ptr()) return true;
   IREqualTeller teller;
   return teller.Visit(&a, &b);
+}
+
+ir::Expr IRDeepCopy(const Expr& a) {
+  IRCopy copy;
+  Expr res;
+  copy.Visit(&a, &res);
+  return res;
 }
 
 }  // namespace ir

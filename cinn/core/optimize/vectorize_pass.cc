@@ -8,6 +8,80 @@
 
 namespace cinn {
 
+namespace {
+
+/**
+ * Collect the arguments of SIMDOpr in a single block(not nested).
+ */
+struct SimdReferenceCollector : public ir::IRVisitor {
+  std::map<std::string, Expr> arguments;
+
+  void Visit(const Expr *op) override { IRVisitor::Visit(op); }
+
+  void Visit(const ir::Assign *op) override {
+    if (op->b.is_simd_opr()) {
+      CHECK(op->a.is_reference());
+      Collect(op->a);
+    }
+
+    ir::IRVisitor::Visit(op);
+  }
+
+  void Visit(const ir::SIMDOpr *op) override {
+    if (op->a.is_reference()) {
+      Collect(op->a);
+    }
+    if (op->b.is_reference()) {
+      Collect(op->b);
+    }
+
+    ir::IRVisitor::Visit(op);
+  }
+
+  void Visit(const ir::Block *op) override {
+    for (auto &expr : op->exprs) {
+      if (!expr.is_block()) {
+        // This should works with the "nested_block_clean_pass".
+        Visit(&expr);  // avoid nested
+      }
+    }
+  }
+
+  void Collect(const ir::Expr &a) { arguments[ir::Dump(a)] = a; }
+};
+
+struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
+  std::map<std::string, ir::Expr> arguments;
+
+  SimdArgumentCastInsertToBlock() {}
+
+  void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
+  void Visit(const ir::Block *op, Expr *expr) override {
+    auto *block = expr->As<ir::Block>();
+    SimdReferenceCollector collector;
+    collector.Visit(expr);
+    if (!collector.arguments.empty()) {
+      PreappendCastToBlock(expr->As<ir::Block>(), collector.arguments);
+    }
+    IRMutator::Visit(op, expr);
+  }
+
+ protected:
+  void PreappendCastToBlock(ir::Block *block, const std::map<std::string, ir::Expr> &simd_args) {
+    for (auto &item : simd_args) {
+      auto cast = ir::Cast::make(item.second, item.second.ptype(), composite_t::simd128);
+      cast.set_ctype(composite_t::simd128);
+      ir::Var var(NameGenerator::Global().NewVarName());
+      var.set_is_reference();
+      auto let = ir::Let::make(Expr(var), cast);
+      let.set_ctype(composite_t::simd128);
+      block->exprs.insert(std::begin(block->exprs), let);
+    }
+  }
+};
+
+}  // namespace
+
 class VectorizeMutator : public ir::IRMutator {
   int vector_width{-1};
 
@@ -79,7 +153,6 @@ class VectorizeMutator : public ir::IRMutator {
         i++;
 
         to_vectorize_ = true;
-        // CHECK(for_expr.is_for_());
         Visit(&for_expr, &for_expr);
         to_vectorize_ = false;
       } else {
@@ -136,6 +209,7 @@ class VectorizeMutator : public ir::IRMutator {
  private:
   bool to_vectorize_{false};
   bool inside_reference_{false};
+  bool is_block_subsequent_vectorize_for_{false};
 };
 
 class VectorizePass : public Pass<ir::Expr> {
@@ -143,8 +217,15 @@ class VectorizePass : public Pass<ir::Expr> {
   explicit VectorizePass(const std::string &name) : Pass(name) {}
 
   void Impl(ir::Expr *expr) override {
-    VectorizeMutator mutator;
-    mutator.Visit(expr, expr);
+    {
+      VectorizeMutator mutator;
+      mutator.Visit(expr, expr);
+    }
+
+    {
+      SimdArgumentCastInsertToBlock mutator;
+      mutator.Visit(expr, expr);
+    }
   }
 };
 

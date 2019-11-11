@@ -39,6 +39,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
     Visit(&node->b, &node->b);                              \
   }
 
+// Operator with 1 parameter.
 #define OP_1PARAM(op__)                                     \
   void Visit(const ir::op__* op, ir::Expr* expr) override { \
     CHECK(op->a.valid());                                   \
@@ -46,7 +47,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
     LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));     \
     Visit(&node->a, &node->a);                              \
   }
-  OP_2PARAM(Add);
+  // OP_2PARAM(Add);
   OP_2PARAM(Sub);
   OP_2PARAM(Mul);
   OP_2PARAM(Div);
@@ -69,7 +70,10 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   OP_2PARAM(SubAssign);
   OP_2PARAM(MulAssign);
   OP_2PARAM(DivAssign);
-  OP_2PARAM(Let);
+  // OP_2PARAM(Let);
+
+  void Visit(const ir::Let* op, ir::Expr* expr) override;
+  void Visit(const ir::Add* op, ir::Expr* expr) override;
   OP_2PARAM(SIMDOpr);
 
   OP_1PARAM(Exp);
@@ -103,11 +107,8 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const Array* op, Expr* expr) override;
 
  protected:
-  bool LazyUpdateExpr(Expr* expr, const Expr& e) {
-    if (expr->ptr() != e.ptr()) {
-      *expr = e;
-    }
-  }
+  //! Update the expression if their data address is different.
+  bool LazyUpdateExpr(Expr* expr, const Expr& e);
 };
 
 }  // namespace ir
