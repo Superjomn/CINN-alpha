@@ -1,6 +1,7 @@
 #include "cinn/core/optimize/pass.h"
 #include "cinn/core/optimize/pass_registry.h"
 #include "cinn/ir/ir_mutator.h"
+#include "cinn/ir/ir_mutator_helpers.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 #include "cinn/utils/logging.h"
@@ -53,8 +54,14 @@ class VectorizeMutator : public ir::IRMutator {
   void Visit(const ir::For *op, Expr *expr) override {
     if (to_vectorize_) {
       auto *for_ = expr->As<ir::For>();
+      auto iter = for_->iterator;
       auto &for_block = for_->body;
       *expr = for_block;
+
+      // TODO(Superjomn) replace all with the global zero constant.
+      ir::IRVarReplacer replacer(iter, ir::Expr(0));
+      replacer.Visit(expr, expr);
+
       Visit(expr->As<ir::Block>(), expr);
     } else {
       IRMutator::Visit(op, expr);
@@ -74,7 +81,6 @@ class VectorizeMutator : public ir::IRMutator {
         to_vectorize_ = true;
         // CHECK(for_expr.is_for_());
         Visit(&for_expr, &for_expr);
-
         to_vectorize_ = false;
       } else {
         Visit(&expr, &expr);

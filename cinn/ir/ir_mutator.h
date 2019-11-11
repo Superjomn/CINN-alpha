@@ -24,19 +24,27 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const ir::IntImm* op, ir::Expr* expr) override {}
   void Visit(const ir::FloatImm* op, ir::Expr* expr) override {}
 
+  //! A callback that visit all the basic expressions(no control flow) of the program.
+  virtual Expr VisitBasicExpr(Expr* expr) { return *expr; }
+
 // Operator with 2 parameters.
 #define OP_2PARAM(op__)                                     \
   void Visit(const ir::op__* op, ir::Expr* expr) override { \
     CHECK(op->a.valid());                                   \
     CHECK(op->b.valid());                                   \
-    Visit(&op->a, &expr->As<ir::op__>()->a);                \
-    Visit(&op->b, &expr->As<ir::op__>()->b);                \
+    auto* node = expr->As<op__>();                          \
+    LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));     \
+    LazyUpdateExpr(&node->b, VisitBasicExpr(&node->b));     \
+    Visit(&node->a, &node->a);                              \
+    Visit(&node->b, &node->b);                              \
   }
 
 #define OP_1PARAM(op__)                                     \
   void Visit(const ir::op__* op, ir::Expr* expr) override { \
     CHECK(op->a.valid());                                   \
-    Visit(&op->a, &expr->As<ir::op__>()->a);                \
+    auto* node = expr->As<op__>();                          \
+    LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));     \
+    Visit(&node->a, &node->a);                              \
   }
   OP_2PARAM(Add);
   OP_2PARAM(Sub);
@@ -93,6 +101,13 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const BufferOpr* op, Expr* expr) override;
   void Visit(const Cast* op, Expr* expr) override;
   void Visit(const Array* op, Expr* expr) override;
+
+ protected:
+  bool LazyUpdateExpr(Expr* expr, const Expr& e) {
+    if (expr->ptr() != e.ptr()) {
+      *expr = e;
+    }
+  }
 };
 
 }  // namespace ir
