@@ -69,6 +69,7 @@ TEST(cpp_code_gen, basic) {
 #define CINN_FILE_
 #include <math.h>
 #include <stdio.h>
+#include <xmmintrin.h>
 
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;
@@ -114,6 +115,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 #define CINN_FILE_
 #include <math.h>
 #include <stdio.h>
+#include <xmmintrin.h>
 
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;

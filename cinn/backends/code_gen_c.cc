@@ -20,6 +20,7 @@ const std::vector<std::string> C_CodeGen::simd_128_intrics{{
 void C_CodeGen::PrintHeader() {
   os_ << "#include <math.h>\n";
   os_ << "#include <stdio.h>\n";
+  os_ << "#include <xmmintrin.h>\n";
   os_ << "\n";
   os_ << "typedef char cinn_int8_t;\n";
   os_ << "typedef int cinn_int32_t;\n";
