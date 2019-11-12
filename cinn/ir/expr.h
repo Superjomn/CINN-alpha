@@ -193,5 +193,4 @@ class Stmt : public IRHandle {
 };
 
 }  // namespace ir
-
 }  // namespace cinn

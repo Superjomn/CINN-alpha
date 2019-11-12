@@ -245,6 +245,10 @@ class Expr : public IRHandle {
   //! Construct from dimentions, and get a Tensor.
   explicit Expr(const std::vector<Constant>& dims, primitive_t ptype, const std::string& name = "");
 
+  //! Assign self with another expression.
+  //! NOTE Avoid using operator=, it is overloaded in op_overload.h, and will create an Assign Op.
+  void Reset(const Expr& other) { set_ptr(other.ptr()); }
+
   /**
    * Element assignment.
    *
@@ -329,8 +333,14 @@ class Expr : public IRHandle {
   IS_TYPE(le, LE)
   IS_TYPE(lt, LT)
   IS_TYPE(eq, EQ)
+
   IS_TYPE(int_imm, IntImm);
   IS_TYPE(float_imm, FloatImm);
+
+  IS_TYPE(add, Add);
+  IS_TYPE(sub, Sub);
+  IS_TYPE(mul, Mul);
+  IS_TYPE(div, Div);
 #undef IS_TYPE
 
   // Inference the dimention indice on the id-th dimention.

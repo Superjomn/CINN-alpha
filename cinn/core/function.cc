@@ -35,7 +35,7 @@ std::shared_ptr<Function> cinn::Function::make(const std::string& name,
   return node;
 }
 
-std::vector<std::string> CollectAllIteratorsFromStages(std::vector<Stage>& stages) {
+std::vector<std::string> CollectAllIteratorsFromStages(std::vector<Stage>& stages) {  // NOLINT
   std::vector<std::string> iters;
   std::set<std::string> iters_set;
 
@@ -417,7 +417,7 @@ Expr Snippet::GetTransformedExpr() const {
       // collect none or multiple stages.
       std::vector<Expr> exprs;
       for (auto& stage : stages_) {
-        // TODO need CopyExpr here ?
+        // TODO(Superjomn) need CopyExpr here ?
         CINN_DEBUG(3) << "collect non-polyhedral expr " << stage.expr();
         exprs.emplace_back(stage.expr());
       }

@@ -62,7 +62,7 @@ struct SimdReferenceCollector : public ir::IRVisitor {
 struct SimdArgumentReplacer : public ir::IRMutator {
   const std::map<std::string, ir::Expr /* var */> &ref_repr_to_var;
 
-  SimdArgumentReplacer(const std::map<std::string, ir::Expr> &x) : ref_repr_to_var(x) {}
+  explicit SimdArgumentReplacer(const std::map<std::string, ir::Expr> &x) : ref_repr_to_var(x) {}
 
   void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
   void Visit(const ir::Assign *op, ir::Expr *expr) override {

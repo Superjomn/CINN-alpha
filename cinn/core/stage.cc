@@ -461,7 +461,7 @@ std::ostream& operator<<(std::ostream& os, Stage::Type t) {
 
 class IslPrinter : public ir::IRPrinter {
  public:
-  IslPrinter(std::ostream& os) : IRPrinter(os) {}
+  explicit IslPrinter(std::ostream& os) : IRPrinter(os) {}
 
   void Visit(const ir::EQ* op) override {
     Print(op->a);

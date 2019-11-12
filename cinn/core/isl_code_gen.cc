@@ -237,7 +237,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           break;
         case isl_ast_op_call: {
           ir::Expr caller_expr = ops.front();
-          // TODO make it an string
+          // TODO(Superjomn) make it an string
           CHECK(caller_expr.type() == ir::NodeTy::Var);
           std::string caller = caller_expr.As<ir::Var>()->name();
           ops.erase(ops.begin());
@@ -374,7 +374,7 @@ Generator& Generator::Global() {
   }
 
 void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, ir::Expr>& indice_map,
-                                                      ir::Expr& root) {
+                                                      ir::Expr& root) {  // NOLINT
   LOG_INDENT(6);
   CINN_DEBUG(3) << "replacing " << root;
   switch (root.type()) {
@@ -439,7 +439,7 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
 }
 
 ir::Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, isl::ast_expr>& indice_map,
-                                                    Expr& root) {
+                                                    Expr& root) {  // NOLINT
   // Transform isl expr map to CINN expr map first.
   std::map<std::string, Expr> cinn_expr_indices;
   for (auto& item : indice_map) {
@@ -541,7 +541,7 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
   mutator.Visit(expr, expr);
 }
 
-void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
+void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {  // NOLINT
   LOG_INDENT(4);
   CINN_DEBUG(0) << "\n" << root;
   CINN_DEBUG(0) << "*** Attach " << stage_name;
@@ -550,7 +550,7 @@ void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
   struct Collector : public ir::IRMutator {
     std::string statement_;
 
-    Collector(const std::string& statement) : statement_(statement) {}
+    explicit Collector(const std::string& statement) : statement_(statement) {}
 
     void Visit(const Expr* op, Expr* expr) override { IRMutator::Visit(op, expr); }
 

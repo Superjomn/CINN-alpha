@@ -1,6 +1,8 @@
 #pragma once
 
+#include <vector>
 #include "cinn/ir/ir.h"
+#include "cinn/ir/ops_overload.h"
 
 namespace cinn {
 namespace ir {
@@ -27,6 +29,12 @@ bool IREquals(const Expr& a, const Expr& b);
 ir::Expr IRDeepCopy(const Expr& a);
 
 ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to);
+
+/**
+ * Simplify a IR expression.
+ * @param source
+ */
+void IRSimplify(ir::Expr* source);
 
 std::ostream& operator<<(std::ostream& os, const ir::Expr& x);
 
