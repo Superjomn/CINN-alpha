@@ -28,5 +28,9 @@ ir::Expr IRDeepCopy(const Expr& a);
 
 ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to);
 
+std::ostream& operator<<(std::ostream& os, const ir::Expr& x);
+
+std::ostream& operator<<(std::ostream& os, ir::NodeTy type);
+
 }  // namespace ir
 }  // namespace cinn

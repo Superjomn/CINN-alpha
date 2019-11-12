@@ -30,7 +30,7 @@ isl::set BuildWithCond(__isl_give isl_set* domain, const std::string& cond) {
 void Stage::ExtractDomainFromExpr(Expr x) {
   LOG_INDENT(0);
   CINN_DEBUG(1) << "expr.type: " << ir::GetNodeTyRepr(x.type());
-  CINN_DEBUG(1) << "expr: " << ir::Dump(x);
+  CINN_DEBUG(1) << "expr: " << x;
 
   if (iterators_in_order.empty()) {
     CINN_DEBUG(3) << "collect " << iterators_in_order.size() << " iterators";
@@ -344,7 +344,7 @@ class ReferenceCollector : public ir::IRPrinter {
 isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) {
   LOG_INDENT(6);
   CINN_DEBUG(6) << "input interator_domain: " << iterator_domain;
-  CINN_DEBUG(6) << "input expr: " << ir::Dump(expr);
+  CINN_DEBUG(6) << "input expr: " << expr;
   // init read access
   std::set<std::string> stmts;
   std::stringstream ss;

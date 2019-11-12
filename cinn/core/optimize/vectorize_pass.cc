@@ -77,8 +77,8 @@ struct SimdArgumentReplacer : public ir::IRMutator {
   void Visit(const ir::SIMDOpr *op, ir::Expr *expr) override {
     LOG(INFO) << "******** Visit simd";
     auto *node = expr->As<ir::SIMDOpr>();
-    LOG(INFO) << "a: " << ir::Dump(node->a);
-    LOG(INFO) << "b: " << ir::Dump(node->b);
+    LOG(INFO) << "a: " << node->a;
+    LOG(INFO) << "b: " << node->b;
     ReplaceSimdArgument(&node->a);
     ReplaceSimdArgument(&node->b);
 
@@ -132,7 +132,7 @@ struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
  protected:
   void PreappendCastToBlock(ir::Block *block, const std::map<std::string, ir::Expr> &simd_args) {
     for (const auto &item : simd_args) {
-      LOG(INFO) << "collected " << item.first << " -> " << ir::Dump(item.second);
+      LOG(INFO) << "collected " << item.first << " -> " << item.second;
       auto cast = ir::Cast::make(item.second, item.second.ptype(), composite_t::simd128);
       cast.set_ctype(composite_t::simd128);
       ir::Var var(NameGenerator::Global().NewVarName());
@@ -233,7 +233,7 @@ class VectorizeMutator : public ir::IRMutator {
   /*
   void Visit(const ir::For *op, Expr *expr) override {
     if (to_vectorize_) {
-      LOG(INFO) << "vectorize for:\n" << ir::Dump(*expr);
+      LOG(INFO) << "vectorize for:\n" << *expr;
       auto *node = expr->As<ir::For>();
       ForGetExtent(node);
     }
@@ -255,7 +255,7 @@ class VectorizeMutator : public ir::IRMutator {
 
   void Vectorize(Expr *expr) {
     LOG_INDENT(0);
-    CINN_DEBUG(2) << "*********** Vectorize " << ir::Dump(*expr);
+    CINN_DEBUG(2) << "*********** Vectorize " << *expr;
     CHECK_GT(vector_width, 1);
     switch (expr->type()) {
 #define __(op__)                                                                      \
@@ -272,7 +272,7 @@ class VectorizeMutator : public ir::IRMutator {
         LOG(ERROR) << "unsupported " << expr->type();
     }
 
-    LOG(INFO) << "after vectorize " << ir::Dump(*expr);
+    LOG(INFO) << "after vectorize " << *expr;
   }
 
  private:

@@ -194,9 +194,4 @@ class Stmt : public IRHandle {
 
 }  // namespace ir
 
-static std::ostream& operator<<(std::ostream& os, ir::NodeTy type) {
-  os << ir::GetNodeTyRepr(type);
-  return os;
-}
-
 }  // namespace cinn

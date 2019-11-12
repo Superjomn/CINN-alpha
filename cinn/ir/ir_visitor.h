@@ -78,7 +78,7 @@ struct IRVisitorBase {
         return Visit(expr->As<ir::Constant>(), args...);
 
       default:
-        LOG(FATAL) << "not supported NodeTy " << expr->type();
+        LOG(FATAL) << "not supported NodeTy";
 
 #undef __
     }

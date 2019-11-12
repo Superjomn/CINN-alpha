@@ -103,11 +103,11 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   ir::Expr ir_body;
   IslAstNodeToCinnExpr(body, &ir_body);
   ir_body = ir::Block::make({ir_body});
-  CINN_DEBUG(5) << "for get body " << ir::Dump(ir_body);
+  CINN_DEBUG(5) << "for get body " << ir_body;
 
   ir::Expr ir_initializer;
   IslAstExprToCinnExpr(initializer, &ir_initializer);
-  CINN_DEBUG(5) << "for get initializer " << ir::Dump(ir_initializer);
+  CINN_DEBUG(5) << "for get initializer " << ir_initializer;
 
   ir::Expr ir_condition;
   IslAstExprToCinnExpr(condition, &ir_condition);
@@ -115,14 +115,14 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
 
   isl::ast_expr arg = isl::manage(isl_ast_expr_get_op_arg(condition.get(), 1));
   IslAstExprToCinnExpr(arg, &tmp);
-  CINN_DEBUG(5) << "for get condition " << ir::Dump(ir_condition);
+  CINN_DEBUG(5) << "for get condition " << ir_condition;
 
   ir::Expr ir_inc;
   IslAstExprToCinnExpr(incrementor, &ir_inc);
-  CINN_DEBUG(5) << "for get inc " << ir::Dump(ir_inc);
+  CINN_DEBUG(5) << "for get inc " << ir_inc;
 
   ir::Var ir_iter(iter_name, primitive_t::float32);
-  CINN_DEBUG(5) << "for get iter  " << ir::Dump(ir_iter);
+  CINN_DEBUG(5) << "for get iter  " << ir_iter;
 
   *expr = ir::For::make(ir_initializer, ir_condition, ir_inc, ir_body, ir_iter);
 }
@@ -357,12 +357,12 @@ Generator& Generator::Global() {
   case ir::NodeTy::op__: {                                              \
     auto* x = root.As<ir::op__>();                                      \
     CINN_DEBUG(3) << "visit " << #op__;                                 \
-    CINN_DEBUG(3) << "a: " << ir::Dump(x->a);                           \
-    CINN_DEBUG(3) << "b: " << ir::Dump(x->b);                           \
+    CINN_DEBUG(3) << "a: " << x->a;                                     \
+    CINN_DEBUG(3) << "b: " << x->b;                                     \
     ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, x->a); \
     ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, x->b); \
-    CINN_DEBUG(3) << "get transformed a: " << ir::Dump(x->a);           \
-    CINN_DEBUG(3) << "get transformed b: " << ir::Dump(x->b);           \
+    CINN_DEBUG(3) << "get transformed a: " << x->a;                     \
+    CINN_DEBUG(3) << "get transformed b: " << x->b;                     \
     break;                                                              \
   };
 
@@ -376,7 +376,7 @@ Generator& Generator::Global() {
 void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string, ir::Expr>& indice_map,
                                                       ir::Expr& root) {
   LOG_INDENT(6);
-  CINN_DEBUG(3) << "replacing " << ir::Dump(root);
+  CINN_DEBUG(3) << "replacing " << root;
   switch (root.type()) {
     OP_2_ARGS_FOR_EACH(TWO_ARG_OP);
     OP_1_ARGS_FOR_EACH(ONE_ARG_OP);
@@ -391,15 +391,15 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       break;
     }
     case ir::NodeTy::Call: {
-      CINN_DEBUG(3) << "visit Call " << ir::Dump(root);
+      CINN_DEBUG(3) << "visit Call " << root;
       auto* call = root.As<ir::Call>();
       for (auto& it : call->arguments) {
         LOG_INDENT(6);
-        CINN_DEBUG(4) << "replacing argument " << ir::Dump(it);
+        CINN_DEBUG(4) << "replacing argument " << it;
         ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, it);
-        CINN_DEBUG(4) << "get " << ir::Dump(it);
+        CINN_DEBUG(4) << "get " << it;
       }
-      CINN_DEBUG(3) << "get " << ir::Dump(root);
+      CINN_DEBUG(3) << "get " << root;
       break;
     }
 
@@ -409,11 +409,11 @@ void ReplaceCinnIndiceWithIslTransformedIndicesHelper(const std::map<std::string
       std::vector<ir::Var> iterators;
       for (auto& it : reference->iterators) {
         LOG_INDENT(2);
-        CINN_DEBUG(0) << "replacing " << ir::Dump(it);
+        CINN_DEBUG(0) << "replacing " << it;
         ReplaceCinnIndiceWithIslTransformedIndicesHelper(indice_map, it);
-        CINN_DEBUG(0) << "get " << ir::Dump(it);
+        CINN_DEBUG(0) << "get " << it;
       }
-      CINN_DEBUG(3) << "get " << ir::Dump(root);
+      CINN_DEBUG(3) << "get " << root;
       break;
     }
 
@@ -470,7 +470,7 @@ isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, vo
     Expr expr;
     IslAstExprToCinnExpr(item.second, &expr);
     cinn_expr_indices[item.first] = expr;
-    CINN_DEBUG(2) << "CINN indice expr: " << item.first << " -> " << ir::Dump(expr);
+    CINN_DEBUG(2) << "CINN indice expr: " << item.first << " -> " << expr;
   }
 
   CINN_DEBUG(3) << "stage " << stage.name() << " set indice map, size: " << cinn_expr_indices.size();
@@ -494,7 +494,7 @@ std::map<std::string, ir::Expr> ExprAttachIslIndices(ir::Expr expr, isl::set dom
   for (int i = 0; i < ndims; i++) {
     std::string cinn_var_name = isl_set_get_dim_name(domain.get(), isl_dim_set, i);
     cinn2isl_exprs[cinn_var_name] = reference.iterators[i];
-    CINN_DEBUG(0) << "cinn to isl exprs: " << cinn_var_name << " " << ir::Dump(reference.iterators[i]);
+    CINN_DEBUG(0) << "cinn to isl exprs: " << cinn_var_name << " " << reference.iterators[i];
   }
   return cinn2isl_exprs;
 }
@@ -510,7 +510,7 @@ std::map<std::string, ir::Expr> ExprAttachIslIndices(ir::Expr expr, isl::set dom
   for (int i = 0; i < ndims; i++) {
     std::string cinn_var_name = isl_set_get_dim_name(domain.get(), isl_dim_set, i);
     cinn2isl_exprs[cinn_var_name] = call.arguments[i];
-    CINN_DEBUG(0) << "cinn to isl exprs: " << cinn_var_name << " " << ir::Dump(call.arguments[i]);
+    CINN_DEBUG(0) << "cinn to isl exprs: " << cinn_var_name << " " << call.arguments[i];
   }
   return cinn2isl_exprs;
 }
@@ -532,7 +532,7 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
     void Visit(const ir::Var* op, Expr* expr) override {
       auto it = map.find(op->name());
       CHECK(it != map.end()) << "iterator " << op->name() << " not exists in Call";
-      CINN_DEBUG(3) << "replace " << ir::Dump(*expr) << " with " << ir::Dump(it->second);
+      CINN_DEBUG(3) << "replace " << *expr << " with " << it->second;
       *expr = it->second;
     }
   };
@@ -543,7 +543,7 @@ void ReplaceVarInExpr(Expr* expr, const std::map<std::string, ir::Expr>& map) {
 
 void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
   LOG_INDENT(4);
-  CINN_DEBUG(0) << "\n" << ir::Dump(root);
+  CINN_DEBUG(0) << "\n" << root;
   CINN_DEBUG(0) << "*** Attach " << stage_name;
   auto stage = Generator::Global().GetStageByName(stage_name);
 
@@ -565,11 +565,11 @@ void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {
         // replace this.
         auto cinn2isl_exprs = ExprAttachIslIndices(*expr, stage.iterator_domain(), *op);
 
-        CINN_DEBUG(4) << "origina call " << ir::Dump(*expr) << " " << ir::Dump(stage.expr());
+        CINN_DEBUG(4) << "origina call " << *expr << " " << stage.expr();
         auto copied_expr = ir::CopyExpr(stage.expr());
         ReplaceVarInExpr(&copied_expr, cinn2isl_exprs);
         *expr = copied_expr;
-        CINN_DEBUG(4) << "after replaced: " << ir::Dump(*expr);
+        CINN_DEBUG(4) << "after replaced: " << *expr;
       } else {
         for (auto& arg : m_op->arguments) {
           Visit(&arg, &arg);

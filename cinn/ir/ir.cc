@@ -4,6 +4,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/ir/expr.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/isl_utils.h"
