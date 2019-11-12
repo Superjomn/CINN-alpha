@@ -1,6 +1,8 @@
 #include "cinn/ir/ir_helper.h"
 #include <algorithm>
 #include <memory>
+#include "cinn/ir/ir_mutator.h"
+#include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/utils/macros.h"
 
@@ -550,6 +552,32 @@ ir::Expr IRDeepCopy(const Expr& a) {
   Expr res;
   copy.Visit(&a, &res);
   return res;
+}
+
+namespace {
+
+struct IRReplaceMutator : public ir::IRMutator {
+  std::string from_repr;
+  ir::Expr to;
+  ir::Expr from;
+
+  IRReplaceMutator(ir::Expr from, ir::Expr to) : from(from), to(to), from_repr(ir::Dump(from)) {}
+
+  void Visit(const ir::Expr* expr, ir::Expr* op) override {
+    if (ir::Dump(*op) == from_repr) {
+      *op = to;
+    } else {
+      IRMutator::Visit(expr, op);
+    }
+  }
+};
+
+}  // namespace
+
+ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to) {
+  IRReplaceMutator mutator(from, to);
+  mutator.Visit(source, source);
+  return from;
 }
 
 }  // namespace ir

@@ -26,5 +26,7 @@ bool IREquals(const Expr& a, const Expr& b);
 
 ir::Expr IRDeepCopy(const Expr& a);
 
+ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to);
+
 }  // namespace ir
 }  // namespace cinn

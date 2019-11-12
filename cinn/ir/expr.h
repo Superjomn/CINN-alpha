@@ -98,6 +98,7 @@ class IRHandle {
   void Reset() { ptr_.reset(); }
 
   const std::shared_ptr<IRNode>& ptr() const { return ptr_; }
+  void set_ptr(const std::shared_ptr<IRNode>& x) { ptr_ = x; }
 };
 
 /// Base class of all the Exprs. An Expr is an expression that can return a value, such as `a+1`.
