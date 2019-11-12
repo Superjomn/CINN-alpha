@@ -1,6 +1,10 @@
 #include "cinn/ir/ir_helper.h"
 #include <algorithm>
 #include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 #include "cinn/ir/ir_mutator.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir_visitor.h"
@@ -407,7 +411,7 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
   }
 
   bool Visit(const ir::Param* op, const ir::Expr* expr) override {
-    LOG(FATAL) << "not supported yet";
+    NOT_IMPLEMENT
     return false;
   }
 
@@ -502,10 +506,10 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     return Visit(&a->size, &b->size);
   }
 
-  bool Visit(const Stmt* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
-  bool Visit(const Tensor* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
-  bool Visit(const Statement* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
-  bool Visit(const Allocate* a, const Expr* expr) override { LOG(FATAL) << "not supported yet"; }
+  bool Visit(const Stmt* a, const Expr* expr) override { NOT_IMPLEMENT }
+  bool Visit(const Tensor* a, const Expr* expr) override { NOT_IMPLEMENT }
+  bool Visit(const Statement* a, const Expr* expr) override { NOT_IMPLEMENT }
+  bool Visit(const Allocate* a, const Expr* expr) override { NOT_IMPLEMENT }
 
   bool Visit(const IntImm* a, const Expr* expr) override {
     auto* b = expr->As<IntImm>();
@@ -588,6 +592,137 @@ std::ostream& operator<<(std::ostream& os, const ir::Expr& x) {
 std::ostream& operator<<(std::ostream& os, ir::NodeTy type) {
   os << ir::GetNodeTyRepr(type);
   return os;
+}
+
+namespace {
+
+/**
+ * Simplify an expression.
+ *
+ * NOTE: Just support +-* /.
+ * NOTE: don't support (x + i - i) = (x).
+ * NOTE: Neet to relay on GCC to further simplify.
+ */
+struct IRSimplifyMutator : public ir::IRMutator {
+  void Visit(const ir::Expr* expr, ir::Expr* op) override { IRMutator::Visit(expr, op); }
+
+  void Visit(const ir::Add* op, ir::Expr* expr) override {
+    auto* node = expr->As<Add>();
+    Visit(&node->a, &node->a);
+    Visit(&node->b, &node->b);
+    if (ConstantCal(node->a, node->b, expr->type(), expr)) return;
+
+    if (IsZeroImm(op->a)) {
+      expr->Reset(op->b);
+    } else if (IsZeroImm(op->b)) {
+      expr->Reset(op->a);
+    }
+  }
+  void Visit(const ir::Sub* op, ir::Expr* expr) override {
+    auto* node = expr->As<Sub>();
+    Visit(&node->a, &node->a);
+    Visit(&node->b, &node->b);
+    if (ConstantCal(node->a, node->b, expr->type(), expr)) return;
+
+    if (IsZeroImm(op->a)) {
+      if (IsZeroImm(op->b)) {
+        expr->Reset(op->b);
+      } else {
+        expr->Reset(Minus::make(op->b));
+      }
+    } else if (IsZeroImm(op->b)) {
+      expr->Reset(op->a);
+    }
+  }
+  void Visit(const ir::Mul* op, ir::Expr* expr) override {
+    auto* node = expr->As<Mul>();
+    Visit(&node->a, &node->a);
+    Visit(&node->b, &node->b);
+    if (ConstantCal(node->a, node->b, expr->type(), expr)) return;
+
+    if (IsZeroImm(op->a)) {  // 0 * x = 0; x * 0 = 0;
+      expr->Reset(op->a);
+    } else if (IsZeroImm(op->b)) {
+      expr->Reset(op->b);
+    } else if (IsOneImm(op->a)) {  // 1 * x = x; x * 1 = x
+      expr->Reset(op->b);
+    } else if (IsOneImm(op->b)) {
+      expr->Reset(op->a);
+    }
+  }
+  void Visit(const ir::Div* op, ir::Expr* expr) override {
+    auto* node = expr->As<Div>();
+    Visit(&node->a, &node->a);
+    Visit(&node->b, &node->b);
+    if (ConstantCal(node->a, node->b, expr->type(), expr)) return;
+
+    if (IsZeroImm(op->a)) {  // 0 / x = 0; x / 0 and x != 0 is forbidden
+      expr->Reset(op->a);
+    } else if (IsZeroImm(op->b)) {
+      LOG(FATAL) << "zero division detected: " << *expr;
+    } else if (IsOneImm(op->b)) {  // x / 1 = x
+      expr->Reset(op->a);
+    }
+  }
+  void Visit(const ir::Minus* op, ir::Expr* expr) override {
+    auto* node = expr->As<Minus>();
+    Visit(&node->a, &node->a);
+
+    if (op->a.is_int_imm()) {
+      expr->Reset(Expr(-op->a.As<IntImm>()->val()));
+    } else if (op->a.is_float_imm()) {
+      expr->Reset(Expr(-static_cast<float>(op->a.As<FloatImm>()->val())));
+    }
+  }
+
+ protected:
+  bool IsZeroImm(const ir::Expr& a) {
+    if (a.is_int_imm() && a.As<IntImm>()->val() == 0) return true;
+    if (a.is_float_imm() && a.As<FloatImm>()->val() == 0.f) return true;
+    return false;
+  }
+
+  bool IsOneImm(const ir::Expr& a) {
+    if (a.is_int_imm() && a.As<IntImm>()->val() == 1) return true;
+    if (a.is_float_imm() && a.As<FloatImm>()->val() == 1.f) return true;
+    return false;
+  }
+
+  template <typename T>
+  T CalConstant(T a, T b, ir::NodeTy ty) {
+    switch (ty) {
+      case NodeTy::Add:
+        return a + b;
+      case NodeTy::Sub:
+        return a - b;
+      case NodeTy::Mul:
+        return a * b;
+      case NodeTy::Div:
+        return a / b;
+      default:
+        LOG(FATAL) << "Not supported NodeTy " << ty;
+    }
+  }
+
+  bool ConstantCal(const ir::Expr& a, const ir::Expr& b, ir::NodeTy type, Expr* expr) {
+    if (a.is_int_imm() && b.is_int_imm()) {
+      expr->Reset(Expr(CalConstant<int>(a.As<IntImm>()->val(), b.As<IntImm>()->val(), expr->type())));
+      return true;
+    } else if (a.is_float_imm() && b.is_float_imm()) {
+      expr->Reset(Expr(CalConstant<float>(a.As<FloatImm>()->val(), b.As<FloatImm>()->val(), expr->type())));
+      return true;
+    }
+
+    // TODO(Superjomn) Consider the type mismatch scenerios.
+    return false;
+  }
+};
+
+}  // namespace
+
+void IRSimplify(ir::Expr* source) {
+  IRSimplifyMutator mutator;
+  mutator.Visit(source, source);
 }
 
 }  // namespace ir

@@ -571,7 +571,7 @@ bool Expr::is_op() const {
 
 class IntervalExtractor : public IRVisitor {
  public:
-  IntervalExtractor(std::vector<Reference::interval_tuple_t> *intervals) : intervals_(intervals) {}
+  explicit IntervalExtractor(std::vector<Reference::interval_tuple_t> *intervals) : intervals_(intervals) {}
 
   void Visit(const Expr *op) override { IRVisitor::Visit(op); }
 
@@ -718,7 +718,7 @@ Expr ReplaceVarWithIterator(int id, const Expr &expr) {
     std::set<std::string> vars_;
 
    public:
-    Visitor(int id) : id_(id) {}
+    explicit Visitor(int id) : id_(id) {}
 
     void Visit(const Expr *op) override { IRVisitor::Visit(op); }
 
