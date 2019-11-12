@@ -580,5 +580,15 @@ ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to) {
   return from;
 }
 
+std::ostream& operator<<(std::ostream& os, const ir::Expr& x) {
+  os << Dump(x);
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, ir::NodeTy type) {
+  os << ir::GetNodeTyRepr(type);
+  return os;
+}
+
 }  // namespace ir
 }  // namespace cinn

@@ -33,7 +33,7 @@ TEST(Function, basic) {
     basic_fn.EndDefinition();
   }
 
-  LOG(INFO) << "func0 " << ir::Dump(basic_fn);
+  LOG(INFO) << "func0 " << basic_fn.ir_function();
 }
 
 TEST(Function, buffer_allocate) {
@@ -59,7 +59,7 @@ TEST(Function, buffer_allocate) {
     fn.EndDefinition();
   }
 
-  LOG(INFO) << "func0.code : \n" << ir::Dump(Expr(fn));
+  LOG(INFO) << "func0.code : \n" << Expr(fn);
 }
 
 Expr tanh(Expr x) { return ir::Max::make(Expr(0.f), x); }
@@ -112,7 +112,7 @@ TEST(Function, syntax) {
     tanh_fn.EndDefinition();
   }
 
-  LOG(INFO) << "tanh:\n" << ir::Dump(tanh_fn);
+  LOG(INFO) << "tanh:\n" << tanh_fn.ir_function();
 
   Function softmax_fn("softmax");
   {
@@ -135,7 +135,7 @@ TEST(Function, syntax) {
     softmax_fn.EndDefinition();
   }
 
-  LOG(INFO) << "softmax: \n" << ir::Dump(softmax_fn);
+  LOG(INFO) << "softmax: \n" << softmax_fn.ir_function();
 
   Function matmul_fn("matmul");
   {
@@ -155,7 +155,7 @@ TEST(Function, syntax) {
     matmul_fn.EndDefinition();
   }
 
-  LOG(INFO) << "matmul_fn: \n" << ir::Dump(matmul_fn);
+  LOG(INFO) << "matmul_fn: \n" << matmul_fn.ir_function();
 }
 
 TEST(Function, any_constant) {
@@ -180,7 +180,7 @@ TEST(Function, any_constant) {
     softmax_fn.EndDefinition();
   }
 
-  LOG(INFO) << "softmax: \n" << ir::Dump(softmax_fn);
+  LOG(INFO) << "softmax: \n" << softmax_fn.ir_function();
 }
 
 }  // namespace cinn

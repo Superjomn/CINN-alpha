@@ -8,7 +8,7 @@
 #include "cinn/core/isl_code_gen.h"
 #include "cinn/core/stage.h"
 #include "cinn/core/transform/transforms.h"
-#include "cinn/ir/ir_printer.h"
+#include "cinn/ir/ir_helper.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/logging.h"
 
@@ -100,7 +100,7 @@ void Function::BuildSnippets() {
   LOG_INDENT(6);
   auto& snippets = data_->snippets;
   for (auto& stage : data_->stages) {
-    CINN_DEBUG(3) << "add stage: " << stage.name() << " " << ir::Dump(stage.expr());
+    CINN_DEBUG(3) << "add stage: " << stage.name() << " " << stage.expr();
     CINN_DEBUG(4) << "stage.type: " << stage.type();
     CINN_DEBUG(6) << "snippets.size: " << snippets.size();
     // add to snippets
@@ -418,7 +418,7 @@ Expr Snippet::GetTransformedExpr() const {
       std::vector<Expr> exprs;
       for (auto& stage : stages_) {
         // TODO need CopyExpr here ?
-        CINN_DEBUG(3) << "collect non-polyhedral expr " << ir::Dump(stage.expr());
+        CINN_DEBUG(3) << "collect non-polyhedral expr " << stage.expr();
         exprs.emplace_back(stage.expr());
       }
       return ir::Block::make(std::move(exprs));
