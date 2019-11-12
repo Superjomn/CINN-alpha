@@ -99,7 +99,7 @@ void IRMutator::Visit(const Cast* op, Expr* expr) {
 
 bool IRMutator::LazyUpdateExpr(Expr* expr, const Expr& e) {
   if (expr->ptr() != e.ptr()) {
-    *expr = e;
+    expr->set_ptr(e.ptr());
   }
 }
 
@@ -120,8 +120,8 @@ void IRMutator::Visit(const ir::Add* op, ir::Expr* expr) {
   CHECK(op->b.valid());
   auto* node = expr->As<ir::Add>();
 
-  // LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));
-  // LazyUpdateExpr(&node->b, VisitBasicExpr(&node->b));
+  LazyUpdateExpr(&node->a, VisitBasicExpr(&node->a));
+  LazyUpdateExpr(&node->b, VisitBasicExpr(&node->b));
   Visit(&node->a, &node->a);
   Visit(&node->b, &node->b);
 }
