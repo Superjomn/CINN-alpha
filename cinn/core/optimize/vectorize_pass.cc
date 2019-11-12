@@ -1,5 +1,6 @@
 #include "cinn/core/optimize/pass.h"
 #include "cinn/core/optimize/pass_registry.h"
+#include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_mutator.h"
 #include "cinn/ir/ir_mutator_helpers.h"
 #include "cinn/ir/ir_printer.h"
@@ -20,8 +21,9 @@ struct SimdReferenceCollector : public ir::IRVisitor {
 
   void Visit(const ir::Assign *op) override {
     if (op->b.is_simd_opr()) {
-      CHECK(op->a.is_reference());
-      Collect(op->a);
+      if (op->a.is_reference()) {
+        Collect(op->a);
+      }
     }
 
     ir::IRVisitor::Visit(op);
@@ -47,34 +49,101 @@ struct SimdReferenceCollector : public ir::IRVisitor {
     }
   }
 
-  void Collect(const ir::Expr &a) { arguments[ir::Dump(a)] = a; }
+  void Collect(const ir::Expr &a) {
+    auto key = ir::Dump(a);
+    if (arguments.count(key)) {
+      arguments[key].set_ptr(a.ptr());
+    } else {
+      arguments[ir::Dump(a)] = a;
+    }
+  }
+};
+
+struct SimdArgumentReplacer : public ir::IRMutator {
+  const std::map<std::string, ir::Expr /* var */> &ref_repr_to_var;
+
+  SimdArgumentReplacer(const std::map<std::string, ir::Expr> &x) : ref_repr_to_var(x) {}
+
+  void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
+  void Visit(const ir::Assign *op, ir::Expr *expr) override {
+    auto *node = expr->As<ir::Assign>();
+    if (op->b.is_simd_opr()) {
+      ReplaceSimdArgument(&node->a);
+    }
+
+    IRMutator::Visit(&node->b, &node->b);
+  }
+
+  void Visit(const ir::SIMDOpr *op, ir::Expr *expr) override {
+    LOG(INFO) << "******** Visit simd";
+    auto *node = expr->As<ir::SIMDOpr>();
+    LOG(INFO) << "a: " << ir::Dump(node->a);
+    LOG(INFO) << "b: " << ir::Dump(node->b);
+    ReplaceSimdArgument(&node->a);
+    ReplaceSimdArgument(&node->b);
+
+    IRMutator::Visit(op, expr);
+  }
+
+  void Visit(const ir::Block *op, Expr *expr) override {
+    auto *node = expr->As<ir::Block>();
+    for (auto &e : node->exprs) {
+      if (!e.is_block()) {
+        ir::IRMutator::Visit(&e, &e);
+      }
+    }
+  }
+
+ protected:
+  void ReplaceSimdArgument(ir::Expr *expr) {
+    for (auto &item : ref_repr_to_var) {
+      if (ir::Dump(*expr) == item.first) {
+        expr->set_ptr(item.second.ptr());
+        break;
+      }
+    }
+  }
 };
 
 struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
   std::map<std::string, ir::Expr> arguments;
+  std::vector<std::map<std::string, ir::Expr /* var */>> ref_repr_to_var;
 
   SimdArgumentCastInsertToBlock() {}
 
   void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
   void Visit(const ir::Block *op, Expr *expr) override {
+    ref_repr_to_var.emplace_back();
+
     auto *block = expr->As<ir::Block>();
     SimdReferenceCollector collector;
     collector.Visit(expr);
     if (!collector.arguments.empty()) {
       PreappendCastToBlock(expr->As<ir::Block>(), collector.arguments);
+
+      SimdArgumentReplacer replacer(ref_repr_to_var.back());
+      replacer.Visit(expr, expr);
     }
     IRMutator::Visit(op, expr);
+
+    ref_repr_to_var.pop_back();
   }
 
  protected:
   void PreappendCastToBlock(ir::Block *block, const std::map<std::string, ir::Expr> &simd_args) {
-    for (auto &item : simd_args) {
+    for (const auto &item : simd_args) {
+      LOG(INFO) << "collected " << item.first << " -> " << ir::Dump(item.second);
       auto cast = ir::Cast::make(item.second, item.second.ptype(), composite_t::simd128);
       cast.set_ctype(composite_t::simd128);
       ir::Var var(NameGenerator::Global().NewVarName());
       var.set_is_reference();
-      auto let = ir::Let::make(Expr(var), cast);
+      Expr var_expr(var);
+      ref_repr_to_var.back()[item.first] = var_expr;
+
+      auto let = ir::Let::make(var_expr, cast);
       let.set_ctype(composite_t::simd128);
+
+      // Preappend cast expressions to block.
       block->exprs.insert(std::begin(block->exprs), let);
     }
   }
