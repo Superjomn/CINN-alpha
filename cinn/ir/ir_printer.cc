@@ -427,6 +427,9 @@ void IRPrinter::Visit(const BufferOpr *op) {
     case BufferOpr::Opr::kReference:
       os_ << StringFormat("%s", op->name.c_str());
       break;
+    case BufferOpr::Opr::kCreateAssign:
+      os_ << StringFormat("create_assign_buffer(%s)", op->name.c_str());
+      break;
   }
 }
 
@@ -464,6 +467,11 @@ void IRPrinter::Visit(const Cast *op) {
   os_ << "(";
   Print(op->expr);
   os_ << ")";
+}
+
+void IRPrinter::Visit(const Module *op) {
+  if (op->global_data_section.valid()) Print(op->global_data_section);
+  if (op->function_section.valid()) Print(op->function_section);
 }
 
 }  // namespace ir

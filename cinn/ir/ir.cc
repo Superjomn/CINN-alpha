@@ -850,5 +850,30 @@ Expr Array::make(Expr size, primitive_t ptype, const std::string &name) {
   CHECK(CheckExprIsConstant(node->size));
   return Expr(node);
 }
+
+Expr SIMDOpr::make(int vector_width, SIMDOpr::Opr opr, Expr a, Expr b) {
+  auto node = std::make_shared<SIMDOpr>();
+  node->vector_width = vector_width;
+  node->opr = opr;
+  node->a = a;
+  node->b = b;
+  if (node->vector_width == 4) node->set_ctype(composite_t::simd128);
+  return Expr(node);
+}
+
+Expr Cast::make(Expr expr, primitive_t type, composite_t ctype) {
+  CHECK(CheckPTypeCastable(expr.ptype(), type));
+  auto node = std::make_shared<Cast>();
+  node->expr = expr;
+  node->set_ptype(type);
+  node->set_ctype(ctype);
+  return Expr(node);
+}
+
+Expr Mark::make(const std::string &content) {
+  auto node = std::make_shared<Mark>();
+  node->content = content;
+  return Expr(node);
+}
 }  // namespace ir
 }  // namespace cinn

@@ -352,6 +352,12 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     Visit(&op->b, &b);
     *to = SIMDOpr::make(op->vector_width, op->opr, a, b);
   }
+  void Visit(const Module* op, Expr* to) override {
+    Expr a, b;
+    Visit(&op->global_data_section, &a);
+    Visit(&op->function_section, &b);
+    *to = Module::make(a, b);
+  }
 };
 
 struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
@@ -542,6 +548,22 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     if (a == b) return true;
     if (a->vector_width != b->vector_width || a->opr != b->opr) return false;
     return Visit(&a->a, &b->a) && Visit(&a->b, &b->b);
+  }
+
+  bool Visit(const Module* a, const Expr* expr) override {
+    auto* b = expr->As<Module>();
+    if (a == b) return true;
+
+    int both_valid = a->global_data_section.valid() + b->global_data_section.valid();
+    if (both_valid == 1) return false;
+
+    both_valid = a->function_section.valid() + b->function_section.valid();
+    if (both_valid == 1) return false;
+
+    if (a->global_data_section.valid() && !Visit(&a->global_data_section, &b->global_data_section)) return false;
+    if (a->function_section.valid() && !Visit(&a->function_section, &b->function_section)) return false;
+
+    return true;
   }
 };
 
