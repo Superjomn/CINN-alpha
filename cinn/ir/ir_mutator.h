@@ -105,6 +105,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const BufferOpr* op, Expr* expr) override;
   void Visit(const Cast* op, Expr* expr) override;
   void Visit(const Array* op, Expr* expr) override;
+  void Visit(const Module* op, Expr* expr) override;
 
  protected:
   //! Update the expression if their data address is different.

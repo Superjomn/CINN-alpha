@@ -352,6 +352,7 @@ class Expr : public IRHandle {
  * A buffer created by BufferOpr is a continuous memory allocated in heap.
  */
 struct BufferOpr : public ExprNode<BufferOpr> {
+  //! The supported operations.
   enum class Opr {
     //! Creation of a buffer.
     kCreate = 0,
@@ -359,6 +360,8 @@ struct BufferOpr : public ExprNode<BufferOpr> {
     kDestroy,
     //! Reference a buffer.
     kReference,
+    //! Create and assign some data.
+    kCreateAssign,
   };
 
   //! Destination of this buffer.
@@ -371,12 +374,15 @@ struct BufferOpr : public ExprNode<BufferOpr> {
   std::string name;
   //! Element's primitive type.
   primitive_t ptype;
+  //! Hold the data if this opr is kAssign.
+  Any assigned_data;
 
   static Expr make(Target target, Expr size, Opr operation, primitive_t type, const std::string& name = "");
 
   bool is_create() const { return operation == Opr::kCreate; }
   bool is_destroy() const { return operation == Opr::kDestroy; }
   bool is_reference() const { return operation == Opr::kReference; }
+  bool is_create_assign() const { return operation == Opr::kCreateAssign; }
 
   static const NodeTy node_type = NodeTy::BufferOpr;
 };
@@ -821,11 +827,7 @@ class Mark : public ir::ExprNode<Mark> {
  public:
   std::string content;
 
-  static Expr make(const std::string& content) {
-    auto node = std::make_shared<Mark>();
-    node->content = content;
-    return Expr(node);
-  }
+  static Expr make(const std::string& content);
 
   static const NodeTy node_type = NodeTy::Mark;
 };
@@ -838,14 +840,7 @@ class Mark : public ir::ExprNode<Mark> {
 struct Cast : public ir::ExprNode<Cast> {
   Expr expr;
 
-  static Expr make(Expr expr, primitive_t type, composite_t ctype = composite_t::primitive) {
-    CHECK(CheckPTypeCastable(expr.ptype(), type));
-    auto node = std::make_shared<Cast>();
-    node->expr = expr;
-    node->set_ptype(type);
-    node->set_ctype(ctype);
-    return Expr(node);
-  }
+  static Expr make(Expr expr, primitive_t type, composite_t ctype = composite_t::primitive);
 
   static bool CheckPTypeCastable(primitive_t s, primitive_t t) {
     // TODO(Superjomn) Implement it latter.
@@ -872,17 +867,25 @@ struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
   Opr opr;
   Expr a, b;
 
-  static Expr make(int vector_width, Opr opr, Expr a, Expr b) {
-    auto node = std::make_shared<SIMDOpr>();
-    node->vector_width = vector_width;
-    node->opr = opr;
-    node->a = a;
-    node->b = b;
-    if (node->vector_width == 4) node->set_ctype(composite_t::simd128);
+  static Expr make(int vector_width, Opr opr, Expr a, Expr b);
+
+  static const NodeTy node_type = NodeTy::SIMDOpr;
+};
+
+struct Module : public ir::ExprNode<Module> {
+  //! The section of global data definitions.
+  Expr global_data_section;
+  //! The section of functions.
+  Expr function_section;
+
+  static Expr make(Expr data_section, Expr function_section) {
+    auto node = std::make_shared<Module>();
+    node->global_data_section = data_section;
+    node->function_section = function_section;
     return Expr(node);
   }
 
-  static const NodeTy node_type = NodeTy::SIMDOpr;
+  static const NodeTy node_type = NodeTy::Module;
 };
 
 //! Extract the Vars from a expression.

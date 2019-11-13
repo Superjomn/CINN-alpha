@@ -125,5 +125,13 @@ void IRMutator::Visit(const ir::Add* op, ir::Expr* expr) {
   Visit(&node->a, &node->a);
   Visit(&node->b, &node->b);
 }
+
+void IRMutator::Visit(const Module* op, Expr* expr) {
+  auto* node = expr->As<ir::Module>();
+
+  if (op->global_data_section.valid()) Visit(&node->global_data_section, &node->global_data_section);
+  if (op->function_section.valid()) Visit(&node->function_section, &node->function_section);
+}
+
 }  // namespace ir
 }  // namespace cinn
