@@ -67,7 +67,7 @@ void IRMutator::Visit(const IfThenElse* op, Expr* expr) {
 
 void IRMutator::Visit(const Block* op, Expr* expr) {
   auto* m_op = expr->As<Block>();
-  for (auto& expr : m_op->exprs) {
+  for (auto& expr : m_op->body) {
     Visit(&expr, &expr);
   }
 }

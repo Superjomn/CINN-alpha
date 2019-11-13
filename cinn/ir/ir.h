@@ -631,7 +631,7 @@ struct Or : public ExprNode<Or> {
 // Block of code.
 struct Block : public ExprNode<Block> {
   // statements(Expr) in the block.
-  std::vector<Expr> exprs;
+  std::vector<Expr> body;
 
   static Expr make(std::vector<Expr>&& list);
 

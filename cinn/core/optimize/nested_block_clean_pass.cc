@@ -18,10 +18,10 @@ struct Mutator : public ir::IRMutator {
 
     bool detect_nested = false;
     std::vector<Expr> new_exprs;
-    for (auto& e : a->exprs) {
+    for (auto& e : a->body) {
       if (e.is_block()) {
         detect_nested = true;
-        for (auto& e1 : e.As<ir::Block>()->exprs) {
+        for (auto& e1 : e.As<ir::Block>()->body) {
           new_exprs.push_back(e1);
         }
       } else {
@@ -30,7 +30,7 @@ struct Mutator : public ir::IRMutator {
     }
 
     if (detect_nested) {
-      a->exprs = new_exprs;
+      a->body = new_exprs;
 
       Visit(op, expr);
     } else {

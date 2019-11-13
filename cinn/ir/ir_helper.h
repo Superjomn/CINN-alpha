@@ -26,8 +26,21 @@ static Expr exp(Expr x) { return Exp::make(x); }
  */
 bool IREquals(const Expr& a, const Expr& b);
 
+/**
+ * Deep copy a IR expression.
+ * @param a the expression to copy.
+ * @return A new expression.
+ */
 ir::Expr IRDeepCopy(const Expr& a);
 
+/**
+ * NOTE: some bug here!
+ * Replace a specific expression to the other.
+ * @param source
+ * @param from
+ * @param to
+ * @return
+ */
 ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to);
 
 /**

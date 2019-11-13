@@ -117,7 +117,7 @@ class Mutator : public ir::IRMutator {
     if (it != statis.end()) {
       for (auto &let_expr_item : it->second.let_exprs) {
         LOG(INFO) << "pre append lets: " << let_expr_item.first << " " << DumpIR(&let_expr_item.second);
-        cur_block->exprs.insert(std::begin(cur_block->exprs), let_expr_item.second);
+        cur_block->body.insert(std::begin(cur_block->body), let_expr_item.second);
       }
     }
   }

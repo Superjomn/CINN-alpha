@@ -267,7 +267,7 @@ void CodeGenLLVM::Visit(const ir::Constant *op) {
 
 // The Block expr should be carefully processed in the For and Function.
 void CodeGenLLVM::Visit(const ir::Block *op) {
-  for (auto &expr : op->exprs) {
+  for (auto &expr : op->body) {
     Visit(&expr);
   }
 }

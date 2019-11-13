@@ -41,7 +41,7 @@ struct SimdReferenceCollector : public ir::IRVisitor {
   }
 
   void Visit(const ir::Block *op) override {
-    for (auto &expr : op->exprs) {
+    for (auto &expr : op->body) {
       if (!expr.is_block()) {
         // This should works with the "nested_block_clean_pass".
         Visit(&expr);  // avoid nested
@@ -87,7 +87,7 @@ struct SimdArgumentReplacer : public ir::IRMutator {
 
   void Visit(const ir::Block *op, Expr *expr) override {
     auto *node = expr->As<ir::Block>();
-    for (auto &e : node->exprs) {
+    for (auto &e : node->body) {
       if (!e.is_block()) {
         ir::IRMutator::Visit(&e, &e);
       }
@@ -144,7 +144,7 @@ struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
       let.set_ctype(composite_t::simd128);
 
       // Preappend cast expressions to block.
-      block->exprs.insert(std::begin(block->exprs), let);
+      block->body.insert(std::begin(block->body), let);
     }
   }
 };
@@ -213,11 +213,11 @@ class VectorizeMutator : public ir::IRMutator {
 
   void Visit(const ir::Block *op, Expr *expr) override {
     auto *block = expr->As<ir::Block>();
-    for (int i = 0; i < block->exprs.size(); i++) {
-      auto &expr = block->exprs[i];
+    for (int i = 0; i < block->body.size(); i++) {
+      auto &expr = block->body[i];
       if (expr.is_mark() && Contains(expr.As<ir::Mark>()->content, "vectorize - points")) {
-        if (i + 1 >= block->exprs.size() || !block->exprs[i + 1].is_for_()) continue;
-        auto &for_expr = block->exprs[i + 1];
+        if (i + 1 >= block->body.size() || !block->body[i + 1].is_for_()) continue;
+        auto &for_expr = block->body[i + 1];
         if (!ForGetExtent(for_expr.As<ir::For>())) continue;
         i++;
 

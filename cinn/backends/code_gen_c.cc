@@ -152,12 +152,12 @@ void C_CodeGen::WriteToFile(const std::string &path) const {
 void C_CodeGen::Visit(const ir::Block *op) {
   // PrintIndent();
   // os_ << "{\n";
-  for (size_t i = 0; i < op->exprs.size(); i++) {
-    auto &expr = op->exprs[i];
+  for (size_t i = 0; i < op->body.size(); i++) {
+    auto &expr = op->body[i];
     PrintIndent();
     Print(expr);
 
-    if (i != op->exprs.size() - 1) Println();
+    if (i != op->body.size() - 1) Println();
   }
   // PrintIndent();
   // os_ << "}\n";
