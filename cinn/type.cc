@@ -13,14 +13,16 @@ int primitive_bytes(primitive_t type) {
       return 2;
     case primitive_t::int32:
     case primitive_t::uint32:
+    case primitive_t::float32:
       return 4;
     case primitive_t::int64:
     case primitive_t::uint64:
+    case primitive_t::float64:
       return 8;
     case primitive_t::boolean:
       return 1;
-    default:
-      LOG(FATAL) << "unsupported type " << static_cast<int>(type);
+    case primitive_t::unk:
+      return -1;
   }
 }
 

@@ -5,9 +5,10 @@ namespace cinn {
 namespace hlir {
 
 void BuildNetwork0(Network* net, Session* session) {
-  net->AddMatMul("x0", "w", "y0");
-  net->AddElementwise(Network::ElementwiseOpKind::kAdd, "y0", "b", "y1");
-  net->AddTanh("y1", "y2");
+  using Var = Network::Var;
+  auto mul_out = net->AddMatMul(Var("x0"), Var("w"));
+  auto ele_out = net->AddElementwise(Network::ElementwiseOpKind::kAdd, mul_out, Var("b"));
+  auto tanh_out = net->AddTanh(Var(ele_out));
 
   auto* x0 = session->NewTensor("x0");
   x0->set_shape({30, 40});
@@ -17,10 +18,6 @@ void BuildNetwork0(Network* net, Session* session) {
 
   auto* b = session->NewTensor("b");
   b->set_shape({50});
-
-  auto* y0 = session->NewTensor("y0");
-  auto* y1 = session->NewTensor("y1");
-  auto* y2 = session->NewTensor("y2");
 }
 
 }  // namespace hlir

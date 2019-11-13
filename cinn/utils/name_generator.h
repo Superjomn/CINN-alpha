@@ -14,6 +14,7 @@ class NameGenerator {
   size_t named_counter_{};
   size_t buffer_counter_{};
   size_t array_counter_{};
+  size_t tmp_var_counter_{};
 
  public:
   static NameGenerator& Global() {
@@ -29,6 +30,7 @@ class NameGenerator {
   std::string NewVarName() { return "var" + std::to_string(var_counter_++); }
   std::string NewBuffer() { return "buf" + std::to_string(buffer_counter_++); }
   std::string NewArray() { return "arr" + std::to_string(array_counter_++); }
+  std::string NewTmpVar() { return "tmp" + std::to_string(tmp_var_counter_++); }
 
  private:
   NameGenerator() = default;

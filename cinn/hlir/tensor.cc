@@ -73,5 +73,14 @@ const std::string &Tensor::ir_inner_name() const {
   return ir_inner_name_;
 }
 
+int Shape::num_bytes(primitive_t ptype) const {
+  int bytes = primitive_bytes(ptype);
+  CHECK_LT(bytes, 0);
+  return num_elements() * bytes;
+}
+
+int Shape::num_elements() const {
+  return std::accumulate(data.begin(), data.end(), 1, [](int x, int y) { return x * y; });
+}
 }  // namespace hlir
 }  // namespace cinn

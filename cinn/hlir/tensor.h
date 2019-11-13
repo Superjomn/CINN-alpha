@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <utility>
 #include <vector>
 #include "cinn/core/stage.h"
@@ -10,6 +11,16 @@ namespace cinn {
 namespace hlir {
 
 using shape_t = std::vector<int>;
+
+struct Shape {
+  std::vector<int> data;
+
+  explicit Shape(const std::vector<int>& data) : data(data) {}
+
+  int num_elements() const;
+
+  int num_bytes(primitive_t ptype) const;
+};
 
 /**
  * Tensor represents the in the Graph(SSA), it helps to record the operations on the variable.
@@ -37,17 +48,22 @@ class Tensor {
    */
   ir::Expr Elem() const;
 
+  void AttachBuffer(const std::shared_ptr<Buffer>& buf) { buffer_ = buf; }
+  const std::shared_ptr<Buffer>& buffer() const { return buffer_; }
+
   /**
    * Get the shape of the tensor.
    * @return the shape of the tensor.
    */
   const shape_t& shape() const { return shape_; }
-
   /**
    * Set the shape of the tensor.
    * @param x the shape
    */
   void set_shape(const shape_t& x);
+
+  void set_is_weight(bool x = true) { is_weight_ = x; }
+  bool is_weight() const { return is_weight_; }
 
   /**
    * Set the iterators manually, be sure that the iterators empty.
@@ -128,6 +144,8 @@ class Tensor {
   std::string ir_inner_name_;
   //! the name of this tensor in HLIR graph.
   std::string name_;
+  //! Tell whether it is a weight.
+  bool is_weight_{false};
 };
 
 }  // namespace hlir

@@ -13,9 +13,45 @@
 namespace cinn {
 namespace hlir {
 
+/**
+ * Network is the high-level API.
+ */
 class Network {
  public:
+  struct Var {
+    Var(const std::string& name) : name(name) {}
+
+    //! Tell whether the variale is valid.
+    operator bool() { return !name.empty(); }
+
+    std::string name;
+  };
+
   Network(const std::string& name, Session* session) : name_(name), session_(session) {}
+
+  //! Declare an input placeholder.
+  Var DeclInput(const std::string& name, primitive_t ptype);
+  //! Declare an output placeholder.
+  Var DeclOutput(const std::string& name, primitive_t ptype);
+  //! Declare a weight for the model.
+  template <typename T>
+  Var DeclWeight(const std::string& name, primitive_t ptype, const Shape& shape, const T* data) {
+    Tensor* tensor = session_->NewTensor(name);
+    auto buf = std::make_shared<Buffer>(name + "_buf", ptype);
+    buf->Resize(shape.num_bytes(ptype));
+    buf->SetData(data);
+    tensor->AttachBuffer(buf);
+    tensor->set_is_weight();
+  }
+
+  /**
+   * Add a Fully Connected layer.
+   * @param x the input.
+   * @param w the weight.
+   * @param b the bias, leave empty is not valid.
+   * @return the output.
+   */
+  Var AddFc(Var x, Var w, Var b);
 
   /**
    * Add a MatMul operator.
@@ -23,21 +59,21 @@ class Network {
    * @param y Name of the second input.
    * @param out Name of the output.
    */
-  void AddMatMul(const std::string& x, const std::string& y, const std::string& out);
+  Var AddMatMul(const Var& x, const Var& y);
 
   /**
    * Add a Tanh operator.
    * @param x Name of the input.
    * @param out Name of the output.
    */
-  void AddTanh(const std::string& x, const std::string& out);
+  Var AddTanh(Var x);
 
   /**
    * Add a Sigmoid operator.
    * @param x Name of the input.
    * @param out Name of the output.
    */
-  void AddSigmoid(const std::string& x, const std::string& out);
+  Var AddSigmoid(Var x);
 
   enum class ElementwiseOpKind {
     kAdd = 0,
@@ -53,7 +89,7 @@ class Network {
    * @param y Name of the second input.
    * @param out Name of the output.
    */
-  void AddElementwise(ElementwiseOpKind kind, const std::string& x, const std::string& y, const std::string& out);
+  Var AddElementwise(ElementwiseOpKind kind, Var x, Var y);
 
   /**
    * Add a Reshape operator.
@@ -61,7 +97,7 @@ class Network {
    * @param x Name of the input.
    * @param out Name of the output.
    */
-  void AddReshape(const std::vector<int>& shape, const std::string& x, const std::string& out);
+  Var AddReshape(const std::vector<int>& shape, Var x);
 
   /**
    * Compile the network and generate a program.
