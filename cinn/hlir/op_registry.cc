@@ -7,7 +7,7 @@ std::unique_ptr<Operator> OpRegistry::CreateOp(HlirLayer layer, const std::strin
   CHECK_EQ(registry_.size(), static_cast<int>(HlirLayer::__NUM__));
   auto &registry = registry_[static_cast<int>(layer)];
   auto creator_it = registry.find(type);
-  CHECK(creator_it != std::end(registry));
+  CHECK(creator_it != std::end(registry)) << type;
   return creator_it->second();
 }
 
