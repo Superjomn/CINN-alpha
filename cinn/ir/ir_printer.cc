@@ -237,11 +237,11 @@ void IRPrinter::Visit(const Block *op) {
   // PrintIndent();
   // os_ << "{%_B" << indent_size_ << "\n";
 
-  for (size_t i = 0; i < op->exprs.size(); i++) {
-    auto &expr = op->exprs[i];
+  for (size_t i = 0; i < op->body.size(); i++) {
+    auto &expr = op->body[i];
     PrintIndent();
     Print(expr);
-    if (i != op->exprs.size() - 1) Println();
+    if (i != op->body.size() - 1) Println();
   }
 
   // PrintIndent();

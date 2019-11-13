@@ -319,7 +319,7 @@ Expr Block::make(std::vector<Expr> &&list) {
     CHECK(v.valid());
   }
   auto node = std::make_shared<Block>();
-  node->exprs = std::move(list);
+  node->body = std::move(list);
   node->set_ptype(primitive_t::void_);
   return Expr(node);
 }

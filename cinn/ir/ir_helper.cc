@@ -261,7 +261,7 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
   }
   void Visit(const Block* op, Expr* to) override {
     std::vector<ir::Expr> exprs;
-    for (auto& expr : op->exprs) {
+    for (auto& expr : op->body) {
       Expr e;
       Visit(&expr, &e);
       exprs.emplace_back(e);
@@ -474,9 +474,9 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     auto* b = expr->As<Block>();
     if (a == b) return true;
 
-    if (a->exprs.size() != b->exprs.size()) return false;
-    for (int i = 0; i < a->exprs.size(); i++) {
-      if (!Visit(&a->exprs[i], &b->exprs[i])) return false;
+    if (a->body.size() != b->body.size()) return false;
+    for (int i = 0; i < a->body.size(); i++) {
+      if (!Visit(&a->body[i], &b->body[i])) return false;
     }
     return true;
   }

@@ -40,7 +40,7 @@ void IRVisitor::Visit(const For *op) {
   Visit(&op->body);
 }
 void IRVisitor::Visit(const Block *op) {
-  for (auto &expr : op->exprs) {
+  for (auto &expr : op->body) {
     Visit(&expr);
   }
 }
