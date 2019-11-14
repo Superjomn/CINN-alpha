@@ -4,20 +4,20 @@
 namespace cinn {
 namespace hlir {
 
-void BuildNetwork0(Network* net, Session* session) {
+void BuildNetwork1(Network* net, Session* session) {
   using Var = Network::Var;
-  auto mul_out = net->AddMatMul(Var("x0"), Var("w"));
-  auto ele_out = net->AddElementwise(Network::ElementwiseOpKind::kAdd, mul_out, Var("b"));
-  auto tanh_out = net->AddTanh(Var(ele_out));
 
-  auto* x0 = session->NewTensor("x0");
-  x0->set_shape({30, 40});
+  std::vector<float> w0_data({0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8});
+  std::vector<float> b_data({0.1, 0.2});
 
-  auto* w = session->NewTensor("w");
-  w->set_shape({40, 50});
+  Var x0 = net->DeclInput("x0", primitive_t::float32, Shape{{3, 4}});
+  Var w0 = net->DeclWeight<float>("w0", primitive_t::float32, Shape{{4, 2}}, w0_data.data());
+  Var b = net->DeclWeight<float>("b", primitive_t::float32, Shape{{2}}, b_data.data());
 
-  auto* b = session->NewTensor("b");
-  b->set_shape({50});
+  auto fc_out = net->AddFc(x0, w0, b);
+  auto tanh_out = net->AddTanh(fc_out);
+
+  net->DeclOutput(fc_out.name);
 }
 
 }  // namespace hlir

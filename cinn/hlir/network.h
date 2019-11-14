@@ -18,6 +18,7 @@ namespace hlir {
  */
 class Network {
  public:
+  //! Variables of the operators' inputs and outputs.
   struct Var {
     Var(const std::string& name) : name(name) {}
 
@@ -30,18 +31,25 @@ class Network {
   Network(const std::string& name, Session* session) : name_(name), session_(session) {}
 
   //! Declare an input placeholder.
-  Var DeclInput(const std::string& name, primitive_t ptype);
+  Var DeclInput(const std::string& name, primitive_t ptype, Shape shape);
   //! Declare an output placeholder.
-  Var DeclOutput(const std::string& name, primitive_t ptype);
+  Network::Var DeclOutput(const std::string& name);
   //! Declare a weight for the model.
   template <typename T>
   Var DeclWeight(const std::string& name, primitive_t ptype, const Shape& shape, const T* data) {
+    weight_names_.insert(name);
+
     Tensor* tensor = session_->NewTensor(name);
     auto buf = std::make_shared<Buffer>(name + "_buf", ptype);
     buf->Resize(shape.num_bytes(ptype));
-    buf->SetData(data);
+    buf->SetData<T>(data);
+
     tensor->AttachBuffer(buf);
     tensor->set_is_weight();
+    tensor->set_shape(shape);
+    tensor->set_ptype(ptype);
+    LOG(INFO) << name << " " << tensor->ptype();
+    return Var(name);
   }
 
   /**
@@ -106,15 +114,23 @@ class Network {
    */
   Program Compile();
 
+  //! Number of operators.
   size_t num_operators() { return operators_.size(); }
+
+  const std::set<std::string>& input_names() const { return input_names_; }
+  const std::set<std::string>& output_names() const { return outputs_names_; }
+  const std::set<std::string>& weight_names() const { return weight_names_; }
 
  private:
   //! Name of this network.
   std::string name_;
   //! Session used for all the operators.
   Session* session_{};
-
+  //! Hold all the operator instances.
   std::vector<std::unique_ptr<Operator>> operators_;
+
+  std::set<std::string> input_names_, outputs_names_;
+  std::set<std::string> weight_names_;
 };
 
 }  // namespace hlir

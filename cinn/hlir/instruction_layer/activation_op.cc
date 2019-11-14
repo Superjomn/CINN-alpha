@@ -14,6 +14,14 @@ class ActivationBase : public Operator {
   ActivationBase(const std::string& type) : Operator(type, HlirLayer::kInstructionWise, nullptr) {}
 
  protected:
+  void InferenceOutputType() override {
+    const auto* x = GetInput("X");
+    auto& out = GetOutput("Out");
+
+    CHECK_NE(x->ptype(), primitive_t::unk);
+    out.set_ptype(x->ptype());
+  }
+
   void Resize() override {
     const auto* x = GetInput("X");
     auto& out = GetOutput("Out");

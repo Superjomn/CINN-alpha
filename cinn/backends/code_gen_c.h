@@ -69,6 +69,9 @@ class C_CodeGen : public ir::IRPrinter {
   void Visit(const ir::SIMDOpr* op) override;
 
  public:
+  void Visit(const ir::BufferOpr* op) override;
+
+ public:
   void Visit(const ir::Cast* op) override;
 
  private:

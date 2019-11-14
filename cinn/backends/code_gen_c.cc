@@ -210,6 +210,7 @@ void C_CodeGen::PrintPType(primitive_t ptype) {
     __(float32);
     __(int32);
     __(int64);
+    __(uint8);
     default:
       LOG(FATAL) << "Unsupported type " << ptype;
   }
@@ -253,6 +254,54 @@ void C_CodeGen::Visit(const ir::Cast *op) {
     os_ << "(";
     Print(op->expr);
     os_ << ")";
+  }
+}
+
+std::string GetDataRepr(const ir::BufferOpr *op) {
+  switch (op->ptype()) {
+    case primitive_t::float32:
+      return Concat(ToString(op->assigned_data.get<std::vector<float32_t>>()), ",");
+    case primitive_t::int32:
+      return Concat(ToString(op->assigned_data.get<std::vector<int32_t>>()), ",");
+    case primitive_t::int8:
+      return Concat(ToString(op->assigned_data.get<std::vector<int8_t>>()), ",");
+    case primitive_t::uint8:
+      return Concat(ToString(op->assigned_data.get<std::vector<uint8_t>>()), ",");
+    default:
+      LOG(FATAL) << "Not supported ptype: " << op->ptype();
+  }
+}
+
+void C_CodeGen::Visit(const ir::BufferOpr *op) {
+  switch (op->operation) {
+    case ir::BufferOpr::Opr::kCreate:
+      PrintPType(op->ptype());
+      os_ << "* ";
+      os_ << op->name;
+      os_ << " = ";
+      os_ << " (";
+      PrintPType(op->ptype());
+      os_ << "*) malloc(";
+      Print(op->size);
+      os_ << ");";
+      break;
+
+    case ir::BufferOpr::Opr::kCreateAssign:
+      PrintPType(op->ptype());
+      os_ << " ";
+      os_ << op->name;
+      os_ << "[] = {";
+      os_ << GetDataRepr(op);
+      os_ << "};";
+      break;
+
+    case ir::BufferOpr::Opr::kDestroy:
+      os_ << "free " << op->name << ";";
+      break;
+
+    case ir::BufferOpr::Opr::kReference:
+      os_ << op->name;
+      break;
   }
 }
 

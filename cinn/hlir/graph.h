@@ -68,6 +68,7 @@ class Graph {
    * allowed.
    */
   void Compile(bool finalize_function = true);
+  Expr CompileExpr();
 
   /**
    * Get all the nodes.

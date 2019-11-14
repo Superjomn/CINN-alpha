@@ -17,7 +17,7 @@ TEST(Point, basic) {
   hlir::Session session;
   hlir::Network net("tmp", &session);
 
-  hlir::BuildNetwork0(&net, &session);
+  hlir::BuildNetwork1(&net, &session);
 
   auto program = net.Compile();
 
@@ -68,7 +68,7 @@ TEST(Point, multiple) {
   hlir::Session session;
   hlir::Network net("tmp", &session);
 
-  hlir::BuildNetwork0(&net, &session);
+  hlir::BuildNetwork1(&net, &session);
 
   auto program = net.Compile();
 

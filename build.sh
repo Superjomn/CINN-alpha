@@ -34,7 +34,7 @@ function run_exe_test {
 }
 
 function test_ {
-    ctest
+    ctest -V
 }
 
 function CI {

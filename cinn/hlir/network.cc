@@ -103,5 +103,23 @@ Network::Var Network::AddFc(Network::Var x, Network::Var w, Network::Var b) {
   return out;
 }
 
+Network::Var Network::DeclInput(const std::string &name, primitive_t ptype, Shape shape) {
+  input_names_.insert(name);
+
+  Tensor *tensor = session_->NewTensor(name);
+  CHECK(tensor);
+  tensor->set_shape(shape);
+  tensor->set_ptype(ptype);
+  return Var(name);
+}
+
+Network::Var Network::DeclOutput(const std::string &name) {
+  outputs_names_.insert(name);
+
+  Tensor *tensor = session_->GetTensor(name);
+  CHECK(tensor);
+  return Var(name);
+}
+
 }  // namespace hlir
 }  // namespace cinn

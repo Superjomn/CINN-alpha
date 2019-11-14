@@ -1,6 +1,9 @@
 #pragma once
 #include <stddef.h>
+#include <set>
 #include <string>
+#include "cinn/type.h"
+#include "cinn/utils/any.h"
 #include "cinn/utils/name_generator.h"
 
 namespace cinn {
@@ -13,8 +16,8 @@ class Buffer {
  public:
   Buffer() : name_(NameGenerator::Global().NewBuffer()) {}
   Buffer(const std::string& name, primitive_t ptype) : name_(name) {
-    CHECK(names_.count(name));
-    names_.insert(name);
+    // CHECK(!names_.count(name)) << "duplicate buffer name: " << name;
+    // names_.insert(name);
   }
 
   // TODO(Superjomn) Add memory management.
@@ -30,6 +33,13 @@ class Buffer {
   }
 
   bool has_data() { return data_.valid(); }
+
+  template <typename T>
+  const T& data() {
+    CHECK(has_data());
+    return data_.get<T>();
+  }
+  const Any& data() const { return data_; }
 
  private:
   static std::set<std::string> names_;

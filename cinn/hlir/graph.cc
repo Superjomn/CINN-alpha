@@ -1,5 +1,6 @@
 #include "cinn/hlir/graph.h"
 #include <algorithm>
+#include <algorithm>
 #include "cinn/backends/code_gen_c.h"
 #include "cinn/hlir/graph_util.h"
 #include "cinn/utils/logging.h"
@@ -148,10 +149,18 @@ std::vector<Function> Graph::PartitionFunctions() {
   std::transform(
       outputs.begin(), outputs.end(), std::back_inserter(fn_outputs), [](Node* node) { return node->tensor->expr(); });
 
+  auto expr_compare = [](const ir::Expr& a, const ir::Expr& b) {
+    auto a_str = ir::Dump(a);
+    auto b_str = ir::Dump(b);
+    return a_str < b_str;
+  };
+
+  std::sort(fn_inputs.begin(), fn_inputs.end(), expr_compare);
+  std::sort(fn_outputs.begin(), fn_outputs.end(), expr_compare);
+
   CINN_DEBUG(1) << "inputs.size " << fn_inputs.size();
   CINN_DEBUG(1) << "outputs.size " << fn_outputs.size();
 
-  Node* last_node{};
   for (Node& node : GraphTraits::TS(*this)) {
     if (!node.is_tensor()) continue;
 
@@ -165,7 +174,6 @@ std::vector<Function> Graph::PartitionFunctions() {
       fns.back().Outputs(fn_outputs);
       fns.back().EndDefinition();
       fns.emplace_back(NameGenerator::Global().NewFuncionName());
-      last_node = &node;
     }
   }
 
@@ -187,6 +195,20 @@ void Graph::Compile(bool finalize_function) {
   auto block = ir::Block::make(std::move(exprs));
 
   backends::CompileAsC(block, "1.h", "1.cc");
+}
+
+Expr Graph::CompileExpr() {
+  auto fns = PartitionFunctions();
+
+  CHECK(!fns.empty());
+  for (auto& fn : fns) {
+    fn.EndDefinition();
+  }
+
+  std::vector<ir::Expr> exprs;
+  std::transform(fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
+  auto block = ir::Block::make(std::move(exprs));
+  return block;
 }
 
 }  // namespace hlir

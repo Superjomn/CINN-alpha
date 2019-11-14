@@ -470,7 +470,10 @@ void IRPrinter::Visit(const Cast *op) {
 }
 
 void IRPrinter::Visit(const Module *op) {
-  if (op->global_data_section.valid()) Print(op->global_data_section);
+  if (op->global_data_section.valid()) {
+    Print(op->global_data_section);
+    os_ << "\n\n";
+  }
   if (op->function_section.valid()) Print(op->function_section);
 }
 

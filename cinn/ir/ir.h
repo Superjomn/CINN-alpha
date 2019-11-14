@@ -372,8 +372,6 @@ struct BufferOpr : public ExprNode<BufferOpr> {
   Opr operation;
   //! Name of this buffer.
   std::string name;
-  //! Element's primitive type.
-  primitive_t ptype;
   //! Hold the data if this opr is kAssign.
   Any assigned_data;
 

@@ -15,6 +15,14 @@ class Pad : public Operator {
   Pad() : Operator("pad", HlirLayer::kInstructionWise, nullptr) { param_.set(PadParam()); }
 
  protected:
+  void InferenceOutputType() override {
+    auto* input0 = GetInput("X");
+    auto& output0 = GetOutput("Out");
+
+    CHECK_NE(input0->ptype(), primitive_t::unk);
+    output0.set_ptype(input0->ptype());
+  }
+
   void Resize() override {
     auto* input0 = GetInput("X");
     auto& output0 = GetOutput("Out");
@@ -26,7 +34,7 @@ class Pad : public Operator {
                             the_param.padding[i][1].int32_val());
     }
 
-    output0.set_shape(ir_shape);
+    output0.set_shape(Shape(ir_shape));
   }
 
  protected:

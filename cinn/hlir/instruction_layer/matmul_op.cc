@@ -14,17 +14,31 @@ class MatMulOp : public Operator {
   MatMulOp() : Operator("matmul", HlirLayer::kInstructionWise, nullptr) { param_.set(MatMulParam()); }
 
  protected:
+  void InferenceOutputType() override {
+    const auto* input0 = GetInput("X");
+    const auto* W = GetInput("W");
+    auto& output = GetOutput("Out");
+
+    CHECK_EQ(input0->ptype(), W->ptype());
+    CHECK_NE(input0->ptype(), primitive_t::unk);
+
+    output.set_ptype(input0->ptype());
+  }
+
   void Resize() override {
     auto* input0 = GetInput("X");
     auto* W = GetInput("W");
     auto& output0 = GetOutput("Out");
+
+    CHECK(input0);
+    CHECK(W);
 
     CHECK_EQ(input0->shape().size(), 2UL);
     CHECK_EQ(W->shape().size(), 2UL);
     CHECK_EQ(input0->shape()[1], W->shape()[0]);
 
     std::vector<int> shape({input0->shape()[0], W->shape()[1]});
-    output0.set_shape(shape);
+    output0.set_shape(Shape(shape));
 
     W->set_iterators({input0->iterators()[1], W->iterators()[1]});
     output0.set_iterators({input0->iterators()[0], W->iterators()[1]});
