@@ -12,6 +12,17 @@ class ElementwiseBase : public Operator {
     param_.set(ElementwiseParam());
   }
 
+  void InferenceOutputType() override {
+    const auto* x = GetInput("X");
+    const auto* y = GetInput("Y");
+    auto& output = GetOutput("Out");
+
+    CHECK_EQ(x->ptype(), y->ptype());
+    CHECK_NE(x->ptype(), primitive_t::unk);
+
+    output.set_ptype(x->ptype());
+  }
+
  protected:
   void Resize() override {
     const auto* x = GetInput("X");
@@ -21,8 +32,8 @@ class ElementwiseBase : public Operator {
     output.set_shape(x->shape());
     // check the reversed dimensions matches.
     CHECK_LE(y->shape().size(), x->shape().size());
-    auto y_it = y->shape().rbegin();
-    auto x_it = x->shape().rbegin();
+    auto y_it = y->shape().data.rbegin();
+    auto x_it = x->shape().data.rbegin();
     for (int i = 0; i < y->shape().size(); i++) {
       CHECK_EQ(*(y_it + i), *(x_it + i));
     }

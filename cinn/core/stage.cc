@@ -193,9 +193,9 @@ Stage::Stage(const std::string& name, const std::string& iter_domain) {
 
 void Stage::set_name(const std::string& name) {
   CHECK(!name.empty());
-  CHECK(!data_->names.count(name)) << "duplicate name for Computation, " << name;
+  // CHECK(!data_->names.count(name)) << "duplicate name for Computation, " << name;
   data_->name = name;
-  data_->names.insert(data_->name);
+  // data_->names.insert(data_->name);
   if (!data_->iter_domain.is_null()) {
     data_->iter_domain = isl::manage(isl_set_set_tuple_name(data_->iter_domain.release(), name.c_str()));
   }
@@ -240,7 +240,7 @@ bool Stage::is_assign() const { return expr().is_assign(); }
 
 bool Stage::is_allocate() const { return expr().is_allocate(); }
 
-std::set<std::string> Stage::Data::names;
+// std::set<std::string> Stage::Data::names;
 
 void Stage::Interchange(ir::Var i, ir::Var j) { Interchange(i.name(), j.name()); }
 

@@ -9,7 +9,17 @@ namespace hlir {
 class Builder {
  public:
   //! Build a network.
-  void Build(Session* session, Network&& net);
+  ir::Expr Build(Session* session, Network&& net);
+
+  Expr CreateGlobalVars(Session* session, const Network& net) {
+    std::vector<ir::Expr> exprs(
+        {CreateExprForWeightDeclaration(*session, net), CreateExprForInputOutputDeclaration(*session, net)});
+    return ir::Block::make(std::move(exprs));
+  }
+
+ private:
+  Expr CreateExprForWeightDeclaration(const Session& session, const Network& network);
+  Expr CreateExprForInputOutputDeclaration(const Session& session, const Network& network);
 };
 
 }  // namespace hlir

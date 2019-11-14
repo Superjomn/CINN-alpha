@@ -58,7 +58,7 @@ class Stage {
     // statements' indice map from CINN to isl ast.
     std::map<std::string, ir::Expr> indice_map;
 
-    static std::set<std::string> names;
+    // static std::set<std::string> names;
 
     // Var name to tile size.
     std::map<std::string, int> tiles;

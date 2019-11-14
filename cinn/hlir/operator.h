@@ -36,6 +36,7 @@ class Operator {
    * Compile to lower layer of operators or IR.
    */
   void Compile() {
+    InferenceOutputType();
     Resize();
     CompileImpl();
   }
@@ -83,6 +84,11 @@ class Operator {
   }
 
  protected:
+  /**
+   * Inference output's type.
+   */
+  virtual void InferenceOutputType() = 0;
+
   /**
    * Resize the output's shape.
    */

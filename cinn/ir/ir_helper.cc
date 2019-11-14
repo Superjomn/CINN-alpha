@@ -332,7 +332,7 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     Expr size;
     Visit(&op->size, &size);
 
-    *to = BufferOpr::make(op->target, size, op->operation, op->ptype, op->name);
+    *to = BufferOpr::make(op->target, size, op->operation, op->ptype(), op->name);
   }
   void Visit(const Cast* op, Expr* to) override {
     Expr expr;

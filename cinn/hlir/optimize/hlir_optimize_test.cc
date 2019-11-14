@@ -28,18 +28,18 @@ TEST(hlir_optimizer, basic) {
   ASSERT_EQ(funcs.size(), 1UL);
   auto generated = ir::Dump(funcs.front().ir_function());
 
-  std::string target = R"ROC(def func8 (Tensor& w01, Tensor& w12, Tensor& x00, Tensor& y03) {
+  std::string target = R"ROC(def func8 (Tensor& w0_1, Tensor& w1_2, Tensor& x0_0, Tensor& y0_3) {
   for(c0, 0, (c0 <= 19), 1) {
     for(c1, 0, (c1 <= 39), 1) {
       for(c2, 0, (c2 <= 29), 1) {
-        y03<20,40>[c0,c1] += (x00<20,30>[c0,c2] * w01<30,40>[c2,c1]);
+        y0_3<20,40>[c0,c1] += (x0_0<20,30>[c0,c2] * w0_1<30,40>[c2,c1]);
       }
     }
   }
   for(c0, 0, (c0 <= 19), 1) {
     for(c1, 0, (c1 <= 49), 1) {
       for(c2, 0, (c2 <= 39), 1) {
-        y14<20,50>[c0,c1] += (y03<20,40>[c0,c2] * w12<40,50>[c2,c1]);
+        y1_4<20,50>[c0,c1] += (y0_3<20,40>[c0,c2] * w1_2<40,50>[c2,c1]);
       }
     }
   }

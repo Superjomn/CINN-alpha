@@ -13,7 +13,7 @@ TEST(network, basic) {
   Session session;
   Network net("tmp", &session);
 
-  BuildNetwork0(&net, &session);
+  BuildNetwork1(&net, &session);
 
   auto program = net.Compile();
 

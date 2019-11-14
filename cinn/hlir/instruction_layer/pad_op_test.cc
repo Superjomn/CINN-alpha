@@ -16,6 +16,8 @@ TEST(pad, test) {
   Session session;
   auto *input0 = session.NewTensor("input0");
   auto *input1 = session.NewTensor("input1");
+  input0->set_ptype(primitive_t::float32);
+  input1->set_ptype(primitive_t::float32);
 
   input0->set_shape({20, 30, 40});
 

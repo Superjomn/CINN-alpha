@@ -18,6 +18,12 @@ void BuildProgram(Session* session, Program* program) {
   auto w0 = session->NewTensor("w0");
   auto w1 = session->NewTensor("w1");
 
+  x0->set_ptype(primitive_t::float32);
+  y0->set_ptype(primitive_t::float32);
+  y1->set_ptype(primitive_t::float32);
+  w0->set_ptype(primitive_t::float32);
+  w1->set_ptype(primitive_t::float32);
+
   x0->set_shape({20, 30});
   w0->set_shape({30, 40});
   w1->set_shape({40, 50});
