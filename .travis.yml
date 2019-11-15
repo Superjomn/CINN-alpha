@@ -17,7 +17,7 @@ addons:
       - g++-4.8
       - gcc-4.8
       - zlib1g-dev
-      - libclang-6.0-dev
+        #- libclang-6.0-dev
       - libtool
       - autoconf
 #      - python-pip
