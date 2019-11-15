@@ -28,6 +28,6 @@ function run_test {
 
 install_isl
 
-compile_cinn
+#compile_cinn
 
-run_test
+#run_test

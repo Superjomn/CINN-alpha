@@ -31,6 +31,7 @@ script:
   - | 
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
   - |
+    timeout 600 bash tools/ci_build.sh
     timeout 600 bash build.sh ci # 10min timeout
     RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else exit 1; fi;
 
