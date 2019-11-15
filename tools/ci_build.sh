@@ -11,7 +11,7 @@ function install_isl {
 
     find /usr -name "SourceLocation.h"
 
-    ./configure
+    ./configure --clang=system
     make -j
     sudo make install
 }
