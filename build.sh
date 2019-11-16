@@ -31,7 +31,7 @@ function build {
 function run_exe_test {
     local no=$1
     make exe_test$no -j8
-    ctest -R exe_test$no
+    ctest -R exe_test$no -V
 }
 
 function test_ {
