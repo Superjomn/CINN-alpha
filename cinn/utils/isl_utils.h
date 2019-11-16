@@ -62,7 +62,9 @@ static std::string DumpSchedule(const isl::schedule &schedule) {
   isl_printer *printer = isl_printer_to_str(schedule.ctx().get());
   printer = isl_printer_set_yaml_style(printer, ISL_YAML_STYLE_BLOCK);
   printer = isl_printer_print_schedule(printer, schedule.get());
-  return isl_printer_get_str(printer);
+  std::string res =  isl_printer_get_str(printer);
+  isl_printer_free(printer);
+  return res;
 }
 
 struct isl_map_list_guard {
