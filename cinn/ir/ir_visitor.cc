@@ -91,6 +91,8 @@ void IRVisitor::Visit(const SIMDOpr *op) {
   Visit(&op->b);
 }
 
+void IRVisitor::Visit(const Not *op) { Visit(&op->a); }
+
 void IRVisitor::Visit(const Module *op) {
   if (op->global_data_section.valid()) Visit(&op->global_data_section);
   if (op->function_section.valid()) Visit(&op->function_section);

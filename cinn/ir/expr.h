@@ -82,18 +82,9 @@ class IRHandle {
   }
 
   template <typename T>
-  const T* As() const {
-    // TODO(Superjomn) check the type
-    if (ptr_) return static_cast<const T*>(ptr_.get());
-    return nullptr;
-  }
-
+  const T* As() const;
   template <typename T>
-  T* As() {
-    // TODO(Superjomn) check the type
-    if (ptr_) return static_cast<T*>(ptr_.get());
-    return nullptr;
-  }
+  T* As();
 
   void Reset() { ptr_.reset(); }
 

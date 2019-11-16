@@ -632,6 +632,18 @@ struct Or : public ExprNode<Or> {
   static const NodeTy node_type = NodeTy::Or;
 };
 
+struct Not : public ExprNode<Not> {
+  Expr a;
+
+  static Expr make(Expr a) {
+    auto node = std::make_shared<Not>();
+    node->a = a;
+    return Expr(node);
+  }
+
+  static const NodeTy node_type = NodeTy::Not;
+};
+
 // Block of code.
 struct Block : public ExprNode<Block> {
   // statements(Expr) in the block.

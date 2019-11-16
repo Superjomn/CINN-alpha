@@ -61,6 +61,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   OP_2PARAM(GE);
   OP_2PARAM(And);
   OP_2PARAM(Or);
+  OP_1PARAM(Not);
 
   OP_2PARAM(Min);
   OP_2PARAM(Max);

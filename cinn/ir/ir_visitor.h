@@ -49,6 +49,8 @@ struct IRVisitorBase {
       __(GE);
       __(And);
       __(Or);
+      __(Not);
+
       __(Exp);
       __(Assign);
       __(SumAssign);
@@ -112,6 +114,7 @@ struct IRVisitorBase {
   virtual RetTy Visit(const LE* op, Args... args) = 0;
   virtual RetTy Visit(const And* op, Args... args) = 0;
   virtual RetTy Visit(const Or* op, Args... args) = 0;
+  virtual RetTy Visit(const Not* op, Args... args) = 0;
   virtual RetTy Visit(const Block* op, Args... args) = 0;
 
   virtual RetTy Visit(const IntImm* op, Args... args) = 0;
@@ -166,6 +169,8 @@ class IRVisitor : public IRVisitorBase<void> {
 
   virtual void Visit(const NE* op);
   virtual void Visit(const EQ* op);
+  virtual void Visit(const Not* op);
+
   virtual void Visit(const For* op);
   virtual void Visit(const IfThenElse* op);
   virtual void Visit(const GT* op);
