@@ -30,8 +30,8 @@ void C_CodeGen::PrintHeader() {
   os_ << "typedef unsigned long long cinn_uint64_t;\n";
   os_ << "typedef float cinn_float32_t;\n";
   os_ << "\n";
-  os_ << "#define min(a,b) ((a)<(b) ? (a) : (b))\n";
-  os_ << "#define max(a,b) ((a)>(b) ? (a) : (b))\n";
+  os_ << "#define cinn_min(a,b) ((a)<(b) ? (a) : (b))\n";
+  os_ << "#define cinn_max(a,b) ((a)>(b) ? (a) : (b))\n";
   Println();
   Println();
 }
@@ -305,5 +305,19 @@ void C_CodeGen::Visit(const ir::BufferOpr *op) {
   }
 }
 
+void C_CodeGen::Visit(const ir::Max *op) {
+  os_ << "cinn_max(";
+  Print(op->a);
+  os_ << ", ";
+  Print(op->b);
+  os_ << ")";
+}
+void C_CodeGen::Visit(const ir::Min *op) {
+  os_ << "cinn_min(";
+  Print(op->a);
+  os_ << ", ";
+  Print(op->b);
+  os_ << ")";
+}
 }  // namespace backends
 }  // namespace cinn

@@ -18,7 +18,7 @@ cc_test(exe_test5 SRCS test5.cc DEPS cinn_lib)
 cc_test(exe_test6 SRCS test6_vectorize.cc DEPS cinn_lib)
 cc_test(test6_c_launcher SRCS test6_launcher.cc DEPS cinn_lib)
 
-cc_test(exe_test7 SRCS test7_fc_model.cc DEPS cinn_lib)
+cc_test(exe_test7 SRCS test7_fc_model.cc DEPS cinn_lib hlir_lib)
 cc_test(test7_c_launcher SRCS test7_launcher.cc DEPS cinn_lib)
 
 add_dependencies(test6_c_launcher exe_test6)

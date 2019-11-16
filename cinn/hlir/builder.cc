@@ -1,4 +1,5 @@
 #include "cinn/hlir/builder.h"
+#include "cinn/backends/code_gen_c.h"
 #include "cinn/ir/ir_helper.h"
 
 namespace cinn {
@@ -19,18 +20,16 @@ ir::Expr Builder::Build(Session *session, Network &&net) {
   LOG(INFO) << "DOT:\n" << graph.dot();
 
   auto main_expr = graph.CompileExpr();
-  auto global_vars = CreateGlobalVars(session, net);
+  auto global_vars = DeclBuffersGlobal(session, net);
 
   auto expr = ir::Module::make(global_vars, main_expr);
-
-  LOG(INFO) << "program:\n" << expr;
-
   return expr;
 }
 
 Expr Builder::CreateExprForWeightDeclaration(const Session &session, const Network &network) {
   std::vector<ir::Expr> exprs;
 
+  exprs.push_back(ir::Mark::make("create weight buffers"));
   for (auto &x : network.weight_names()) {
     Tensor *tensor = session.GetTensor(x);
     CHECK(tensor);
@@ -59,13 +58,31 @@ Expr Builder::CreateExprForInputOutputDeclaration(const Session &session, const 
     exprs.emplace_back(expr);
   };
 
+  exprs.push_back(ir::Mark::make("create input buffers"));
   for (auto &x : network.input_names()) {
     create_tensor(x);
   }
+  exprs.push_back(ir::Mark::make("create output buffers"));
   for (auto &x : network.output_names()) {
     create_tensor(x);
   }
+  exprs.push_back(ir::Mark::make("create temporary variable buffers"));
+  for (auto &x : network.tmp_var_names()) {
+    create_tensor(x);
+  }
 
+  return ir::Block::make(std::move(exprs));
+}
+
+void Builder::ToCSourceCode(ir::Expr expr, const std::string &prefix) {
+  LOG(INFO) << "output header file to " << prefix + ".h";
+  LOG(INFO) << "output source file to " << prefix + ".cc";
+  backends::CompileAsC(expr, prefix + ".h", prefix + ".cc");
+}
+
+Expr Builder::DeclBuffersGlobal(Session *session, const Network &net) {
+  std::vector<ir::Expr> exprs(
+      {CreateExprForWeightDeclaration(*session, net), CreateExprForInputOutputDeclaration(*session, net)});
   return ir::Block::make(std::move(exprs));
 }
 

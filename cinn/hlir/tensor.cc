@@ -1,5 +1,6 @@
 #include "cinn/hlir/tensor.h"
 #include <algorithm>
+#include <numeric>
 #include "cinn/ir/ir.h"
 
 namespace cinn {
@@ -48,8 +49,7 @@ void Tensor::InitExpr() {
     for (int v : shape().data) {
       ir_shape.emplace_back(v);
     }
-    ir_inner_name_ =
-        name_.empty() ? NameGenerator::Global().NewNamed("tensor") : NameGenerator::Global().NewNamed(name_);
+    ir_inner_name_ = name_.empty() ? NameGenerator::Global().NewNamed("tensor") : name_;
     expr_ = ir::Expr(ir_shape, primitive_t::float32, ir_inner_name());
   }
 }
@@ -71,6 +71,14 @@ std::string Tensor::__repr__() const {
 const std::string &Tensor::ir_inner_name() const {
   CHECK(!ir_inner_name_.empty());
   return ir_inner_name_;
+}
+
+void Tensor::AttachBuffer() {
+  CHECK_NE(ptype(), primitive_t::unk);
+  CHECK(!name().empty());
+
+  buffer_ = std::make_shared<Buffer>(name(), ptype());
+  buffer_->Resize(shape().num_bytes(ptype()));
 }
 
 int Shape::num_bytes(primitive_t ptype) const {

@@ -122,6 +122,13 @@ class Graph {
 
   ArgumentRegistry& arguments() { return arguments_; }
 
+ protected:
+  /**
+   * Allocate buffers for temporary variables, the buffer's ptype, name and size are same from tensor.
+   * NOTE Should call after all the operators are compiled(after that each tensor's meta data is refreshed).
+   */
+  void AllocateBuffersForTempVars();
+
  private:
   std::map<std::string, Node*> vars_;
   std::vector<std::unique_ptr<Node>> nodes_;

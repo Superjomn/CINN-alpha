@@ -118,8 +118,29 @@ class Network {
   size_t num_operators() { return operators_.size(); }
 
   const std::set<std::string>& input_names() const { return input_names_; }
-  const std::set<std::string>& output_names() const { return outputs_names_; }
+  const std::set<std::string>& output_names() const { return output_names_; }
   const std::set<std::string>& weight_names() const { return weight_names_; }
+  const std::set<std::string>& tmp_var_names() const { return tmp_var_names_; }
+
+ private:
+  /**
+   * Allocate a temporary variable.
+   * @param name name of the variable.
+   * @return the corresponding tensor.
+   */
+  Tensor* DeclTmpVar(const std::string& name);
+
+  //! Check whether this name is not duplicate.
+  bool IsVarNameAvailable(const std::string& name) const;
+
+  //! Tell whether this name belongs to an input.
+  bool is_input(const std::string& name) const { return input_names_.count(name); }
+  //! Tell whether this name belongs to an output.
+  bool is_output(const std::string& name) const { return output_names_.count(name); }
+  //! Tell whether this name belongs to a weight.
+  bool is_weight(const std::string& name) const { return weight_names_.count(name); }
+  //! Tell whether this name belongs to a temporary variable.
+  bool is_tmp_var(const std::string& name) const { return tmp_var_names_.count(name); }
 
  private:
   //! Name of this network.
@@ -129,8 +150,9 @@ class Network {
   //! Hold all the operator instances.
   std::vector<std::unique_ptr<Operator>> operators_;
 
-  std::set<std::string> input_names_, outputs_names_;
+  std::set<std::string> input_names_, output_names_;
   std::set<std::string> weight_names_;
+  std::set<std::string> tmp_var_names_;
 };
 
 }  // namespace hlir

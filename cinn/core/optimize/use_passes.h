@@ -1,3 +1,4 @@
+#pragma once
 #include "cinn/core/optimize/pass_registry.h"
 
 USE_IR_PASS(nested_block_clean);
