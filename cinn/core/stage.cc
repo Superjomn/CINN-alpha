@@ -380,27 +380,51 @@ isl::union_map CollectAccess(const isl::set& iterator_domain, const Expr& expr) 
 }
 
 void Stage::InitReadDependencies() {
+  LOG_INDENT(0);
   if (iterator_domain().is_null()) return;
   CHECK(expr().is_assign_derived());
-  LOG_INDENT(6);
   CHECK(!iterator_domain().is_null());
   CHECK(!read_access()) << "duplicate init read_access";
   set_read_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
 
-  auto* assign_expr = expr().As<ir::Assign>();
-  set_read_access(CollectAccess(iterator_domain(), assign_expr->b));
+  auto* assign = expr().As<ir::Assign>();
+  auto* sum_assign = expr().As<ir::SumAssign>();
+  auto* sub_assign = expr().As<ir::SubAssign>();
+  auto* mul_assign = expr().As<ir::MulAssign>();
+  auto* div_assign = expr().As<ir::DivAssign>();
+  CHECK(assign || sum_assign || sub_assign || mul_assign || div_assign);
+
+  // target (+-*/)= source, the source is the expressions those are read.
+  if (assign) set_read_access(CollectAccess(iterator_domain(), assign->b));
+  if (sum_assign) set_read_access(CollectAccess(iterator_domain(), sum_assign->b));
+  if (sub_assign) set_read_access(CollectAccess(iterator_domain(), sub_assign->b));
+  if (mul_assign) set_read_access(CollectAccess(iterator_domain(), mul_assign->b));
+  if (div_assign) set_read_access(CollectAccess(iterator_domain(), div_assign->b));
+
   CINN_DEBUG(2) << "get read dependency: " << isl_union_map_to_str(read_access());
 }
 
 void Stage::InitWriteDependencies() {
+  LOG_INDENT(0);
   if (iterator_domain().is_null()) return;
   CHECK(expr().is_assign_derived());
-  LOG_INDENT(6);
   CHECK(!iterator_domain().is_null());
   set_write_access(isl::manage(isl_union_map_empty(isl_set_get_space(iterator_domain().get()))));
 
-  auto* assign_expr = expr().As<ir::Assign>();
-  set_write_access(CollectAccess(iterator_domain(), assign_expr->a));
+  auto* assign = expr().As<ir::Assign>();
+  auto* sum_assign = expr().As<ir::SumAssign>();
+  auto* sub_assign = expr().As<ir::SubAssign>();
+  auto* mul_assign = expr().As<ir::MulAssign>();
+  auto* div_assign = expr().As<ir::DivAssign>();
+  CHECK(assign || sum_assign || sub_assign || mul_assign || div_assign);
+
+  // target (+-*/)= source, the target is the expressions those are written.
+  if (assign) set_write_access(CollectAccess(iterator_domain(), assign->a));
+  if (sum_assign) set_write_access(CollectAccess(iterator_domain(), sum_assign->a));
+  if (sub_assign) set_write_access(CollectAccess(iterator_domain(), sub_assign->a));
+  if (mul_assign) set_write_access(CollectAccess(iterator_domain(), mul_assign->a));
+  if (div_assign) set_write_access(CollectAccess(iterator_domain(), div_assign->a));
+
   CINN_DEBUG(2) << "get write dependency: " << isl_union_map_to_str(write_access());
 }
 

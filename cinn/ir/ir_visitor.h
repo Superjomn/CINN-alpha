@@ -26,7 +26,6 @@ struct IRVisitorBase {
       __(IntImm);
 
       __(Var);
-      __(Param);
       __(Tensor);
       __(Mark);
 
@@ -77,9 +76,7 @@ struct IRVisitorBase {
       __(SIMDOpr);
 
       __(Module);
-
-      case ir::NodeTy::Parameter:
-        return Visit(expr->As<ir::Constant>(), args...);
+      __(Constant);
 
       default:
         LOG(FATAL) << "not supported NodeTy";
@@ -90,7 +87,6 @@ struct IRVisitorBase {
 
  protected:
   virtual RetTy Visit(const ir::Var* op, Args... args) = 0;
-  virtual RetTy Visit(const Param* op, Args... args) = 0;
   virtual RetTy Visit(const Stmt* op, Args... args) = 0;
   virtual RetTy Visit(const Add* op, Args... args) = 0;
   virtual RetTy Visit(const Sub* op, Args... args) = 0;
@@ -153,7 +149,6 @@ class IRVisitor : public IRVisitorBase<void> {
   IRVisitor() = default;
 
   void Visit(const Expr* op) override { IRVisitorBase::Visit(op); };
-  virtual void Visit(const Param* op);
   virtual void Visit(const Stmt* op);
   virtual void Visit(const Add* op);
   virtual void Visit(const Sub* op);

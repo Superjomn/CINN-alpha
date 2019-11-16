@@ -60,7 +60,7 @@ TEST(ir, basic1) {
   Var k("k", primitive_t::int32, zero, W);
 }
 
-TEST(Parameter, basic) {
+TEST(Constant, basic) {
   Constant x(100);
   ASSERT_EQ(x.ptype(), primitive_t::int32);
 
@@ -111,16 +111,6 @@ TEST(Reference, basic1) {
 
   ASSERT_EQ(interval0.lower_bound().As<int32_t>(), 0);
   ASSERT_EQ(interval0.upper_bound().As<int32_t>(), 100);
-}
-
-TEST(Param, basic) {
-  Param x("N", "N > 0");
-  LOG(INFO) << x.GetContext();
-
-  std::stringstream ss;
-  ss << x.GetContext();
-
-  ASSERT_EQ(ss.str(), "[N] -> {  : N > 0 }");
 }
 
 TEST(ir, type_inference) {

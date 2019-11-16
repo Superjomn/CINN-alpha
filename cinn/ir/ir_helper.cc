@@ -85,7 +85,7 @@ Expr CopyExpr(const Expr& expr) {
       return Expr(node);
     }
 
-    case NodeTy::Parameter: {
+    case NodeTy::Constant: {
       auto* x = expr.As<Constant>();
       auto node = std::make_shared<Constant>();
       *node = *x;
@@ -238,7 +238,6 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     Var a(*op);
     *to = Expr(a);
   }
-  void Visit(const Param* op, Expr* to) override { NOT_IMPLEMENT }
   void Visit(const Stmt* op, Expr* to) override { NOT_IMPLEMENT }
   void Visit(const For* op, Expr* to) override {
     Expr init, cond, inc, body;
@@ -416,11 +415,6 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     const auto* b = expr->As<ir::Constant>();
     if (a == b) return true;
     return *a == *b;
-  }
-
-  bool Visit(const ir::Param* op, const ir::Expr* expr) override {
-    NOT_IMPLEMENT
-    return false;
   }
 
   bool Visit(const ir::Reference* a, const ir::Expr* expr) override {

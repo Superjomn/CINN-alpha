@@ -86,7 +86,6 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
 
   void Visit(const ir::Var* op, ir::Expr* expr) override {}
   void Visit(const ir::Constant* op, ir::Expr* expr) override {}
-  void Visit(const ir::Param* op, ir::Expr* expr) override {}
 
   void Visit(const ir::Reference* op, ir::Expr* expr);
 

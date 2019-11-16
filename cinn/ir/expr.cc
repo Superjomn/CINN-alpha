@@ -1,5 +1,6 @@
 #include "cinn/ir/expr.h"
 #include "cinn/core/function.h"
+#include "cinn/ir/ir_helper.h"
 
 namespace cinn {
 namespace ir {
@@ -15,25 +16,13 @@ namespace ir {
     if (type() == ir::NodeTy::type__ && ptr_) return static_cast<const ir::type__*>(ptr_.get()); \
     return nullptr;                                                                              \
   }
-
-NODETY_OP_FOR_EACH(__)
-NODETY_CONTROL_OP_FOR_EACH(__)
-NODETY_MATH_FUNCTION_FOR_EACH(__)
-
-__(Module)
-__(BufferOpr)
-__(Reference)
-__(SIMDOpr)
-__(Cast)
-__(Array)
-__(Tensor)
-__(Var)
-__(Mark)
-__(IntImm)
-__(FloatImm)
-__(Allocate)
-
+NODETY_FOR_EACH(__)
 #undef __
+
+NodeTy IRHandle::type() const {
+  CHECK(ptr_);
+  return ptr_->type();
+}
 
 }  // namespace ir
 }  // namespace cinn

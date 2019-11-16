@@ -76,10 +76,7 @@ class IRHandle {
   explicit IRHandle(IRNode* x) { ptr_.reset(x); }
   explicit IRHandle(const std::shared_ptr<IRNode>& x) { ptr_ = x; }
 
-  NodeTy type() const {
-    CHECK(ptr_);
-    return ptr_->type();
-  }
+  NodeTy type() const;
 
   template <typename T>
   const T* As() const;

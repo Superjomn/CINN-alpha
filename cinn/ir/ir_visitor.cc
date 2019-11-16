@@ -62,7 +62,6 @@ void IRVisitor::Visit(const Function *op) {
 }
 void IRVisitor::Visit(const Statement *op) { NOT_IMPLEMENT }
 void IRVisitor::Visit(const Allocate *op) {}
-void IRVisitor::Visit(const Param *op) {}
 void IRVisitor::Visit(const Tanh *op) {
   CHECK(op->a.valid());
   Visit(&op->a);

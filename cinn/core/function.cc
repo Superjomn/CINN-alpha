@@ -271,7 +271,7 @@ isl::union_map ComputeScheduleValidity(const isl::union_set& domain, const isl::
 
 void Snippet::ComputeSchedule() {
   // Use a unique ctx to avoid obstruction.
-  LOG_INDENT(6);
+  LOG_INDENT(0);
   CHECK(Stage::is_polyhedral(type()));
   CHECK(!access_reads_->is_null());
   CHECK(!access_writes_->is_null());
