@@ -94,7 +94,7 @@ class Constant : public ExprNode<Constant> {
   template <typename T>
   T As() const;
 
-  static const NodeTy node_type = NodeTy::Parameter;
+  static const NodeTy node_type = NodeTy::Constant;
 
  private:
   // Generate a random default name.
@@ -632,6 +632,18 @@ struct Or : public ExprNode<Or> {
   static const NodeTy node_type = NodeTy::Or;
 };
 
+struct Not : public ExprNode<Not> {
+  Expr a;
+
+  static Expr make(Expr a) {
+    auto node = std::make_shared<Not>();
+    node->a = a;
+    return Expr(node);
+  }
+
+  static const NodeTy node_type = NodeTy::Not;
+};
+
 // Block of code.
 struct Block : public ExprNode<Block> {
   // statements(Expr) in the block.
@@ -760,37 +772,6 @@ class Allocate : public ExprNode<Allocate> {
   static Expr make(const std::string& buffer_name, Expr size, primitive_t dtype);
 
   static const NodeTy node_type = NodeTy::Allocate;
-};
-
-/**
- * @brief Param is the parameter in polyhedral model, the constant value across the program.
- *
- * @attention the Param's data type should be int.
- */
-class Param : public ir::ExprNode<Param> {
-  struct Data {
-    /// name of the parameter, should be unique accross the Function.
-    std::string name;
-    /// the condition that can represent the condition in ISL.
-    /// e.g. a Param with name of "N" and cond of "N>0" will get "[N]->{ : N>0 }" in ISL syntax.
-    std::string cond;
-  };
-
-  std::shared_ptr<Data> data_;
-
- public:
-  Param() : data_(std::make_shared<Data>()) {}
-  Param(const std::string& name, const std::string& cond = "");
-
-  isl::set GetContext();
-
-  const std::string& name() const;
-  const std::string& cond() const;
-
-  //! get the isl context of parameter constraits.
-  isl::set context() const;
-
-  static const ir::NodeTy node_type = ir::NodeTy::Param;
 };
 
 // Math functions.

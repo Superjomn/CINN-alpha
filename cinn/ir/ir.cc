@@ -611,28 +611,6 @@ Expr Allocate::make(const std::string &buffer_name, Expr size, primitive_t dtype
   return Expr(node);
 }
 
-Param::Param(const std::string &name, const std::string &cond) {
-  data_ = std::make_shared<Data>();
-  data_->name = name;
-  data_->cond = cond;
-}
-
-const std::string &Param::name() const {
-  CHECK(data_);
-  return data_->name;
-}
-
-const std::string &Param::cond() const {
-  CHECK(data_);
-  return data_->cond;
-}
-
-isl::set Param::GetContext() { return isl::set(isl_utils::global_isl_ctx(), "[" + name() + "]->{:" + cond() + "}"); }
-
-isl::set Param::context() const {
-  return isl::set(isl_utils::global_isl_ctx(), StringFormat("[%s]->{:%s}", name().c_str(), cond().c_str()));
-}
-
 void Expr::InferenceIteratorDomain() {
   LOG_INDENT(5);
   CINN_DEBUG(3) << "expr: " << ir::Dump(*this);
@@ -739,7 +717,7 @@ Expr ReplaceVarWithIterator(int id, const Expr &expr) {
 }  // namespace
 
 isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dimensions) {
-  LOG_INDENT(0);
+  LOG_INDENT(6);
   CHECK_EQ(exprs.size(), dimensions.size());
 
   std::vector<std::string> iterator_vars;

@@ -61,6 +61,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   OP_2PARAM(GE);
   OP_2PARAM(And);
   OP_2PARAM(Or);
+  OP_1PARAM(Not);
 
   OP_2PARAM(Min);
   OP_2PARAM(Max);
@@ -85,7 +86,6 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
 
   void Visit(const ir::Var* op, ir::Expr* expr) override {}
   void Visit(const ir::Constant* op, ir::Expr* expr) override {}
-  void Visit(const ir::Param* op, ir::Expr* expr) override {}
 
   void Visit(const ir::Reference* op, ir::Expr* expr);
 

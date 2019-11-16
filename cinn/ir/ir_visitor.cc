@@ -62,7 +62,6 @@ void IRVisitor::Visit(const Function *op) {
 }
 void IRVisitor::Visit(const Statement *op) { NOT_IMPLEMENT }
 void IRVisitor::Visit(const Allocate *op) {}
-void IRVisitor::Visit(const Param *op) {}
 void IRVisitor::Visit(const Tanh *op) {
   CHECK(op->a.valid());
   Visit(&op->a);
@@ -90,6 +89,8 @@ void IRVisitor::Visit(const SIMDOpr *op) {
   Visit(&op->a);
   Visit(&op->b);
 }
+
+void IRVisitor::Visit(const Not *op) { Visit(&op->a); }
 
 void IRVisitor::Visit(const Module *op) {
   if (op->global_data_section.valid()) Visit(&op->global_data_section);

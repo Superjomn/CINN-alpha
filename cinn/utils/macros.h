@@ -3,9 +3,10 @@
 // clang-format off
 #define NODETY_PRIMITIVE_TYPE_FOR_EACH(macro__) \
   macro__(IntImm)                               \
-  macro__(UInt)                                 \
   macro__(FloatImm)                             \
-  macro__(String)                               \
+
+//macro__(UInt)
+//macro__(String)
 
 #define NODETY_OP_FOR_EACH(macro__) \
   macro__(Add)                      \
@@ -37,15 +38,15 @@
   macro__(Block)                            \
   macro__(Call)                             \
   macro__(Function)                         \
+  macro__(Module)                           \
 
 #define NODETY_DS_FOR_EACH(macro__) \
   macro__(Var)                      \
-  macro__(Param)                    \
   macro__(Tensor)                   \
   macro__(Reference)                \
   macro__(Statement)                \
   macro__(Allocate)                 \
-  macro__(Parameter)                \
+  macro__(Constant)                 \
 
 #define NODETY_MATH_FUNCTION_FOR_EACH(macro__)  \
   macro__(Tanh)                                 \
@@ -60,7 +61,7 @@
   NODETY_CONTROL_OP_FOR_EACH(macro__)     \
   NODETY_DS_FOR_EACH(macro__)             \
   NODETY_MATH_FUNCTION_FOR_EACH(macro__)  \
-  macro__(Mark) macro__(BufferOpr) macro__(Array) macro__(Cast) macro__(SIMDOpr) macro__(Module)
+  macro__(Mark) macro__(BufferOpr) macro__(Array) macro__(Cast) macro__(SIMDOpr)
 
 // clang-format off
 #define OP_2_ARGS_FOR_EACH(macro__) \
@@ -107,7 +108,6 @@
   macro__(Block)                                        \
   macro__(Tensor)                                       \
   macro__(Allocate) macro__(Call)                       \
-  macro__(Param)
 
 #define OP_ALL_FOR_EACH(macro__)           \
 OP_ALL_WITHOUT_FUNCTION_FOR_EACH(macro__)  \
