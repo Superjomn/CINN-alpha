@@ -48,7 +48,7 @@ struct Shape {
  */
 class Tensor {
  public:
-  Tensor() { buffer_ = std::make_shared<Buffer>(); }
+  Tensor() {}
 
   /**
    * Get the ir::Expr of the element in the tensor(such as A[i][j]).
@@ -56,6 +56,7 @@ class Tensor {
    */
   ir::Expr Elem() const;
 
+  void AttachBuffer();
   void AttachBuffer(const std::shared_ptr<Buffer>& buf) { buffer_ = buf; }
   const std::shared_ptr<Buffer>& buffer() const { return buffer_; }
 

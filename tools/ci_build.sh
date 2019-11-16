@@ -11,7 +11,7 @@ function install_isl {
 
     find /usr -name "SourceLocation.h"
 
-    ./configure
+    ./configure --clang=system
     make -j
     sudo make install
 }
@@ -28,6 +28,6 @@ function run_test {
 
 install_isl
 
-compile_cinn
+#compile_cinn
 
-run_test
+#run_test

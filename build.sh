@@ -23,6 +23,7 @@ function build {
     run_exe_test 4
     run_exe_test 5
     run_exe_test 6
+    run_exe_test 7
 
     make -j8
 }

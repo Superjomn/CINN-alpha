@@ -16,6 +16,10 @@ addons:
       - libgmp3-dev
       - g++-4.8
       - gcc-4.8
+      - zlib1g-dev
+        #- libclang-6.0-dev
+      - libtool
+      - autoconf
 #      - python-pip
 #      - python2.7-dev
 #      - libc6-i386
@@ -31,7 +35,8 @@ script:
   - | 
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
   - |
-    timeout 600 bash tools/ci_build.sh # 10min timeout
+    timeout 600 bash tools/ci_build.sh
+    timeout 600 bash build.sh ci # 10min timeout
     RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else exit 1; fi;
 
 notifications:

@@ -11,11 +11,18 @@ class Builder {
   //! Build a network.
   ir::Expr Build(Session* session, Network&& net);
 
-  Expr CreateGlobalVars(Session* session, const Network& net) {
-    std::vector<ir::Expr> exprs(
-        {CreateExprForWeightDeclaration(*session, net), CreateExprForInputOutputDeclaration(*session, net)});
-    return ir::Block::make(std::move(exprs));
-  }
+  /**
+   * Transform an expression to C source code.
+   * @param expr the expression
+   * @prefix the prefix of the file to persist the content of the header and source file.
+   */
+  void ToCSourceCode(ir::Expr expr, const std::string& prefix);
+
+ protected:
+  /**
+   * In CINN, declare all the buffers(as global variables).
+   */
+  Expr DeclBuffersGlobal(Session* session, const Network& net);
 
  private:
   Expr CreateExprForWeightDeclaration(const Session& session, const Network& network);

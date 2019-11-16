@@ -183,6 +183,14 @@ std::vector<Function> Graph::PartitionFunctions() {
 }
 
 void Graph::Compile(bool finalize_function) {
+  // check all the operators are compiled
+  for (Node& node : GraphTraits::DFS(*this)) {
+    auto* op = node.op;
+    if (op) CHECK(op->compiled());
+  }
+
+  AllocateBuffersForTempVars();
+
   auto fns = PartitionFunctions();
 
   CHECK(!fns.empty());
@@ -205,10 +213,24 @@ Expr Graph::CompileExpr() {
     fn.EndDefinition();
   }
 
+  AllocateBuffersForTempVars();
+
   std::vector<ir::Expr> exprs;
   std::transform(fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
   auto block = ir::Block::make(std::move(exprs));
   return block;
+}
+
+void Graph::AllocateBuffersForTempVars() {
+  for (Node& node : GraphTraits::DFS(*this)) {
+    auto* tensor = node.tensor;
+    if (tensor) {
+      CHECK(tensor->ptype() != primitive_t::unk);
+      if (!tensor->buffer()) {
+        tensor->AttachBuffer();
+      }
+    }
+  }
 }
 
 }  // namespace hlir

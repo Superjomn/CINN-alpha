@@ -44,11 +44,11 @@ TEST(matmul_op, test) {
 
   backends::C_CodeGen gen;
   gen.Print(fn.ir_function());
-  std::string target = R"ROC(void complex (cinn_float32_t* x_0, cinn_float32_t* w_1, cinn_float32_t* out_2) {
+  std::string target = R"ROC(void complex (cinn_float32_t* x, cinn_float32_t* w, cinn_float32_t* out) {
   for (int c0 = 0; (c0 <= 19); c0 += 1) {
     for (int c1 = 0; (c1 <= 39); c1 += 1) {
       for (int c2 = 0; (c2 <= 29); c2 += 1) {
-        out_2[c0, c1] += (x_0[c0, c2] * w_1[c2, c1]);
+        out[c0, c1] += (x[c0, c2] * w[c2, c1]);
       }
     }
   }

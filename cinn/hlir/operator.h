@@ -36,10 +36,17 @@ class Operator {
    * Compile to lower layer of operators or IR.
    */
   void Compile() {
+    CHECK(!compiled_) << "operator duplicate compiled";
     InferenceOutputType();
     Resize();
     CompileImpl();
+    compiled_ = true;
   }
+
+  /**
+   * Tell whether this operator is compiled, each operator can only compiled once.
+   */
+  bool compiled() const { return compiled_; }
 
   /**
    * Set a input argument.
@@ -104,6 +111,7 @@ class Operator {
   std::map<std::string, std::string> input_argument2value_;
   std::map<std::string, std::string> output_argument2value_;
   Any param_;
+  bool compiled_ = false;
 };
 
 }  // namespace hlir

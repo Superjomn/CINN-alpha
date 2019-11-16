@@ -24,27 +24,33 @@ TEST(builder, weight) {
   auto program = gen.compiled_code();
   LOG(INFO) << "\n" << program;
 
-  std::string target = R"ROC(cinn_float32_t b[] = {0.100000,0.200000};
+  std::string target = R"ROC(// create weight buffers
+cinn_float32_t b[] = {0.100000,0.200000};
 cinn_float32_t w0[] = {0.100000,0.200000,0.300000,0.400000,0.500000,0.600000,0.700000,0.800000};
+// create input buffers
 cinn_float32_t* x0 =  (cinn_float32_t*) malloc(48);
+// create output buffers
 cinn_float32_t* tmp1 =  (cinn_float32_t*) malloc(24);
+// create temporary variable buffers
+cinn_float32_t* tmp0 =  (cinn_float32_t*) malloc(24);
+cinn_float32_t* tmp2 =  (cinn_float32_t*) malloc(24);
 
-void func9 (cinn_float32_t* b_2, cinn_float32_t* w0_1, cinn_float32_t* x0_0, cinn_float32_t* tmp2_5) {
+void func9 (cinn_float32_t* b, cinn_float32_t* w0, cinn_float32_t* x0, cinn_float32_t* tmp2) {
   for (int c0 = 0; (c0 <= 2); c0 += 1) {
     for (int c1 = 0; (c1 <= 1); c1 += 1) {
       for (int c2 = 0; (c2 <= 3); c2 += 1) {
-        tmp0_3[c0, c1] += (x0_0[c0, c2] * w0_1[c2, c1]);
+        tmp0[c0, c1] += (x0[c0, c2] * w0[c2, c1]);
       }
     }
   }
   for (int c0 = 0; (c0 <= 2); c0 += 1) {
     for (int c1 = 0; (c1 <= 1); c1 += 1) {
-      tmp1_4[c0, c1] = (tmp0_3[c0, c1] + b_2[c1]);
+      tmp1[c0, c1] = (tmp0[c0, c1] + b[c1]);
     }
   }
   for (int c0 = 0; (c0 <= 2); c0 += 1) {
     for (int c1 = 0; (c1 <= 1); c1 += 1) {
-      tmp2_5[c0, c1] = max(tmp1_4[c0, c1],0);
+      tmp2[c0, c1] = cinn_max(tmp1[c0, c1], 0);
     }
   }
 })ROC";

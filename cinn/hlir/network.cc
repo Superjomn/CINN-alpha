@@ -13,7 +13,7 @@ Network::Var Network::AddMatMul(const Var &x, const Var &y) {
   op->SetInput("W", y.name);
 
   Var out(NameGenerator::Global().NewTmpVar());
-  session_->NewTensor(out.name);
+  DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
   return out;
@@ -25,7 +25,7 @@ Network::Var Network::AddTanh(Var x) {
   op->SetInput("X", x.name);
 
   Var out(NameGenerator::Global().NewTmpVar());
-  session_->NewTensor(out.name);
+  DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
   return out;
@@ -37,7 +37,7 @@ Network::Var Network::AddSigmoid(Var x) {
   op->SetInput("X", x.name);
 
   Network::Var out(NameGenerator::Global().NewTmpVar());
-  session_->NewTensor(out.name);
+  DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
   return out;
@@ -65,7 +65,7 @@ Network::Var Network::AddElementwise(ElementwiseOpKind kind, Var x, Var y) {
   op->SetInput("Y", y.name);
 
   Var out(NameGenerator::Global().NewTmpVar());
-  session_->NewTensor(out.name);
+  DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
   return out;
@@ -79,7 +79,7 @@ Network::Var Network::AddReshape(const std::vector<int> &shape, Var x) {
   op->param<instruction_layer::ReshapeParam>() = param;
 
   Var out(NameGenerator::Global().NewTmpVar());
-  session_->NewTensor(out.name);
+  DeclTmpVar(out.name);
   op->SetInput("X", x.name);
   op->SetOutput("Out", out.name);
 
@@ -114,11 +114,23 @@ Network::Var Network::DeclInput(const std::string &name, primitive_t ptype, Shap
 }
 
 Network::Var Network::DeclOutput(const std::string &name) {
-  outputs_names_.insert(name);
+  CHECK(is_tmp_var(name));
+  tmp_var_names_.erase(name);
+  output_names_.insert(name);
 
   Tensor *tensor = session_->GetTensor(name);
   CHECK(tensor);
   return Var(name);
+}
+
+Tensor *Network::DeclTmpVar(const std::string &name) {
+  CHECK(IsVarNameAvailable(name)) << "name '" << name << "' is duplicate";
+  tmp_var_names_.insert(name);
+  return session_->NewTensor(name);
+}
+
+bool Network::IsVarNameAvailable(const std::string &name) const {
+  return !(is_input(name) || is_output(name) || is_weight(name) || is_tmp_var(name));
 }
 
 }  // namespace hlir
