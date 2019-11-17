@@ -32,6 +32,7 @@ void C_CodeGen::PrintHeader() {
   os_ << "\n";
   os_ << "#define cinn_min(a,b) ((a)<(b) ? (a) : (b))\n";
   os_ << "#define cinn_max(a,b) ((a)>(b) ? (a) : (b))\n";
+  os_ << "#define cinn_copy(a,b,size) memcpy((b), (a), (size))\n";
   Println();
   Println();
 }
@@ -91,10 +92,9 @@ void C_CodeGen::Visit(const ir::Function *op) {
     collect_argument(x);
   }
 
-  CHECK(!arguments.empty()) << "no function argument is provided";
-
   PrintIndent();
-  auto definition = StringFormat("void %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
+  auto definition =
+      StringFormat("void %s (%s)", op->name().c_str(), arguments.empty() ? "" : Concat(arguments, ", ").c_str());
 
   if (compile_mode_ == Mode::source) {
     os_ << definition << " {";

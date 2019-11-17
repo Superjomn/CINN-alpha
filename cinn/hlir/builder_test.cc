@@ -13,7 +13,8 @@ TEST(builder, weight) {
 
   Session session;
   Network net("tmp", &session);
-  BuildNetwork1(&net, &session);
+  Network1Builder net_builder;
+  net_builder.Build(&net, &session);
 
   Builder builder;
   auto expr = builder.Build(&session, std::move(net));
@@ -22,7 +23,7 @@ TEST(builder, weight) {
   gen.Print(expr);
 
   auto program = gen.compiled_code();
-  LOG(INFO) << "\n" << program;
+  LOG(INFO) << "\n" << program << std::endl;
 
   std::string target = R"ROC(// create weight buffers
 cinn_float32_t b[] = {0.100000,0.200000};
@@ -35,6 +36,14 @@ cinn_float32_t* tmp1 =  (cinn_float32_t*) malloc(24);
 cinn_float32_t* tmp0 =  (cinn_float32_t*) malloc(24);
 cinn_float32_t* tmp2 =  (cinn_float32_t*) malloc(24);
 
+// functions for reading output data
+void get_output_tmp1 (cinn_float32_t* tmp1_) {
+  cinn_copy(tmp1, tmp1_, 24);
+}
+// functions for loadding input data
+void set_input_x0 (cinn_float32_t* x0_) {
+  cinn_copy(x0_, x0, 48);
+}
 void func9 (cinn_float32_t* b, cinn_float32_t* w0, cinn_float32_t* x0, cinn_float32_t* tmp2) {
   for (int c0 = 0; (c0 <= 2); c0 += 1) {
     for (int c1 = 0; (c1 <= 1); c1 += 1) {
@@ -53,6 +62,9 @@ void func9 (cinn_float32_t* b, cinn_float32_t* w0, cinn_float32_t* x0, cinn_floa
       tmp2[c0, c1] = cinn_max(tmp1[c0, c1], 0);
     }
   }
+}
+void main_ () {
+  func9(b, w0, x0, tmp2);
 })ROC";
 
   ASSERT_EQ(program, target);

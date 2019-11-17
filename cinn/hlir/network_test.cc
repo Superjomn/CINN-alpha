@@ -13,7 +13,8 @@ TEST(network, basic) {
   Session session;
   Network net("tmp", &session);
 
-  BuildNetwork1(&net, &session);
+  Network1Builder net_builder;
+  net_builder.Build(&net, &session);
 
   auto program = net.Compile();
 

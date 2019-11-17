@@ -33,6 +33,36 @@ TEST(code_gen_c, easy) {
 
   std::string log = code_gen.compiled_code();
   LOG(INFO) << "generated code: \n" << log;
+
+  std::string target = R"ROC(#ifndef CINN_FILE_
+#define CINN_FILE_
+#include <math.h>
+#include <stdio.h>
+#include <xmmintrin.h>
+
+typedef char cinn_int8_t;
+typedef int cinn_int32_t;
+typedef long long cinn_int64_t;
+typedef unsigned char cinn_uint8_t;
+typedef unsigned int cinn_uint32_t;
+typedef unsigned long long cinn_uint64_t;
+typedef float cinn_float32_t;
+
+#define cinn_min(a,b) ((a)<(b) ? (a) : (b))
+#define cinn_max(a,b) ((a)>(b) ? (a) : (b))
+#define cinn_copy(a,b,size) memcpy((b), (a), (size))
+
+
+void fn0 (cinn_float32_t* A, cinn_float32_t* A) {
+  for (int c0 = 0; (c0 <= 19); c0 += 1) {
+    A[c0] = 0;
+  }
+}
+
+#endif  // CINN_FILE_
+)ROC";
+
+  EXPECT_EQ(log, target);
 }
 
 TEST(cpp_code_gen, basic) {
@@ -81,6 +111,7 @@ typedef float cinn_float32_t;
 
 #define cinn_min(a,b) ((a)<(b) ? (a) : (b))
 #define cinn_max(a,b) ((a)>(b) ? (a) : (b))
+#define cinn_copy(a,b,size) memcpy((b), (a), (size))
 
 
 void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
@@ -127,6 +158,7 @@ typedef float cinn_float32_t;
 
 #define cinn_min(a,b) ((a)<(b) ? (a) : (b))
 #define cinn_max(a,b) ((a)>(b) ? (a) : (b))
+#define cinn_copy(a,b,size) memcpy((b), (a), (size))
 
 
 void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C);
