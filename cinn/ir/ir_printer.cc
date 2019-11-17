@@ -283,12 +283,12 @@ void IRPrinter::Visit(const Call *op) {
   os_ << "(";
   for (int i = 0; i < op->arguments.size() - 1; i++) {
     Print(op->arguments[i]);
-    os_ << ",";
+    os_ << ", ";
   }
   if (op->arguments.size() > 1) {
     Print(op->arguments.back());
   }
-  os_ << ")";
+  os_ << ");";
 }
 
 void IRPrinter::Visit(const Assign *op) {

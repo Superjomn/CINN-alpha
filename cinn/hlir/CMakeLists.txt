@@ -1,4 +1,4 @@
-cc_library(hlir_util SRCS hlir_util.cc)
+cc_library(hlir_util SRCS hlir_util.cc DEPS ir)
 cc_library(operator SRCS operator.cc DEPS hlir_util)
 cc_library(tensor SRCS tensor.cc DEPS hlir_util)
 cc_library(placeholder SRCS placeholder.cc DEPS hlir_util)

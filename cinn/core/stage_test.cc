@@ -228,7 +228,7 @@ TEST(Stage, cond_expr) {
 
   std::string target = R"ROC(for(c0, 12, (c0 <= 20), 2) {
   for(c2, 0, (c2 <= 299), 1) {
-    S0(c0,((-c0) + 20),c2)
+    S0(c0, ((-c0) + 20), c2);
   }
 })ROC";
 
