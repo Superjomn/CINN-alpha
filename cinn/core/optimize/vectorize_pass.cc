@@ -135,7 +135,7 @@ struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
       LOG(INFO) << "collected " << item.first << " -> " << item.second;
       auto cast = ir::Cast::make(item.second, item.second.ptype(), composite_t::simd128);
       cast.set_ctype(composite_t::simd128);
-      ir::Var var(NameGenerator::Global().NewVarName());
+      ir::Var var(GlobalContext().name_generator().NewVarName());
       var.set_is_reference();
       Expr var_expr(var);
       ref_repr_to_var.back()[item.first] = var_expr;

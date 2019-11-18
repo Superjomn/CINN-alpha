@@ -8,6 +8,8 @@ namespace cinn {
 namespace ir {
 
 TEST(IRPrinter, basic) {
+  SetGlobalContext(new CINNContext);
+
   Expr a(1.f);
   Expr b(2.f);
   Expr d(1.2f);
@@ -26,6 +28,8 @@ TEST(IRPrinter, basic) {
 }
 
 TEST(IRPrinter, test1) {
+  SetGlobalContext(new CINNContext);
+
   Expr a(0.1f);
   Expr b(3.f);
   auto c = a > b;
@@ -39,6 +43,8 @@ TEST(IRPrinter, test1) {
 }
 
 TEST(IRPrinter, block) {
+  SetGlobalContext(new CINNContext);
+
   Expr a(0.1f), b(1.f);
   Expr c = a > b;
   Expr c0 = a != b;
@@ -55,6 +61,8 @@ TEST(IRPrinter, block) {
 }
 
 TEST(IRPrinter, block1) {
+  SetGlobalContext(new CINNContext);
+
   Expr a(0.1f), b(1.f);
   Expr c = a > b;
   Expr c0 = a != b;
@@ -73,6 +81,8 @@ TEST(IRPrinter, block1) {
 }
 
 TEST(IRPrinter, IfThenElse) {
+  SetGlobalContext(new CINNContext);
+
   Expr a(0.1f);
   Expr b(0.2f);
 
@@ -96,6 +106,8 @@ TEST(IRPrinter, IfThenElse) {
 }
 
 TEST(IRPrinter, For) {
+  SetGlobalContext(new CINNContext);
+
   Expr min(0);
   Expr extent(10);
 

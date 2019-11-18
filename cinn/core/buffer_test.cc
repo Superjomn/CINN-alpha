@@ -5,6 +5,8 @@
 namespace cinn {
 
 TEST(buffer, create) {
+  SetGlobalContext(new CINNContext);
+
   Target target(Target::OS::Linux);
   ir::Expr size(100);
   Buffer buffer(target, size, primitive_t::float32);
@@ -15,6 +17,8 @@ TEST(buffer, create) {
 }
 
 TEST(buffer, destroy) {
+  SetGlobalContext(new CINNContext);
+
   Target target(Target::OS::Linux);
   ir::Expr size(100);
   Buffer buffer(target, size, primitive_t::float32);

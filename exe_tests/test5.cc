@@ -8,6 +8,8 @@
 namespace cinn {
 
 TEST(test5, basic) {
+  SetGlobalContext(new CINNContext);
+
   Function fn("conv");
   {
     Constant N(1);

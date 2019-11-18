@@ -8,6 +8,8 @@
 namespace cinn {
 
 TEST(test7, basic) {
+  SetGlobalContext(new CINNContext);
+
   hlir::Session session;
   hlir::Network net("tmp", &session);
 

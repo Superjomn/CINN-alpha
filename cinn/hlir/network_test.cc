@@ -10,6 +10,8 @@ namespace cinn {
 namespace hlir {
 
 TEST(network, basic) {
+  SetGlobalContext(new CINNContext);
+
   Session session;
   Network net("tmp", &session);
 

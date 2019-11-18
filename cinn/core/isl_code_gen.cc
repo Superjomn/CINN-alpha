@@ -1,6 +1,7 @@
 #include "cinn/core/isl_code_gen.h"
 #include <stack>
 #include <utility>
+#include "cinn/core/stage.h"
 #include "cinn/ir/expr.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
@@ -320,39 +321,6 @@ std::map<std::string, isl::ast_expr> ExtractIslTransformedIndiceMap(const isl::s
   return iterator_map;
 }
 
-// class Generator
-
-Stage Generator::GetStageByName(const std::string& name) {
-  auto it = stages_.find(name);
-  if (it == stages_.end()) return Stage();
-  return Stage(it->second);
-}
-
-void Generator::RegisterStage(const std::string& name, Stage* x) {
-  CHECK(!stages_.count(name)) << "duplicate register a stage called [" << name << "]";
-  CHECK(x) << "stage is null";
-  stages_[name] = x->data_;
-}
-
-std::vector<Stage> Generator::FilterStagesByDomain(const isl::set& domain) {
-  std::vector<Stage> result;
-
-  for (auto& item : stages_) {
-    Stage stage = item.second;
-    const auto& iterator_domain = stage.iterator_domain();
-
-    auto interct = iterator_domain.intersect(domain);
-    if (!interct.is_empty()) result.push_back(stage);
-  }
-
-  return result;
-}
-
-Generator& Generator::Global() {
-  static Generator x;
-  return x;
-}
-
 #define TWO_ARG_OP(op__)                                                \
   case ir::NodeTy::op__: {                                              \
     auto* x = root.As<ir::op__>();                                      \
@@ -457,7 +425,7 @@ ir::Expr ReplaceCinnIndiceWithIslTransformedIndices(const std::map<std::string, 
 
 isl_ast_node* IslAstNodeInfoCollect(isl_ast_node* node, isl_ast_build* build, void* user) {
   LOG_INDENT(6);
-  Stage stage = Generator::Global().GetComputationByNode(node);
+  Stage stage = GlobalContext().generator().GetComputationByNode(node);
   CINN_DEBUG(2) << "Stage name is " << stage.name();
   CHECK(!stage.name().empty());
   CHECK(!stage.iterator_domain().is_null());
@@ -545,7 +513,7 @@ void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {  //
   LOG_INDENT(4);
   CINN_DEBUG(0) << "\n" << root;
   CINN_DEBUG(0) << "*** Attach " << stage_name;
-  auto stage = Generator::Global().GetStageByName(stage_name);
+  auto stage = GlobalContext().generator().GetStageByName(stage_name);
 
   struct Collector : public ir::IRMutator {
     std::string statement_;
@@ -557,7 +525,7 @@ void AttachCinnExprToIslIndices(Expr& root, const std::string& stage_name) {  //
     void Visit(const ir::Call* op, Expr* expr) override {
       LOG_INDENT(6);
       auto* m_op = expr->As<ir::Call>();
-      auto stage = Generator::Global().GetStageByName(statement_);
+      auto stage = GlobalContext().generator().GetStageByName(statement_);
 
       CINN_DEBUG(0) << "current stage: " << op->caller;
       if (op->caller == statement_) {
@@ -591,7 +559,7 @@ Stage Generator::GetComputationByNode(isl_ast_node* node) {
   CINN_DEBUG(4) << "get stage name: " << name;
   isl_ast_expr_free(expr);
   isl_ast_expr_free(arg);
-  return Generator::Global().GetStageByName(name);
+  return GlobalContext().generator().GetStageByName(name);
 }
 
 }  // namespace cinn

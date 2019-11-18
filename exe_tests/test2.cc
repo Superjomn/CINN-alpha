@@ -8,6 +8,8 @@
 namespace cinn {
 
 TEST(cinn, mat_mul) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant M(100), N(200), K(150);
 
   Function fn("mat_mul");

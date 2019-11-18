@@ -24,6 +24,8 @@ std::tuple<Stage, Stage> SoftMax(Function& fn, Expr& x, Expr& sum, Expr& out, Va
 }
 
 TEST(cinn, complex_nn) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant M(100), N(200), O(150);
 
   Function fn("complex");

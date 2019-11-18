@@ -197,7 +197,7 @@ struct Function {
  public:
   Function() {
     InitData();
-    data_->name = NameGenerator::Global().NewFuncionName();
+    data_->name = GlobalContext().name_generator().NewFuncionName();
   }
   //! Create a function with name specified, the other member should be inferenced latter.
   Function(const std::string& name) {

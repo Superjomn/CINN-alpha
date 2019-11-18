@@ -70,7 +70,7 @@ class GraphToIrFunctionsPass : public Pass<Graph> {
     std::vector<Function> result;
 
     for (auto* out_node : graph->Outputs()) {
-      Function _func(NameGenerator::Global().NewFuncionName());
+      Function _func(GlobalContext().name_generator().NewFuncionName());
       result.emplace_back(_func);
       auto& func = result.back();
 

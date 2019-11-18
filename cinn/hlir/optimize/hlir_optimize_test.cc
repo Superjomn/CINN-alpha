@@ -13,6 +13,8 @@ namespace hlir {
 namespace optimize {
 
 TEST(hlir_optimizer, basic) {
+  SetGlobalContext(new CINNContext);
+
   Session session;
   Program program;
   BuildProgram(&session, &program);

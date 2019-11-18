@@ -9,6 +9,8 @@ namespace hlir {
 namespace instruction_layer {
 
 TEST(matmul_op, test) {
+  SetGlobalContext(new CINNContext);
+
   auto op = OpRegistry::Global().CreateOp(HlirLayer::kInstructionWise, "matmul");
   ASSERT_TRUE(op);
 

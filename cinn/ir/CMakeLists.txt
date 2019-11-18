@@ -1,5 +1,5 @@
 cc_library(expr SRCS expr.cc DEPS glog)
-cc_library(ir SRCS ir.cc ir_helper.cc ir_visitor.cc ir_mutator.cc ir_printer.cc ir_mutator_helpers.cc DEPS expr ir_node_base any name_generator logging isl_utils type)
+cc_library(ir SRCS ir.cc ir_helper.cc ir_visitor.cc ir_mutator.cc ir_printer.cc ir_mutator_helpers.cc DEPS expr ir_node_base any name_generator logging isl_utils type cinn_context)
 cc_library(ir_node_base SRCS node_base.cc)
 cc_library(ops_overload SRCS ops_overload.cc DEPS ir)
 

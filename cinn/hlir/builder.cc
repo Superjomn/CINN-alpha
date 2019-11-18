@@ -23,6 +23,7 @@ ir::Expr Builder::Build(Session *session, Network *net) {
   AutoFuseStages(&fns);
 
   auto main_expr = graph.CompileExpr(&fns);
+
   auto global_vars = DeclBuffersGlobal(session, *net);
 
   AddMainFnToProgram(&main_expr, CreateMainFn(main_expr));
@@ -170,10 +171,8 @@ void Builder::AutoFuseStages(std::vector<Function> *fns) {
     std::map<std::string, Stage *> pre_stages;
     CHECK(!fn->end_definition());
     for (auto &stage : fn->stages()) {
-      CINN_DEBUG(2) << "testing stage: " << stage.name() << " " << stage.expr();
       // check has dependency.
       for (auto &item : pre_stages) {
-        CINN_DEBUG(2) << "testing target " << item.first;
         if (TwoStagesHasDependency(stage, *item.second)) {
           stage.FuseWith(*item.second);
           CINN_DEBUG(0) << "fuse " << stage.name() << " with " << item.first;
@@ -182,6 +181,7 @@ void Builder::AutoFuseStages(std::vector<Function> *fns) {
           break;
         }
       }
+
       pre_stages.emplace(stage.name(), &stage);
     }
   };

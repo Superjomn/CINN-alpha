@@ -5,6 +5,8 @@
 namespace cinn {
 
 TEST(test, basic) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant M(100), N(200), O(150);
 
   Function fn("basic");

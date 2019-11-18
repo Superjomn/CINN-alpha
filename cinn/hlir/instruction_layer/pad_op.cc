@@ -54,7 +54,7 @@ class Pad : public Operator {
       const ir::Constant& pre_padding = the_param.padding[i][0];
       const ir::Constant& post_padding = the_param.padding[i][1];
 
-      ir::Var pre_iter(NameGenerator::Global().NewNamed("i"), primitive_t::int32);
+      ir::Var pre_iter(GlobalContext().name_generator().NewNamed("i"), primitive_t::int32);
 
       CINN_DEBUG(3) << "output0.elem: " << ir::Dump(output0.Elem());
       output0.AddStage(output0.Elem() = Expr(0.f));

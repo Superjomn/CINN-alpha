@@ -4,6 +4,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include "cinn/core/cinn_context.h"
 #include "cinn/ir/expr.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
@@ -393,7 +394,7 @@ Var::Var() {
   InitData();
   // set as iterator by default.
   set_ptype(primitive_t::int32);
-  data_->name_ = NameGenerator::Global().NewIteratorName();
+  data_->name_ = GlobalContext().name_generator().NewIteratorName();
 }
 
 Var::Var(const std::string &name, primitive_t dtype) {
@@ -778,7 +779,7 @@ Expr BufferOpr::make(Target target, Expr size, Opr operation, primitive_t type, 
   buffer->target = target;
   buffer->size = size;
   buffer->operation = operation;
-  buffer->name = name.empty() ? NameGenerator::Global().NewBuffer() : name;
+  buffer->name = name.empty() ? GlobalContext().name_generator().NewBuffer() : name;
   buffer->set_ptype(type);
   return Expr(buffer);
 }
@@ -816,7 +817,7 @@ Expr Exp::make(Expr a) {
 }
 
 Expr Tensor::make(const std::vector<Constant> &dims, primitive_t type, const std::string &name) {
-  auto node = std::make_shared<Tensor>(name.empty() ? NameGenerator::Global().NewVarName() : name, type, dims);
+  auto node = std::make_shared<Tensor>(name.empty() ? GlobalContext().name_generator().NewVarName() : name, type, dims);
   return Expr(node);
 }
 
@@ -824,7 +825,7 @@ Expr Array::make(Expr size, primitive_t ptype, const std::string &name) {
   auto node = std::make_shared<Array>();
   node->size = size;
   node->set_ptype(ptype);
-  node->name = name.empty() ? NameGenerator::Global().NewArray() : name;
+  node->name = name.empty() ? GlobalContext().name_generator().NewArray() : name;
   CHECK(CheckExprIsConstant(node->size));
   return Expr(node);
 }

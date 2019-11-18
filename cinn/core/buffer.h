@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "cinn/core/cinn_context.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ops_overload.h"
 #include "cinn/ir/ops_overload.h"
@@ -23,7 +24,10 @@ class Buffer {
 
  public:
   Buffer(Target target, ir::Expr size, primitive_t ptype, const std::string& name = "")
-      : target_(target), size_(size), ptype_(ptype), name_(name.empty() ? NameGenerator::Global().NewBuffer() : name) {}
+      : target_(target),
+        size_(size),
+        ptype_(ptype),
+        name_(name.empty() ? GlobalContext().name_generator().NewBuffer() : name) {}
 
   //! Resize the buffer to size, we will grow the original buffer so that it can be shared in multiple usages.
   void Resize(ir::Expr size) { this->size_ = ir::Max_(this->size_, size); }

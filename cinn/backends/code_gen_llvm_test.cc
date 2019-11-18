@@ -13,6 +13,8 @@ namespace cinn {
 namespace backends {
 
 TEST(code_gen_llvm, basic) {
+  SetGlobalContext(new CINNContext);
+
   Target target;
   llvm::LLVMContext context;
   CodeGenLLVM gen(target, context, nullptr);
@@ -27,6 +29,8 @@ TEST(code_gen_llvm, basic) {
 }
 
 TEST(code_gen_llvm, array) {
+  SetGlobalContext(new CINNContext);
+
   Target target;
   llvm::LLVMContext context;
   std::unique_ptr<llvm::Module> module(new llvm::Module("test", context));
@@ -84,6 +88,8 @@ TEST(code_gen_llvm, array) {
 }
 
 TEST(code_gen_llvm, forloop) {
+  SetGlobalContext(new CINNContext);
+
   ir::Var i("i");
   ir::Expr block = ir::Block::make({});
   ir::Expr forloop = ir::For::make(ir::Expr(0), i < 0, ir::Expr(1), block, i);
@@ -105,6 +111,8 @@ TEST(code_gen_llvm, forloop) {
 }
 
 TEST(code_gen_llvm, function) {
+  SetGlobalContext(new CINNContext);
+
   Function fn("fn0");
   {
     ir::Constant M("M", 20);
@@ -154,6 +162,8 @@ TEST(code_gen_llvm, function) {
 }
 
 TEST(code_gen_llvm, function1) {
+  SetGlobalContext(new CINNContext);
+
   Function fn("fn0");
   {
     ir::Constant M("M", 20);
@@ -206,6 +216,8 @@ TEST(code_gen_llvm, function1) {
 // A[i] = 1
 // B[i] = A[i] + 1
 TEST(code_gen_llvm, function2) {
+  SetGlobalContext(new CINNContext);
+
   Function fn("fn0");
   {
     ir::Constant M("M", 20);
@@ -262,6 +274,8 @@ TEST(code_gen_llvm, function2) {
 // B[i] = 2
 // C[i] = A[i] * B[i]
 TEST(code_gen_llvm, function3) {
+  SetGlobalContext(new CINNContext);
+
   Function fn("fn0");
   {
     ir::Constant M("M", 20);

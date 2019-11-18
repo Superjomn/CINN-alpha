@@ -13,6 +13,8 @@ using ir::Var;
 using cs = std::vector<Constant>;
 
 TEST(Function, basic) {
+  SetGlobalContext(new CINNContext);
+
   Var i("i");
   Var j("j");
 
@@ -37,6 +39,8 @@ TEST(Function, basic) {
 }
 
 TEST(Function, buffer_allocate) {
+  SetGlobalContext(new CINNContext);
+
   Var i("i");
   Var j("j");
   Var k("k");
@@ -65,6 +69,8 @@ TEST(Function, buffer_allocate) {
 Expr tanh(Expr x) { return ir::Max::make(Expr(0.f), x); }
 
 TEST(Snippet, test) {
+  SetGlobalContext(new CINNContext);
+
   Snippet snippet0;
 
   Constant N(200);
@@ -85,6 +91,8 @@ TEST(Snippet, test) {
 }
 
 TEST(Snippet, test1) {
+  SetGlobalContext(new CINNContext);
+
   std::vector<Snippet> snippets;
   for (int i = 0; i < 10; i++) {
     snippets.emplace_back();
@@ -92,6 +100,8 @@ TEST(Snippet, test1) {
 }
 
 TEST(Function, syntax) {
+  SetGlobalContext(new CINNContext);
+
   using cs = std::vector<Constant>;
 
   Constant N(1000);
@@ -159,6 +169,8 @@ TEST(Function, syntax) {
 }
 
 TEST(Function, any_constant) {
+  SetGlobalContext(new CINNContext);
+
   Function softmax_fn("softmax");
   {
     Constant N("N", primitive_t::int32);

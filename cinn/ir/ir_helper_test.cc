@@ -9,6 +9,8 @@ namespace cinn {
 namespace ir {
 
 TEST(ir, equal) {
+  SetGlobalContext(new CINNContext);
+
   Expr a(1.f);
   Expr b(2.f);
 
@@ -20,6 +22,8 @@ TEST(ir, equal) {
 }
 
 TEST(ir, basic_simplify) {
+  SetGlobalContext(new CINNContext);
+
   using tuple_t = std::tuple<ir::Expr, std::string>;
 
   Expr a(1.f);
@@ -54,6 +58,8 @@ TEST(ir, basic_simplify) {
 }
 
 TEST(ir, reference_simplify) {
+  SetGlobalContext(new CINNContext);
+
   Constant M(20);
   Constant K(10);
   Constant N(30);

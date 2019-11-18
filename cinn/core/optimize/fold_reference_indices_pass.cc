@@ -205,7 +205,7 @@ class ThePass : public Pass<ir::Expr> {
       for (auto &item : block_item.second.counter) {
         if (item.second >= frequency) {
           if (!block_item.second.let_exprs.count(item.first)) {
-            std::string name = NameGenerator::Global().NewVarName();
+            std::string name = GlobalContext().name_generator().NewVarName();
             auto b = block_item.second.pieces[item.first];
             ir::Var var(name, b.ptype());
             block_item.second.let_exprs[item.first] = ir::Let::make(Expr(var), b);
