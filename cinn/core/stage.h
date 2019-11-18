@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 #include "cinn/ir/ir.h"
 
 #include "cinn/core/buffer.h"
@@ -98,9 +99,9 @@ class Stage {
    *
    * One can specify the iterators of the statement in the schedule by passing the argument iterators.
    */
-  Stage(ir::Expr expr, const std::vector<ir::Var>& iterators = {});
+  Stage(ir::Expr expr, const std::vector<ir::Var>& iterators = {});  // NOLINT
 
-  Stage(const std::shared_ptr<Stage::Data>& x) : data_(x) {}
+  Stage(const std::shared_ptr<Stage::Data>& x) : data_(x) {}  // NOLINT
 
   // Stage is free to copy.
   Stage(const Stage& stage) : data_(stage.data_) {}
@@ -286,6 +287,11 @@ class Stage {
  private:
   std::shared_ptr<Data> data_;
 };
+
+/**
+ * Tell whether two stages has dependency.
+ */
+bool TwoStagesHasDependency(const Stage& a, const Stage& b);
 
 std::ostream& operator<<(std::ostream& os, Stage::Type t);
 

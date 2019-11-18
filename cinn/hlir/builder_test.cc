@@ -44,27 +44,19 @@ void get_output_tmp1 (cinn_float32_t* tmp1_) {
 void set_input_x0 (cinn_float32_t* x0_) {
   cinn_copy(x0_, x0, 48);
 }
-void func9 (cinn_float32_t* b, cinn_float32_t* w0, cinn_float32_t* x0, cinn_float32_t* tmp2) {
+void func8 (cinn_float32_t* b, cinn_float32_t* w0, cinn_float32_t* x0, cinn_float32_t* tmp2) {
   for (int c0 = 0; (c0 <= 2); c0 += 1) {
     for (int c1 = 0; (c1 <= 1); c1 += 1) {
       for (int c2 = 0; (c2 <= 3); c2 += 1) {
         tmp0[c0, c1] += (x0[c0, c2] * w0[c2, c1]);
       }
-    }
-  }
-  for (int c0 = 0; (c0 <= 2); c0 += 1) {
-    for (int c1 = 0; (c1 <= 1); c1 += 1) {
       tmp1[c0, c1] = (tmp0[c0, c1] + b[c1]);
-    }
-  }
-  for (int c0 = 0; (c0 <= 2); c0 += 1) {
-    for (int c1 = 0; (c1 <= 1); c1 += 1) {
       tmp2[c0, c1] = cinn_max(tmp1[c0, c1], 0);
     }
   }
 }
 void main_ () {
-  func9(b, w0, x0, tmp2);
+  func8(b, w0, x0, tmp2);
 })ROC";
 
   ASSERT_EQ(program, target);

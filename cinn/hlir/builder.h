@@ -1,4 +1,9 @@
 #pragma once
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 #include "cinn/hlir/graph.h"
 #include "cinn/hlir/graph_util.h"
 #include "cinn/hlir/network.h"
@@ -64,6 +69,11 @@ class Builder {
    * @param io_fns the input or output function block(expression of ir::Block).
    */
   void AddIOFnsToProgram(Expr* program, Expr io_fns);
+
+  /**
+   * Automatically fuse the stages with dependencies.
+   */
+  void AutoFuseStages(std::vector<Function>* fns);
 
   const char* main_fn_name = "main_";
   const char* load_fn_name_format = "set_input_%s";

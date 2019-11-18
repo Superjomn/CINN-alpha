@@ -1,7 +1,11 @@
 #pragma once
 #include <list>
+#include <map>
 #include <memory>
-
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 #include "cinn/core/function.h"
 #include "cinn/hlir/operator.h"
 #include "cinn/hlir/program.h"
@@ -13,7 +17,7 @@ namespace cinn {
 namespace hlir {
 
 /**
- * Node the the node in a Graph, it contains an Operator and input and output links.
+ * Node the node in a Graph, it contains an Operator and input and output links.
  */
 struct Node {
   std::list<Node*> inlinks;
@@ -58,17 +62,12 @@ class Graph {
   void Build(const Program& program, const Session& session);
 
   /**
-   * Partition the graph and generate functions.
-   */
-  std::vector<Function> PartitionFunctions();
-
-  /**
    * Compile a graph to lower compiler.
    * @param finalize_function Call EndDefinition in Function, if true, the further modification on Stages is not
    * allowed.
    */
   void Compile(bool finalize_function = true);
-  Expr CompileExpr();
+  Expr CompileExpr(std::vector<Function>* fns);
 
   /**
    * Get all the nodes.
@@ -121,6 +120,11 @@ class Graph {
   std::set<Node*> Outputs();
 
   ArgumentRegistry& arguments() { return arguments_; }
+
+  /**
+   * Partition the graph and generate functions.
+   */
+  std::vector<Function> PartitionFunctions();
 
  protected:
   /**

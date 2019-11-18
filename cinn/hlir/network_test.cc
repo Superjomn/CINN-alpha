@@ -26,8 +26,6 @@ TEST(network, basic) {
     if (node.is_op()) node.op->Compile();
   }
 
-  graph.PartitionFunctions();
-
   LOG(INFO) << "DOT:\n" << graph.dot();
 
   graph.Compile(false);
