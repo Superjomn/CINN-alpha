@@ -512,4 +512,18 @@ void Stage::SetCond(ir::Expr expr) {
   SetCond(cond);
 }
 
+bool TwoStagesHasDependency(const Stage& a, const Stage& b) {
+  auto* ar = isl_union_map_copy(a.read_access());
+  auto* aw = isl_union_map_copy(a.write_access());
+  auto* br = isl_union_map_copy(b.read_access());
+  auto* bw = isl_union_map_copy(b.write_access());
+
+  isl_union_map* deps = isl_utils::isl_calculate_dependency(ar, aw, br, bw);
+  bool result = deps && !isl_union_map_is_empty(deps);
+  if (deps) {
+    isl_union_map_free(deps);
+  }
+  return result;
+}
+
 }  // namespace cinn

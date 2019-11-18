@@ -1,6 +1,5 @@
 #include "cinn/hlir/graph.h"
 #include <algorithm>
-#include <algorithm>
 #include "cinn/backends/code_gen_c.h"
 #include "cinn/hlir/graph_util.h"
 #include "cinn/utils/logging.h"
@@ -205,18 +204,17 @@ void Graph::Compile(bool finalize_function) {
   backends::CompileAsC(block, "1.h", "1.cc");
 }
 
-Expr Graph::CompileExpr() {
-  auto fns = PartitionFunctions();
-
-  CHECK(!fns.empty());
-  for (auto& fn : fns) {
+Expr Graph::CompileExpr(std::vector<Function>* fns) {
+  CHECK(!fns->empty());
+  for (auto& fn : *fns) {
     fn.EndDefinition();
   }
 
   AllocateBuffersForTempVars();
 
   std::vector<ir::Expr> exprs;
-  std::transform(fns.begin(), fns.end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
+  std::transform(
+      fns->begin(), fns->end(), std::back_inserter(exprs), [](const Function& x) { return x.ir_function(); });
   auto block = ir::Block::make(std::move(exprs));
   return block;
 }

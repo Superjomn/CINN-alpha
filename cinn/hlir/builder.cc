@@ -1,6 +1,8 @@
 #include "cinn/hlir/builder.h"
 #include "cinn/backends/code_gen_c.h"
+#include "cinn/core/stage.h"
 #include "cinn/ir/ir_helper.h"
+#include "cinn/utils/logging.h"
 
 namespace cinn {
 namespace hlir {
@@ -15,11 +17,12 @@ ir::Expr Builder::Build(Session *session, Network *net) {
     if (node.is_op()) node.op->Compile();
   }
 
-  graph.PartitionFunctions();
-
   LOG(INFO) << "DOT:\n" << graph.dot();
 
-  auto main_expr = graph.CompileExpr();
+  auto fns = graph.PartitionFunctions();
+  AutoFuseStages(&fns);
+
+  auto main_expr = graph.CompileExpr(&fns);
   auto global_vars = DeclBuffersGlobal(session, *net);
 
   AddMainFnToProgram(&main_expr, CreateMainFn(main_expr));
@@ -159,6 +162,33 @@ void Builder::AddIOFnsToProgram(Expr *program, Expr io_fns) {
   auto *block = program->As<ir::Block>();
   CHECK(block);
   block->body.insert(std::begin(block->body), io_fns);
+}
+
+void Builder::AutoFuseStages(std::vector<Function> *fns) {
+  LOG_INDENT(0);
+  auto fuse_stages_in_a_fn = [](Function *fn) {
+    std::map<std::string, Stage *> pre_stages;
+    CHECK(!fn->end_definition());
+    for (auto &stage : fn->stages()) {
+      CINN_DEBUG(2) << "testing stage: " << stage.name() << " " << stage.expr();
+      // check has dependency.
+      for (auto &item : pre_stages) {
+        CINN_DEBUG(2) << "testing target " << item.first;
+        if (TwoStagesHasDependency(stage, *item.second)) {
+          stage.FuseWith(*item.second);
+          CINN_DEBUG(0) << "fuse " << stage.name() << " with " << item.first;
+          // Don't continue to fuse more previous stages to avoid fusion mark explosion, that may lower the tile
+          // performance.
+          break;
+        }
+      }
+      pre_stages.emplace(stage.name(), &stage);
+    }
+  };
+
+  for (auto &fn : *fns) {
+    fuse_stages_in_a_fn(&fn);
+  }
 }
 
 }  // namespace hlir
