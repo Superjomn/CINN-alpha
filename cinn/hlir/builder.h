@@ -9,7 +9,7 @@ namespace hlir {
 class Builder {
  public:
   //! Build a network.
-  ir::Expr Build(Session* session, Network&& net);
+  ir::Expr Build(Session* session, Network* net);
 
   /**
    * Transform an expression to C source code.

@@ -16,8 +16,8 @@ struct Network1Builder {
     using Var = Network::Var;
 
     Var x0 = net->DeclInput("x0", primitive_t::float32, x0_shape);
-    Var w0 = net->DeclWeight<float>("w0", primitive_t::float32, w0_shape, w0_data.data());
-    Var b = net->DeclWeight<float>("b", primitive_t::float32, b_shape, b_data.data());
+    Var w0 = net->DeclWeight<float>("w0", primitive_t::float32, w0_shape, w0_data);
+    Var b = net->DeclWeight<float>("b", primitive_t::float32, b_shape, b_data);
 
     auto fc_out = net->AddFc(x0, w0, b);
     auto tanh_out = net->AddTanh(fc_out);

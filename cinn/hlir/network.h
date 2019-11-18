@@ -36,13 +36,13 @@ class Network {
   Network::Var DeclOutput(const std::string& name);
   //! Declare a weight for the model.
   template <typename T>
-  Var DeclWeight(const std::string& name, primitive_t ptype, const Shape& shape, const T* data) {
+  Var DeclWeight(const std::string& name, primitive_t ptype, const Shape& shape, const std::vector<T>& data) {
     weight_names_.insert(name);
 
     Tensor* tensor = session_->NewTensor(name);
     auto buf = std::make_shared<Buffer>(name + "_buf", ptype);
     buf->Resize(shape.num_bytes(ptype));
-    buf->SetData<T>(data);
+    buf->SetData<T>(data.data());
 
     tensor->AttachBuffer(buf);
     tensor->set_is_weight();
@@ -98,6 +98,11 @@ class Network {
    * @param out Name of the output.
    */
   Var AddElementwise(ElementwiseOpKind kind, Var x, Var y);
+
+  Var AddElementwiseAdd(Var x, Var y) { AddElementwise(ElementwiseOpKind::kAdd, x, y); }
+  Var AddElementwiseSub(Var x, Var y) { AddElementwise(ElementwiseOpKind::kSub, x, y); }
+  Var AddElementwiseMul(Var x, Var y) { AddElementwise(ElementwiseOpKind::kMul, x, y); }
+  Var AddElementwiseDiv(Var x, Var y) { AddElementwise(ElementwiseOpKind::kDiv, x, y); }
 
   /**
    * Add a Reshape operator.

@@ -15,7 +15,7 @@ TEST(test7, basic) {
   net_builder.Build(&net, &session);
 
   hlir::Builder builder;
-  auto expr = builder.Build(&session, std::move(net));
+  auto expr = builder.Build(&session, &net);
   builder.ToCSourceCode(expr, "exe_test7");
 }
 

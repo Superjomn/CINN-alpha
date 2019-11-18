@@ -1,6 +1,8 @@
 #!/bin/bash
 set -ex
 
+readonly workspace=$PWD
+
 function check_style {
     export PATH=/usr/bin:$PATH
     #pre-commit install
@@ -32,11 +34,16 @@ function run_exe_test {
     export MALLOC_CHECK_=2
     local no=$1
     make exe_test$no -j8
-    ctest -R exe_test$no -V
+    ctest -R exe_test$no
+}
+
+function run_python_test {
+    export cinn_so_prefix="$workspace/build/cinn/api/"
+    python3 $workspace/cinn/api/python_api_test.py
 }
 
 function test_ {
-    ctest -V
+    ctest
 }
 
 function CI {
@@ -45,6 +52,7 @@ function CI {
     cmake_
     build
     test_
+    run_python_test
 }
 
 function main {

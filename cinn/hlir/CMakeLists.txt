@@ -22,6 +22,6 @@ cc_test(test_graph SRCS graph_test.cc DEPS ${instruction_ops} graph session op_r
 cc_test(test_graph_util SRCS graph_util_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops})
 cc_test(test_network SRCS network_test.cc DEPS graph_util cinn_lib session op_registry ${instruction_ops} network graph)
 cc_test(test_builder SRCS builder_test.cc DEPS builder)
-cc_library(hlir_lib SRCS hlir.cc DEPS operator tensor graph network graph_util builder ${instruction_ops})
+cc_library(hlir_lib SRCS hlir.cc DEPS operator tensor graph network graph_util builder ${instruction_ops} hlir_optimizer)
 
 add_subdirectory(optimize)

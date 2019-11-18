@@ -1,3 +1,5 @@
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
@@ -12,10 +14,6 @@ function(cc_library TARGET_NAME)
 
     if(cc_library_DEPS)
       # Don't need link libwarpctc.so
-      if("${cc_library_DEPS};" MATCHES "warpctc;")
-        list(REMOVE_ITEM cc_library_DEPS warpctc)
-        add_dependencies(${TARGET_NAME} warpctc)
-      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
