@@ -3,6 +3,7 @@
 #include "cinn/hlir/graph.h"
 #include "cinn/hlir/graph_test_util.h"
 #include "cinn/hlir/graph_util.h"
+#include "cinn/hlir/instruction_layer/use_ops.h"
 #include "cinn/hlir/optimize/optimizer.h"
 #include "cinn/hlir/optimize/use_passes.h"
 #include "cinn/ir/ir_printer.h"

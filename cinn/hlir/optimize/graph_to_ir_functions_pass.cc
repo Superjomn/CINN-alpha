@@ -4,7 +4,6 @@
 #include "cinn/core/optimize/pass.h"
 #include "cinn/core/optimize/pass_registry.h"
 #include "cinn/hlir/graph_util.h"
-#include "cinn/hlir/instruction_layer/use_ops.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/utils/logging.h"

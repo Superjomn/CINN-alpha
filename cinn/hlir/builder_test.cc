@@ -17,7 +17,7 @@ TEST(builder, weight) {
   net_builder.Build(&net, &session);
 
   Builder builder;
-  auto expr = builder.Build(&session, std::move(net));
+  auto expr = builder.Build(&session, &net);
 
   backends::C_CodeGen gen;
   gen.Print(expr);

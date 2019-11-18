@@ -12,6 +12,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 # Include third-party libraries.
 set(THIRD_PARTY_PATH ${CMAKE_BINARY_DIR}/third_party)
+include(cmake/external/pybind11.cmake)
 include(cmake/external/gflags.cmake)
 include(cmake/external/glog.cmake)
 include(cmake/external/gtest.cmake)

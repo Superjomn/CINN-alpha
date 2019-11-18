@@ -5,8 +5,8 @@
 namespace cinn {
 namespace hlir {
 
-ir::Expr Builder::Build(Session *session, Network &&net) {
-  Program program = net.Compile();
+ir::Expr Builder::Build(Session *session, Network *net) {
+  Program program = net->Compile();
 
   Graph graph;
   graph.Build(program, *session);
@@ -20,11 +20,11 @@ ir::Expr Builder::Build(Session *session, Network &&net) {
   LOG(INFO) << "DOT:\n" << graph.dot();
 
   auto main_expr = graph.CompileExpr();
-  auto global_vars = DeclBuffersGlobal(session, net);
+  auto global_vars = DeclBuffersGlobal(session, *net);
 
   AddMainFnToProgram(&main_expr, CreateMainFn(main_expr));
-  AddIOFnsToProgram(&main_expr, CreateLoadInputFns(net, *session));
-  AddIOFnsToProgram(&main_expr, CreateGetOutputFns(net, *session));
+  AddIOFnsToProgram(&main_expr, CreateLoadInputFns(*net, *session));
+  AddIOFnsToProgram(&main_expr, CreateGetOutputFns(*net, *session));
 
   auto expr = ir::Module::make(global_vars, main_expr);
   return expr;
