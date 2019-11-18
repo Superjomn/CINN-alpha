@@ -78,6 +78,10 @@ void BindExpr(py::module* m) {
       .def(py::init<>());
 }
 
+void BindSetGlobalContext(py::module* m) {
+  m->def("init_global_context", [] { SetGlobalContext(new CINNContext); });
+}
+
 void BindApi(pybind11::module* m) {
   BindSession(m);
   BindVar(m);
@@ -86,4 +90,5 @@ void BindApi(pybind11::module* m) {
   BindShape(m);
   BindNetwork(m);
   BindBuilder(m);
+  BindSetGlobalContext(m);
 }

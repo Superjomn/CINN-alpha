@@ -83,7 +83,7 @@ class Stage {
   std::vector<ir::Var> iterators_in_order;
 
  public:
-  Stage() { InitData(); }
+  Stage();
   Stage(const std::string& name, const std::string& iter_domain);
 
   /**

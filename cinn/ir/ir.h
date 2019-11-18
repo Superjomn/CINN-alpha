@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "cinn/core/cinn_context.h"
 #include "cinn/ir/expr.h"
 #include "cinn/target.h"
 #include "cinn/type.h"

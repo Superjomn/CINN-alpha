@@ -14,11 +14,14 @@ namespace hlir {
  */
 class Buffer {
  public:
-  Buffer() : name_(NameGenerator::Global().NewBuffer()) {}
+  Buffer() = default;
   Buffer(const std::string& name, primitive_t ptype) : name_(name) {
     // CHECK(!names_.count(name)) << "duplicate buffer name: " << name;
     // names_.insert(name);
   }
+
+  void set_name(const std::string& name) { name_ = name; }
+  const std::string& name() const { return name_; }
 
   // TODO(Superjomn) Add memory management.
   void Resize(size_t size) { size_ = size; }
@@ -42,8 +45,6 @@ class Buffer {
   const Any& data() const { return data_; }
 
  private:
-  static std::set<std::string> names_;
-
   size_t size_{};
   std::string name_;
 

@@ -11,6 +11,8 @@ using namespace ir;
 using cs = std::vector<Constant>;
 
 TEST(Stage, from_expr) {
+  SetGlobalContext(new CINNContext);
+
   Constant M(20);
   Constant K(10);
   Constant N(30);
@@ -26,6 +28,8 @@ TEST(Stage, from_expr) {
 }
 
 TEST(Stage, multiple) {
+  SetGlobalContext(new CINNContext);
+
   Constant M(20);
   Constant K(10);
   Constant N(30);
@@ -43,6 +47,8 @@ TEST(Stage, multiple) {
 }
 
 TEST(Stage, DumpC) {
+  SetGlobalContext(new CINNContext);
+
   Constant M(20);
   Constant K(10);
   Constant N(30);
@@ -59,6 +65,8 @@ TEST(Stage, DumpC) {
 }
 
 TEST(Stage, InitRWAccess) {
+  SetGlobalContext(new CINNContext);
+
   Constant M(20);
   Constant K(10);
   Constant N(30);
@@ -87,6 +95,8 @@ TEST(Stage, InitRWAccess) {
 }
 
 TEST(Stage, BuildDomainFromDimensions) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 30);
   Constant J("J", 40);
   Constant M("M", 20);
@@ -97,6 +107,8 @@ TEST(Stage, BuildDomainFromDimensions) {
 }
 
 TEST(Stage, BuildDomainFromExprWithDimension) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 30);
   Constant J("J", 40);
   Constant M("M", 20);
@@ -114,6 +126,8 @@ TEST(Stage, BuildDomainFromExprWithDimension) {
 }
 
 TEST(Stage, syntax) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 30);
   Constant J("J", 40);
   Constant M("M", 20);
@@ -133,6 +147,8 @@ TEST(Stage, syntax) {
 }
 
 TEST(Stage, Split) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 30);
   Constant J("J", 40);
   Constant M("M", 20);
@@ -151,6 +167,8 @@ TEST(Stage, Split) {
 }
 
 TEST(Stage, Tile) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 100);
   Constant J("J", 200);
   Constant M("M", 300);
@@ -169,6 +187,8 @@ TEST(Stage, Tile) {
 }
 
 TEST(Stage, cond) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 100);
   Constant J("J", 200);
   Constant M("M", 300);
@@ -209,6 +229,8 @@ TEST(Stage, cond) {
 
 // Test the condition represented by Expr.
 TEST(Stage, cond_expr) {
+  SetGlobalContext(new CINNContext);
+
   Constant I("I", 100);
   Constant J("J", 200);
   Constant M("M", 300);
@@ -236,6 +258,8 @@ TEST(Stage, cond_expr) {
 }
 
 TEST(Stage, SetIterators) {
+  SetGlobalContext(new CINNContext);
+
   Constant M(20);
   Constant K(10);
   Constant N(30);

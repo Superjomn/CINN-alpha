@@ -9,7 +9,7 @@ namespace cinn {
 namespace hlir {
 
 TEST(builder, weight) {
-  NameGenerator::Global().ResetCounter();
+  SetGlobalContext(new CINNContext);
 
   Session session;
   Network net("tmp", &session);

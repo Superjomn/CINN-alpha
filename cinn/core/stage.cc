@@ -92,7 +92,7 @@ Stage::Stage(Expr expr, const std::vector<ir::Var>& iterators) {
   InitData();
   data_->expr = expr;
   iterators_in_order = iterators;
-  set_name(NameGenerator::Global().NewStageName());
+  set_name(GlobalContext().name_generator().NewStageName());
   CINN_DEBUG(2) << "stage set name " << name();
 
   ExtractDomainFromExpr(expr);
@@ -106,7 +106,7 @@ Stage::Stage(Expr expr, const std::vector<ir::Var>& iterators) {
     InitFromAllocateExpr(expr);
   }
 
-  Generator::Global().RegisterStage(data_->name, this);
+  GlobalContext().generator().RegisterStage(data_->name, *this);
 }
 
 void Stage::InitFromAssignExpr(Expr expr) {}
@@ -134,7 +134,7 @@ std::string Stage::DumpIslC() const {
     if (isl_bool_true == isl_map_has_dim_name(t0.get(), isl_dim_out, i)) {
       iterators.push_back(isl_map_get_dim_name(t0.get(), isl_dim_out, i));
     } else {
-      iterators.push_back(NameGenerator::Global().NewIteratorName());
+      iterators.push_back(GlobalContext().name_generator().NewIteratorName());
     }
   }
 
@@ -188,7 +188,7 @@ Stage::Stage(const std::string& name, const std::string& iter_domain) {
   CHECK(!data_->iter_domain.is_null());
   InitSchedule();
 
-  Generator::Global().RegisterStage(data_->name, this);
+  GlobalContext().generator().RegisterStage(data_->name, *this);
 }
 
 void Stage::set_name(const std::string& name) {
@@ -308,7 +308,7 @@ void Stage::ScheduleNameAllDims() {
   // Name all the range's dimensions.
   for (int i = 0; i < schedule().range_dims(); i++) {
     if (!schedule().range_has_dim_name(i)) {
-      data_->schedule.range_set_dim_name(i, NameGenerator::Global().NewIteratorName().c_str());
+      data_->schedule.range_set_dim_name(i, GlobalContext().name_generator().NewIteratorName().c_str());
     }
   }
 }
@@ -512,6 +512,8 @@ void Stage::SetCond(ir::Expr expr) {
   SetCond(cond);
 }
 
+Stage::Stage() { InitData(); }
+
 bool TwoStagesHasDependency(const Stage& a, const Stage& b) {
   auto* ar = isl_union_map_copy(a.read_access());
   auto* aw = isl_union_map_copy(a.write_access());
@@ -523,6 +525,31 @@ bool TwoStagesHasDependency(const Stage& a, const Stage& b) {
   if (deps) {
     isl_union_map_free(deps);
   }
+  return result;
+}
+
+Stage Generator::GetStageByName(const std::string& name) {
+  auto it = stages_.find(name);
+  if (it == stages_.end()) return Stage();
+  return Stage(*it->second);
+}
+
+void Generator::RegisterStage(const std::string& name, const Stage& x) {
+  CHECK(!stages_.count(name)) << "duplicate register a stage called [" << name << "]";
+  stages_[name] = new Stage(x);
+}
+
+std::vector<Stage> Generator::FilterStagesByDomain(const isl::set& domain) {
+  std::vector<Stage> result;
+
+  for (auto& item : stages_) {
+    Stage stage = *item.second;
+    const auto& iterator_domain = stage.iterator_domain();
+
+    auto interct = iterator_domain.intersect(domain);
+    if (!interct.is_empty()) result.push_back(stage);
+  }
+
   return result;
 }
 

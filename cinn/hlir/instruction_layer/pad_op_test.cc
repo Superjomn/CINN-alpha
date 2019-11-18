@@ -10,6 +10,8 @@ namespace hlir {
 namespace instruction_layer {
 
 TEST(pad, test) {
+  SetGlobalContext(new CINNContext);
+
   auto op = OpRegistry::Global().CreateOp(HlirLayer::kInstructionWise, "pad");
   ASSERT_TRUE(op);
 

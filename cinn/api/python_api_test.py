@@ -6,6 +6,8 @@ assert path, "the environment variable %s should be set first" % path
 sys.path.append(path)
 import cinn_core as cinn
 
+cinn.init_global_context()
+
 builder = cinn.Builder()
 
 session = cinn.Session()

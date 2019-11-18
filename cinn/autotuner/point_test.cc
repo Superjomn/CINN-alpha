@@ -14,6 +14,8 @@ namespace cinn {
 namespace autotuner {
 
 TEST(Point, basic) {
+  SetGlobalContext(new CINNContext);
+
   hlir::Session session;
   hlir::Network net("tmp", &session);
 
@@ -66,6 +68,8 @@ TEST(Point, basic) {
 }
 
 TEST(Point, multiple) {
+  SetGlobalContext(new CINNContext);
+
   hlir::Session session;
   hlir::Network net("tmp", &session);
 

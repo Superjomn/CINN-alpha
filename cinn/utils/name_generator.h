@@ -6,10 +6,6 @@ namespace cinn {
 
 class NameGenerator {
  public:
-  static NameGenerator& Global();
-
-  void ResetCounter();
-
   std::string NewNamed(const std::string& x) { return x + "_" + std::to_string(named_counter_++); }
   std::string NewFuncionName() { return "func" + std::to_string(func_counter_++); }
   std::string NewStageName() { return "S" + std::to_string(func_counter_++); }
@@ -33,6 +29,8 @@ class NameGenerator {
 
   NameGenerator() = default;
   NameGenerator(const NameGenerator&) = delete;
+
+  friend class CINNContext;
 };
 
 }  // namespace cinn

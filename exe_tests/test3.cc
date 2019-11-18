@@ -30,6 +30,8 @@ Stage Scale(Function& fn, Expr& A, Expr& scale, Var& m, Var& n) {
 }
 
 TEST(cinn, complex_nn) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant M(512), N(512), K(256);
 
   Function fn("complex");

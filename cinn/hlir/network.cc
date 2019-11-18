@@ -12,7 +12,7 @@ Network::Var Network::AddMatMul(const Var &x, const Var &y) {
   op->SetInput("X", x.name);
   op->SetInput("W", y.name);
 
-  Var out(NameGenerator::Global().NewTmpVar());
+  Var out(GlobalContext().name_generator().NewTmpVar());
   DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
@@ -24,7 +24,7 @@ Network::Var Network::AddTanh(Var x) {
   op->set_session(session_);
   op->SetInput("X", x.name);
 
-  Var out(NameGenerator::Global().NewTmpVar());
+  Var out(GlobalContext().name_generator().NewTmpVar());
   DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
@@ -36,7 +36,7 @@ Network::Var Network::AddSigmoid(Var x) {
   op->set_session(session_);
   op->SetInput("X", x.name);
 
-  Network::Var out(NameGenerator::Global().NewTmpVar());
+  Network::Var out(GlobalContext().name_generator().NewTmpVar());
   DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
@@ -64,7 +64,7 @@ Network::Var Network::AddElementwise(ElementwiseOpKind kind, Var x, Var y) {
   op->SetInput("X", x.name);
   op->SetInput("Y", y.name);
 
-  Var out(NameGenerator::Global().NewTmpVar());
+  Var out(GlobalContext().name_generator().NewTmpVar());
   DeclTmpVar(out.name);
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
@@ -78,7 +78,7 @@ Network::Var Network::AddReshape(const std::vector<int> &shape, Var x) {
   auto op = OpRegistry::Global().CreateOp(HlirLayer::kInstructionWise, "reshape");
   op->param<instruction_layer::ReshapeParam>() = param;
 
-  Var out(NameGenerator::Global().NewTmpVar());
+  Var out(GlobalContext().name_generator().NewTmpVar());
   DeclTmpVar(out.name);
   op->SetInput("X", x.name);
   op->SetOutput("Out", out.name);

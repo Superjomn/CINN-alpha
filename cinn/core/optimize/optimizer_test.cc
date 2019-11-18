@@ -8,6 +8,8 @@
 namespace cinn {
 
 TEST(Optimizer_pass, indices_to_absolute_offset) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant N(30), M(40), K(60);
   Expr A({N, M, K}, primitive_t::float32, "A");
   ir::Var i, j, k;

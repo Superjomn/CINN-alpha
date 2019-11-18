@@ -15,6 +15,8 @@ namespace cinn {
 using cs = std::vector<ir::Constant>;
 
 TEST(code_gen_c, easy) {
+  SetGlobalContext(new CINNContext);
+
   Function fn("fn0");
   {
     ir::Constant M("M", 20);
@@ -66,6 +68,8 @@ void fn0 (cinn_float32_t* A, cinn_float32_t* A) {
 }
 
 TEST(cpp_code_gen, basic) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant M(100), N(200), K(300);
   Expr A(cs({M, K}), primitive_t::float32, "A");
   Expr B(cs({K, N}), primitive_t::float32, "B");
@@ -172,6 +176,8 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C);
 }
 
 TEST(cpp_code_gen, mat_mul) {
+  SetGlobalContext(new CINNContext);
+
   ir::Constant M(100), N(200), K(300);
   Expr A(cs({M, K}), primitive_t::float32, "A");
   Expr B(cs({K, N}), primitive_t::float32, "B");

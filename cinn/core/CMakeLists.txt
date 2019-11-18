@@ -11,6 +11,7 @@ cc_test(test_function SRCS function_test.cc DEPS function ir ops_overload)
 cc_library(schedule_tree SRCS schedule_tree.cc DEPS isl_code_gen)
 cc_library(schedule_tree_util SRCS schedule_tree_util.cc DEPS schedule_tree)
 cc_library(buffer SRCS buffer.cc DEPS function stage isl_utils)
+cc_library(cinn_context SRCS cinn_context.cc DEPS isl_utils name_generator)
 
 cc_test(test_stage SRCS stage_test.cc DEPS function stage isl_utils)
 cc_test(test_buffer SRCS buffer_test.cc DEPS buffer)
