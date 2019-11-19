@@ -26,5 +26,92 @@ struct Network1Builder {
   }
 };
 
+struct Network2Builder {
+  using Var = Network::Var;
+
+  const int layers;
+
+  Network2Builder(int layers) : layers(layers) {}
+
+  Shape x0_shape{{10, 64}};
+  Shape w0_shape{{64, 64}};
+  Shape b_shape{{64}};
+
+  std::vector<float> w0_data;
+  std::vector<float> b_data;
+
+  void Build(Network* net, Session* session) {
+    InitInputs();
+
+    Var x0 = net->DeclInput("x0", primitive_t::float32, x0_shape);
+    Var w0 = net->DeclWeight<float>("w0", primitive_t::float32, w0_shape, w0_data);
+    Var b = net->DeclWeight<float>("b", primitive_t::float32, b_shape, b_data);
+
+    for (int i = 0; i < layers; i++) {
+      x0 = AddLayer(net, x0, w0, b);
+    }
+
+    net->DeclOutput(x0.name);
+  }
+
+  std::vector<float> ManualTest(const std::vector<float>& x) {
+    InitInputs();
+
+    auto x_copied = x;
+    for (int i = 0; i < layers; i++) {
+      x_copied = AddManualTestLayer(x_copied);
+    }
+    return x_copied;
+  }
+
+  std::vector<float> AddManualTestLayer(const std::vector<float>& x) {
+    const int M = x0_shape[0];
+    const int N = w0_shape[1];
+    const int K = w0_shape[0];
+
+    std::vector<float> y(M * N, 0.f);
+
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) {
+        for (int k = 0; k < K; k++) {
+          // y[i][j] += x[i][k] * w[k][j]
+          y[i * N + j] += x[i * K + k] * w0_data[k * N + j];
+        }
+
+        y[i * N + j] += b_data[j];
+        y[i * N + j] = std::max(y[i * N + j], 0.f);
+      }
+    }
+    return y;
+  }
+
+  Var AddLayer(Network* net, Var x, Var w0, Var b) {
+    auto fc_out = net->AddFc(x, w0, b);
+    auto tanh_out = net->AddTanh(fc_out);
+    return tanh_out;
+  }
+
+  void InitInputs() {
+    InitW();
+    InitB();
+  }
+
+  void InitW() {
+    w0_data.resize(w0_shape.num_elements());
+
+    for (int i = 0; i < w0_data.size(); i++) {
+      w0_data[i] = 0.001 * i;
+    }
+  }
+
+  void InitB() {
+    b_data.resize(b_shape.num_elements());
+
+    for (int i = 0; i < b_data.size(); i++) {
+      b_data[i] = 0.01 * i;
+    }
+  }
+};
+
 }  // namespace hlir
 }  // namespace cinn

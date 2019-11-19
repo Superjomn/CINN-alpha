@@ -113,8 +113,8 @@ class Tensor {
    * Add a stage to the Tensor.
    * @param stage the stage to add.
    */
-  Stage& AddStage(Stage&& stage) {
-    stages_.emplace_back(std::move(stage));
+  Stage& AddStage(const Stage& stage) {
+    stages_.emplace_back(stage);
     return stages_.back();
   }
 
