@@ -130,7 +130,6 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
 
 void EatIf(const isl::ast_node& node, ir::Expr* expr) {
   CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_if);
-  LOG(INFO) << "get isl ast if node";
   isl::ast_node then_body = isl::manage(isl_ast_node_if_get_then(node.get()));
   isl::ast_expr condition = isl::manage(isl_ast_node_if_get_cond(node.get()));
 

@@ -112,32 +112,32 @@ class Mutator : public ir::IRMutator {
   void Visit(const ir::Expr *op, ir::Expr *expr) override { ir::IRMutator::Visit(op, expr); }
 
   void BlockPrependLetExprs(ir::Block *cur_block) {
+    LOG_INDENT(6);
     auto it = statis.find(cur_block);
     // The block of Function or other special blocks have no lets.
     if (it != statis.end()) {
       for (auto &let_expr_item : it->second.let_exprs) {
-        LOG(INFO) << "pre append lets: " << let_expr_item.first << " " << DumpIR(&let_expr_item.second);
+        CINN_DEBUG(2) << "pre append lets: " << let_expr_item.first << " " << DumpIR(&let_expr_item.second);
         cur_block->body.insert(std::begin(cur_block->body), let_expr_item.second);
       }
     }
   }
 
-#define OP_2PARAM(op__)                                                                      \
-  void Visit(const ir::op__ *op, Expr *expr) override {                                      \
-    CHECK(op);                                                                               \
-    if (inside_reference_) {                                                                 \
-      const auto &block_statis = statis[cur_block];                                          \
-      std::string key = DumpIR(op);                                                          \
-      auto it = block_statis.pieces.find(key);                                               \
-      if (it != block_statis.pieces.end()) {                                                 \
-        LOG(INFO) << cur_block << " replace " << it->first << " to " << DumpIR(&it->second); \
-        *expr = ir::CopyExpr(it->second);                                                    \
-        return;                                                                              \
-      }                                                                                      \
-    }                                                                                        \
-    auto *a = expr->As<ir::op__>();                                                          \
-    Visit(&a->a, &a->a);                                                                     \
-    Visit(&a->b, &a->b);                                                                     \
+#define OP_2PARAM(op__)                                 \
+  void Visit(const ir::op__ *op, Expr *expr) override { \
+    CHECK(op);                                          \
+    if (inside_reference_) {                            \
+      const auto &block_statis = statis[cur_block];     \
+      std::string key = DumpIR(op);                     \
+      auto it = block_statis.pieces.find(key);          \
+      if (it != block_statis.pieces.end()) {            \
+        *expr = ir::CopyExpr(it->second);               \
+        return;                                         \
+      }                                                 \
+    }                                                   \
+    auto *a = expr->As<ir::op__>();                     \
+    Visit(&a->a, &a->a);                                \
+    Visit(&a->b, &a->b);                                \
   }
 #define OP_1PARAM(op__)                                 \
   void Visit(const ir::op__ *op, Expr *expr) override { \
@@ -179,12 +179,12 @@ class Mutator : public ir::IRMutator {
 
 }  // namespace
 
-class ThePass : public Pass<ir::Expr> {
+class FoldReferenceIndicesPass : public Pass<ir::Expr> {
   statis_t statis;
   const int frequency{10};
 
  public:
-  explicit ThePass(const std::string &name) : Pass(name) {}
+  explicit FoldReferenceIndicesPass(const std::string &name) : Pass(name) {}
 
   void Impl(ir::Expr *expr) override {
     LOG_INDENT(5);
@@ -222,4 +222,4 @@ class ThePass : public Pass<ir::Expr> {
 
 }  // namespace cinn
 
-REGISTER_IR_PASS(fold_reference_indices, cinn::ThePass);
+REGISTER_IR_PASS(fold_reference_indices, cinn::FoldReferenceIndicesPass);

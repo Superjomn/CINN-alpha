@@ -17,8 +17,7 @@ ir::Expr Builder::Build(Session *session, Network *net) {
     if (node.is_op()) node.op->Compile();
   }
 
-  LOG(INFO) << "DOT:\n" << graph.dot();
-
+  // LOG(INFO) << "DOT:\n" << graph.dot();
   auto fns = graph.PartitionFunctions();
   AutoFuseStages(&fns);
 

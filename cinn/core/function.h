@@ -49,6 +49,9 @@ class Snippet {
   //! End of snippet definition, should't AddStage latter.
   void End();
 
+  //! Collect the first statement of each band.
+  std::set<std::string> CollectBandFirstStatement();
+
   Stage::Type type() const { return type_; }
 
   const isl::union_set& iterator_domain() const { return *iterator_domain_; }
@@ -79,7 +82,10 @@ class Snippet {
   void CollectWriteAccess();
 
   //! Compute the polyhedral schedule.
-  void ComputeSchedule();
+  isl::schedule ComputeSchedule();
+
+  //! Apply transforms to schedule.
+  void ApplyTransforms();
 
   //! Generate the isl ast.
   isl::ast_node GenerateIslAst() const;
@@ -281,7 +287,7 @@ struct Function {
     data_->end_definition = false;
   }
 
-  void BuildSnippets();
+  void BuildSnippets(bool end_snippet = true);
 
   // void PreAppendStage(const Stage& stage);
 
