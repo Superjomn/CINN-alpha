@@ -96,9 +96,11 @@ Stage Function::AddStage(const Stage& stage) {
   return stage;
 }
 
-void Function::BuildSnippets() {
+void Function::BuildSnippets(bool end_snippet) {
   LOG_INDENT(6);
   auto& snippets = data_->snippets;
+  snippets.clear();
+
   for (auto& stage : data_->stages) {
     CINN_DEBUG(3) << "add stage: " << stage.name() << " " << stage.expr();
     CINN_DEBUG(4) << "stage.type: " << stage.type();
@@ -107,14 +109,14 @@ void Function::BuildSnippets() {
     if (snippets.empty() || snippets.back().is_unk()) {
       snippets.emplace_back();
     } else if (snippets.back().type() != stage.type()) {
-      LOG(INFO) << "snippets.back().type: " << snippets.back().type();
-      snippets.back().End();
+      CINN_DEBUG(2) << "snippets.back().type: " << snippets.back().type();
+      if (end_snippet) snippets.back().End();
       snippets.emplace_back();
     }
     snippets.back().AddStage(stage);
   }
 
-  if (!snippets.empty()) snippets.back().End();
+  if (!snippets.empty() && end_snippet) snippets.back().End();
   CINN_DEBUG(3) << "get snippets size " << snippets.size();
 }
 
@@ -134,6 +136,7 @@ Function::operator Expr() { return data_->ir_function; }
 void Snippet::CollectIteratorDomain() {
   LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type())) << "only polyhedral snippet supports iterator domain";
+  iterator_domain_->release();
 
   // Collect all the iterators.
   auto iter_names = CollectAllIteratorsFromStages(stages_);
@@ -149,21 +152,6 @@ void Snippet::CollectIteratorDomain() {
   }
 
   CINN_DEBUG(3) << "collected iterator domain: " << iterator_domain();
-}
-
-void Snippet::CollectTransforms() {
-  LOG_INDENT(6);
-  CHECK(Stage::is_polyhedral(type())) << "only polyhedral snippet supports transform collection";
-
-  for (auto& stage : stages_) {
-    if (transform_->is_null()) {
-      *transform_ = isl::manage(isl_union_map_from_map(stage.schedule().copy()));
-    } else {
-      *transform_ = isl::manage(isl_union_map_add_map(transform_->release(), stage.schedule().copy()));
-    }
-  }
-
-  CINN_DEBUG(3) << "get transform collection: " << *transform_;
 }
 
 void Snippet::AddStage(const Stage& stage) {
@@ -183,6 +171,7 @@ void Snippet::AddStage(const Stage& stage) {
 }
 
 void Snippet::CollectReadAccess() {
+  access_reads_->release();
   LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type()));
   for (auto& stage : stages_) {
@@ -198,6 +187,7 @@ void Snippet::CollectReadAccess() {
 }
 
 void Snippet::CollectWriteAccess() {
+  access_writes_->release();
   LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type()));
   for (auto& stage : stages_) {
@@ -269,13 +259,12 @@ isl::union_map ComputeScheduleValidity(const isl::union_set& domain, const isl::
   return validity;
 }
 
-void Snippet::ComputeSchedule() {
+isl::schedule Snippet::ComputeSchedule() {
   // Use a unique ctx to avoid obstruction.
-  LOG_INDENT(0);
+  LOG_INDENT(6);
   CHECK(Stage::is_polyhedral(type()));
   CHECK(!access_reads_->is_null());
   CHECK(!access_writes_->is_null());
-  CHECK(!transform_->is_null());
 
   auto domain = isl::union_set(ctx_, GetStreamStr(iterator_domain()));
   auto reads = isl::union_map(ctx_, GetStreamStr(access_reads()));
@@ -293,13 +282,16 @@ void Snippet::ComputeSchedule() {
   isl::schedule_constraints sc = isl::manage(isl_schedule_constraints_on_domain(domain.release()));
   sc = isl::manage(isl_schedule_constraints_set_validity(sc.release(), validity.release()));
   if (!proximity.is_null()) sc = isl::manage(isl_schedule_constraints_set_proximity(sc.release(), proximity.release()));
-  // sc = isl::manage(isl_schedule_constraints_apply(sc.release(), transform_->copy()));
 
-  LOG(INFO) << "schedule constraints:\n" << sc;
+  CINN_DEBUG(3) << "schedule constraints:\n" << sc;
 
   *schedule_ = isl::manage(isl_schedule_constraints_compute_schedule(sc.release()));
   CINN_DEBUG(3) << "schedule:\n" << DumpSchedule(*schedule_);
 
+  return *schedule_;
+}
+
+void Snippet::ApplyTransforms() {
   ApplyTransposes();
   ApplyTiles();
   ApplyVectorize();
@@ -308,13 +300,12 @@ void Snippet::ComputeSchedule() {
 void Snippet::ApplyTiles() {
   if (!is_polyhedral()) return;
   CHECK(schedule_) << "schedule tree should be build first before tile";
-
-  // LOG(INFO) << "original schedule " << schedule_->get_root();
+  LOG_INDENT(0);
 
   for (auto& stage : stages_) {
     {
-      LOG(INFO) << stage.name() << " "
-                << " tile_sizes " << stage.tile_sizes().size();
+      CINN_DEBUG(2) << stage.name() << " "
+                    << " tile_sizes " << stage.tile_sizes().size();
       if (!stage.tile_sizes().empty()) {
         if (stage.unroll()) {
           TileUnrollTransformer tiler(stage.name(), stage.tile_sizes());
@@ -333,22 +324,21 @@ void Snippet::ApplyTiles() {
         *schedule_ = tiler.Visit(*schedule_).get_schedule();
       }
     }
-    // LOG(INFO) << "final schedule: " << schedule_->get_root();
   }
 }
 
 void Snippet::ApplyTransposes() {
   if (!is_polyhedral()) return;
   CHECK(schedule_) << "schedule tree should be built first";
+  LOG_INDENT(0);
 
   for (auto& stage : stages_) {
     for (auto& item : stage.transposes()) {
-      LOG(INFO) << "Transposing " << stage.name() << " with " << item.first << " " << item.second;
+      CINN_DEBUG(2) << "Transposing " << stage.name() << " with " << item.first << " " << item.second;
       InterchangeTransformer applyer(stage.name(), item.first, item.second);
       *schedule_ = applyer.Visit(*schedule_).get_schedule();
     }
   }
-  // LOG(INFO) << "final schedule: " << schedule_->get_root();
 }
 
 void Snippet::ApplyVectorize() {
@@ -400,7 +390,7 @@ isl::ast_node Snippet::GenerateIslAst() const {
   isl_options_set_tile_shift_point_loops(isl_utils::global_isl_ctx(), 0);
 
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
-  CINN_DEBUG(0) << "schedule in Snippet::GenerateIslAst: \n" << *schedule_;
+  CINN_DEBUG(0) << "schedule in Snippet::GenerateIslAst: \n" << schedule_->root();
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));
   CINN_DEBUG(0) << "schedule tree get C code:\n" << isl_ast_node_to_C_str(ast.get());
   return ast;
@@ -452,13 +442,56 @@ void Snippet::TryFuse(const std::string& stage0, const std::string& stage1) {
 
 void Snippet::End() {
   is_end_ = true;
+
   if (is_polyhedral()) {
     CollectIteratorDomain();
-    CollectTransforms();
     CollectReadAccess();
     CollectWriteAccess();
     ComputeSchedule();
+    ApplyTransforms();
   }
+}
+
+namespace {
+
+class BandCollectFirstStatement : public ScheduleNodeRewriter<BandCollectFirstStatement> {
+ public:
+  using BaseTy = ScheduleNodeRewriter<BandCollectFirstStatement>;
+  BaseTy& GetBase() { return *this; }
+  const BaseTy& GetBase() const { return *this; }
+
+  explicit BandCollectFirstStatement(std::set<std::string>* statements) : statements_(*statements) {}
+
+  isl::schedule_node VisitBand(const isl::schedule_node& node) {
+    auto domain = isl::manage(isl_schedule_node_get_domain(node.get()));
+    LOG(INFO) << "visit domain " << domain;
+    isl::set first_set = isl::manage(isl_union_set_get_nth_element(domain.get(), 0));
+    statements_.insert(isl_set_get_tuple_name(first_set.get()));
+
+    return Visit(node.first_child()).parent();
+  }
+
+ private:
+  std::set<std::string>& statements_;
+};
+
+}  // namespace
+
+std::set<std::string> Snippet::CollectBandFirstStatement() {
+  std::set<std::string> statements;
+  if (!is_polyhedral()) return statements;
+
+  CollectIteratorDomain();
+  CollectReadAccess();
+  CollectWriteAccess();
+  ComputeSchedule();
+
+  LOG(INFO) << "collect band first statement schedule:\n" << schedule_->root();
+
+  BandCollectFirstStatement collector(&statements);
+  collector.Visit(*schedule_);
+
+  return statements;
 }
 
 }  // namespace cinn
