@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "cinn/backends/code_gen_c.h"
 #include "cinn/hlir/graph_util.h"
+#include "cinn/ir/ir_helper.h"
 #include "cinn/utils/logging.h"
 
 namespace cinn {
@@ -43,7 +44,6 @@ std::string Graph::dot() const {
       dot.AddNode(node->name, {});
 
       for (auto& x : node->inlinks) {
-        LOG(INFO) << "var " << x->name;
         dot.AddEdge(x->name, node->name, {});
       }
     }
@@ -53,6 +53,7 @@ std::string Graph::dot() const {
 }
 
 void Graph::NewOpNode(Operator* op) {
+  LOG_INDENT(6);
   nodes_.emplace_back(new Node);
   auto* op_node = nodes_.back().get();
   op_node->name = op->type() + std::to_string(node_count++);
@@ -78,6 +79,7 @@ void Graph::NewOpNode(Operator* op) {
 }
 
 void Graph::NewTensorNode(const std::string& name) {
+  LOG_INDENT(6);
   CINN_DEBUG(2) << "new tensor " << name;
   CHECK(!vars_.count(name));
   nodes_.emplace_back(new Node);
@@ -134,19 +136,9 @@ Node* Graph::GetTensor(const std::string& name) {
   return it->second;
 }
 
-std::vector<Function> Graph::PartitionFunctions() {
-  LOG_INDENT(0);
-  std::vector<Function> fns;
-  fns.emplace_back(GlobalContext().name_generator().NewFuncionName());
-
-  std::vector<ir::Expr> fn_inputs, fn_outputs;
-  auto inputs = Inputs();
-  auto outputs = Outputs();
-
-  std::transform(
-      inputs.begin(), inputs.end(), std::back_inserter(fn_inputs), [](Node* node) { return node->tensor->expr(); });
-  std::transform(
-      outputs.begin(), outputs.end(), std::back_inserter(fn_outputs), [](Node* node) { return node->tensor->expr(); });
+std::vector<ir::Expr> SortInputsOrOutputs(const std::set<Node*>& xs) {
+  std::vector<ir::Expr> ys;
+  std::transform(xs.begin(), xs.end(), std::back_inserter(ys), [](Node* node) { return node->tensor->expr(); });
 
   auto expr_compare = [](const ir::Expr& a, const ir::Expr& b) {
     auto a_str = ir::Dump(a);
@@ -154,30 +146,87 @@ std::vector<Function> Graph::PartitionFunctions() {
     return a_str < b_str;
   };
 
-  std::sort(fn_inputs.begin(), fn_inputs.end(), expr_compare);
-  std::sort(fn_outputs.begin(), fn_outputs.end(), expr_compare);
+  std::sort(ys.begin(), ys.end(), expr_compare);
+  return ys;
+}
+
+std::vector<Function> Graph::PartitionFunctions() {
+  LOG_INDENT(0);
+
+  std::vector<ir::Expr> fn_inputs = SortInputsOrOutputs(Inputs());
+  std::vector<ir::Expr> fn_outputs = SortInputsOrOutputs(Outputs());
 
   CINN_DEBUG(1) << "inputs.size " << fn_inputs.size();
   CINN_DEBUG(1) << "outputs.size " << fn_outputs.size();
 
+  // the cache for accumulated stages of op.
+  std::map<Node* /*op*/, std::vector<Stage>> op_accu_stages;
+
+  /*
+   *    T0    T1
+   *      \   /
+   *       Op0    Op1
+   *         \    /
+   *           T2
+   * Op will collect all the input tensors' stages.
+   * Tensor will also collect all the input Ops' stages.
+   */
+  auto collect_tensor_input_stages = [&](Node* tensor_node) {
+    CHECK(tensor_node->tensor);
+    for (Node* in_op_node : tensor_node->inlinks) {
+      CHECK(op_accu_stages.count(in_op_node));
+      for (auto& stage : op_accu_stages[in_op_node]) {
+        tensor_node->tensor->AddStage(stage);
+      }
+    }
+  };
+
+  auto collect_op_input_stages = [&](Node* op_node) {
+    CHECK(op_node->op);
+    for (Node* in_tensor_node : op_node->inlinks) {
+      if (in_tensor_node->outlinks.size() > 1) continue;
+      op_accu_stages[op_node].insert(op_accu_stages[op_node].end(),
+                                     in_tensor_node->tensor->stages().begin(),
+                                     in_tensor_node->tensor->stages().end());
+    }
+  };
+
+  // Accumulate the stages in operators and tensors.
+  for (Node& node : GraphTraits::TS(*this)) {
+    if (node.tensor)
+      collect_tensor_input_stages(&node);
+    else
+      collect_op_input_stages(&node);
+  }
+
+  // Partition the functions. We make a tensor a function(composed of all the stages in the tensor) if
+  // 1. The tensor node has more than one outlinks(multiple consumers)
+  // 2. The tensor node is a output node of the whole graph.
+
+  std::set<Node*> in_nodes = Inputs();
+  std::set<Node*> out_nodes = Outputs();
+  std::vector<Function> fns;
+
   for (Node& node : GraphTraits::TS(*this)) {
     if (!node.is_tensor()) continue;
+    auto* tensor = node.tensor;
 
-    for (const Stage& stage : node.tensor->stages()) {
-      CINN_DEBUG(2) << "add stage: " << ir::Dump(stage.expr());
-      fns.back().AddStage(stage);
-    }
-
-    if (node.outlinks.size() > 1) {
-      fns.back().Inputs(fn_inputs);
-      fns.back().Outputs(fn_outputs);
-      fns.back().EndDefinition();
+    if (in_nodes.count(&node)) continue;  // skip the input nodes of the graph.
+    if (node.outlinks.size() > 1 || out_nodes.count(&node)) {
       fns.emplace_back(GlobalContext().name_generator().NewFuncionName());
+      Function& fn = fns.back();
+      CINN_DEBUG(2) << "partition a new function " << fn.name();
+      CHECK(!tensor->stages().empty()) << "tensor " << tensor->name() << " has no stages";
+      for (auto& stage : tensor->stages()) {
+        fn.AddStage(stage);
+        CINN_DEBUG(2) << "collect stage: " << stage.expr();
+        fn.Inputs(fn_inputs);
+        fn.Outputs(fn_outputs);
+      }
+      // fn.EndDefinition();
     }
   }
 
-  fns.back().Inputs(fn_inputs);
-  fns.back().Outputs(fn_outputs);
   return fns;
 }
 
@@ -205,6 +254,8 @@ void Graph::Compile(bool finalize_function) {
 }
 
 Expr Graph::CompileExpr(std::vector<Function>* fns) {
+  LOG_INDENT(0);
+  CINN_DEBUG(2) << "fns.size " << fns->size();
   CHECK(!fns->empty());
   for (auto& fn : *fns) {
     fn.EndDefinition();

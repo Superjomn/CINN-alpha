@@ -2,6 +2,7 @@
 #include <vector>
 #include "cinn/hlir/op_registry.h"
 #include "cinn/hlir/operator.h"
+#include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/utils/logging.h"
 
@@ -39,9 +40,6 @@ class MatMulOp : public Operator {
 
     std::vector<int> shape({input0->shape()[0], W->shape()[1]});
     output0.set_shape(Shape(shape));
-
-    W->set_iterators({input0->iterators()[1], W->iterators()[1]});
-    output0.set_iterators({input0->iterators()[0], W->iterators()[1]});
   }
 
   void CompileImpl() override {
@@ -57,10 +55,14 @@ class MatMulOp : public Operator {
 
     ir::Expr i, j, k;
     i = input0->iterators()[0];
-    k = input0->iterators()[1];
+    k = W->iterators()[0];
     j = W->iterators()[1];
 
     output0.AddStage(out[i][j] += x[i][k] * w[k][j]);
+
+    input0->set_iterators({i, k});
+    W->set_iterators({k, j});
+    output0.set_iterators({i, j});
   }
 };
 
