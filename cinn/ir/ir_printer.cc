@@ -323,7 +323,7 @@ void IRPrinter::Visit(const ir::Function *op) {
   }
 
   PrintIndent();
-  os_ << StringFormat("def %s (%s)", op->name().c_str(), Concat(arguments, ", ").c_str());
+  os_ << StringFormat("def %s (%s)", op->name().c_str(), arguments.empty() ? "" : Concat(arguments, ", ").c_str());
 
   // body print with indent
   PrintIndent();

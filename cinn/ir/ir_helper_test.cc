@@ -78,5 +78,26 @@ TEST(ir, reference_simplify) {
   EXPECT_EQ(GetStreamStr(e), "A<20,10>[i,0] = (B<10,30>[i,j] + C<20,30>[i,j]);");
 }
 
+TEST(ir, replace_basic_expr) {
+  SetGlobalContext(new CINNContext);
+
+  Constant M(10), N(20);
+  Expr C({M, N}, primitive_t::float32, "C");
+  Expr A({M, N}, primitive_t::float32, "A");
+  Var i("i", primitive_t::int32), j("j", primitive_t::int32);
+  Expr expr = ir::Assign::make(C[i][j], A[i][j] * Expr(2.f) + Expr(1.f));
+  LOG(INFO) << "expr: " << expr;
+
+  // replace A[i][j]*2 -> (A[i][j]+1)
+  Expr from = A[i][j] * 2.f;
+  Expr to = A[i][j] + 1.f;
+
+  IRReplace(&expr, from, to);
+
+  LOG(INFO) << "after replace: " << expr;
+
+  EXPECT_EQ(GetStreamStr(expr), "C<10,20>[i,j] = ((A<10,20>[i,j] + 1) + 1);");
+}
+
 }  // namespace ir
 }  // namespace cinn

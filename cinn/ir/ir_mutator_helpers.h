@@ -5,6 +5,7 @@
 namespace cinn {
 namespace ir {
 
+//! NOTE to be discarded.
 class IRVarReplacer : public IRMutator {
   const ir::Var var_;
   const ir::Expr expr_;
