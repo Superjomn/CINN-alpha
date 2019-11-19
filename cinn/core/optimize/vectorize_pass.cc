@@ -202,8 +202,7 @@ class VectorizeMutator : public ir::IRMutator {
       *expr = for_block;
 
       // TODO(Superjomn) replace all with the global zero constant.
-      ir::IRVarReplacer replacer(iter, ir::Expr(0));
-      replacer.Visit(expr, expr);
+      ir::IRReplace(expr, iter, Expr(0));
 
       Visit(expr->As<ir::Block>(), expr);
     } else {
@@ -295,6 +294,8 @@ class VectorizePass : public Pass<ir::Expr> {
       SimdArgumentCastInsertToBlock mutator;
       mutator.Visit(expr, expr);
     }
+
+    ir::IRSimplify(expr);
   }
 };
 
