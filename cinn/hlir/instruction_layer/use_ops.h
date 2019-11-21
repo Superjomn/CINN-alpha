@@ -4,6 +4,7 @@
 USE_OP(pad, kInstructionWise);
 USE_OP(matmul, kInstructionWise);
 USE_OP(reshape, kInstructionWise);
+USE_OP(transpose, kInstructionWise);
 
 // elementwise operations
 USE_OP(elementwise_add, kInstructionWise);
