@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include "cinn/backends/x86_simd.h"
 #include "cinn/core/function.h"
 #include "cinn/core/optimize/optimizer.h"
 #include "cinn/ir/ir.h"
@@ -12,15 +13,10 @@
 namespace cinn {
 namespace backends {
 
-const char *C_CodeGen::simd_128_type = "__m128";
-const std::vector<std::string> C_CodeGen::simd_128_intrics{{
-    "_mm_add_ps", "_mm_sub_ps", "_mm_mul_ps", "_mm_div_ps",
-}};
-
 void C_CodeGen::PrintHeader() {
+  os_ << "#include <immintrin.h>\n";
   os_ << "#include <math.h>\n";
   os_ << "#include <stdio.h>\n";
-  os_ << "#include <xmmintrin.h>\n";
   os_ << "\n";
   os_ << "typedef char cinn_int8_t;\n";
   os_ << "typedef int cinn_int32_t;\n";
@@ -181,21 +177,40 @@ void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std:
 }
 
 void C_CodeGen::Visit(const ir::Let *op) {
-  if (op->is_m128()) {
-    os_ << "__m128";
+  auto simd = [&](composite_t ctype) {
+    switch (ctype) {
+      case composite_t::simd128:
+        os_ << GlobalContext().x86_simd_128.packed_float_t();
+        break;
+      case composite_t::simd256:
+        os_ << GlobalContext().x86_simd_256.packed_float_t();
+        break;
+      default:
+        NOT_IMPLEMENT
+    }
+
     if (op->a.As<ir::Var>()->is_reference()) os_ << "&";
     os_ << " ";
     Print(op->a);
     os_ << " = ";
     Print(op->b);
     os_ << ";";
-  } else {
-    PrintPType(op->ptype());
-    os_ << " ";
-    Print(op->a);
-    os_ << " = ";
-    Print(op->b);
-    os_ << ";";
+  };
+
+  switch (op->ctype()) {
+    case composite_t::primitive:
+      PrintPType(op->ptype());
+      os_ << " ";
+      Print(op->a);
+      os_ << " = ";
+      Print(op->b);
+      os_ << ";";
+      break;
+
+    case composite_t::simd128:
+    case composite_t::simd256:
+      simd(op->ctype());
+      break;
   }
 }
 
@@ -217,24 +232,30 @@ void C_CodeGen::PrintPType(primitive_t ptype) {
 }
 
 void C_CodeGen::Visit(const ir::SIMDOpr *op) {
+  const X86SIMD *x86_simd{};
   if (op->vector_width == 4) {  // m128
-    switch (op->opr) {
-      case ir::SIMDOpr::Opr::kAdd:
-        os_ << simd_128_intrics[0] << "(";
-        break;
-      case ir::SIMDOpr::Opr::kSub:
-        os_ << simd_128_intrics[1] << "(";
-        break;
-      case ir::SIMDOpr::Opr::kMul:
-        os_ << simd_128_intrics[2] << "(";
-        break;
-      case ir::SIMDOpr::Opr::kDiv:
-        os_ << simd_128_intrics[3] << "(";
-        break;
-    }
-  } else {
-    NOT_IMPLEMENT
+    x86_simd = &GlobalContext().x86_simd_128;
+  } else if (op->vector_width == 8) {
+    x86_simd = &GlobalContext().x86_simd_256;
   }
+  CHECK(x86_simd) << "not supported vector width: " << op->vector_width;
+
+  switch (op->opr) {
+    case ir::SIMDOpr::Opr::kAdd:
+      os_ << x86_simd->add_ps();
+      break;
+    case ir::SIMDOpr::Opr::kSub:
+      os_ << x86_simd->sub_ps();
+      break;
+    case ir::SIMDOpr::Opr::kMul:
+      os_ << x86_simd->mul_ps();
+      break;
+    case ir::SIMDOpr::Opr::kDiv:
+      os_ << x86_simd->div_ps();
+      break;
+  }
+
+  os_ << "(";
 
   Print(op->a);
   os_ << ", ";
@@ -243,17 +264,25 @@ void C_CodeGen::Visit(const ir::SIMDOpr *op) {
 }
 
 void C_CodeGen::Visit(const ir::Cast *op) {
-  if (op->ctype() == composite_t::simd128) {
-    os_ << "*(__m128*)(&";
-    Print(op->expr);
-    os_ << ")";
-  } else {
-    os_ << "(";
-    PrintPType(op->ptype());
-    os_ << ")";
-    os_ << "(";
-    Print(op->expr);
-    os_ << ")";
+  switch (op->ctype()) {
+    case composite_t::primitive:
+      os_ << "(";
+      PrintPType(op->ptype());
+      os_ << ")";
+      os_ << "(";
+      Print(op->expr);
+      os_ << ")";
+      break;
+    case composite_t::simd128:
+      os_ << "*(" << GlobalContext().x86_simd_128.packed_float_t() << "*)(&";
+      Print(op->expr);
+      os_ << ")";
+      break;
+    case composite_t::simd256:
+      os_ << "*(" << GlobalContext().x86_simd_256.packed_float_t() << "*)(&";
+      Print(op->expr);
+      os_ << ")";
+      break;
   }
 }
 

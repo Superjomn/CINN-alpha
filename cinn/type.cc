@@ -60,6 +60,7 @@ std::ostream &operator<<(std::ostream &os, composite_t t) {
 
     __(primitive)
     __(simd128)
+    __(simd256)
 #undef __
   }
 }

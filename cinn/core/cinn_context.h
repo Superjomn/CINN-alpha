@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "cinn/backends/x86_simd.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/name_generator.h"
 
@@ -53,6 +54,9 @@ class CINNContext {
   NameGenerator& name_generator() { return name_generator_; }
 
   Generator& generator() { return generator_; }
+
+  static const backends::X86SIMD x86_simd_128;
+  static const backends::X86SIMD x86_simd_256;
 
  private:
   NameGenerator name_generator_;

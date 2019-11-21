@@ -21,7 +21,7 @@ TEST(test, basic) {
     auto s0 = fn.AddStage(C[i][j] = (A[i][j] + B[i][j]) * B[i][j]);
     auto s1 = fn.AddStage(C[i][j] += Expr(1.f));
     s0.Tile({16});
-    s0.Vectorize(4);
+    s0.Vectorize(8);
 
     fn.Inputs({A, B});
     fn.Outputs({C});
@@ -29,15 +29,17 @@ TEST(test, basic) {
     fn.EndDefinition();
   }
 
-  backends::CompileAsC(Expr(fn), "exe_test6.h", "exe_test6.cc");
+  backends::CompileAsC(Expr(fn), "exe_test9.h", "exe_test9.cc");
 
   {
-    std::fstream file("exe_test6.cc");
+    std::fstream file("exe_test9.cc");
+    CHECK(file.is_open());
     std::string line;
     std::stringstream ss;
     while (std::getline(file, line)) {
       ss << line << '\n';
     }
+    file.close();
 
     std::string target = R"ROC(#ifndef CINN_FILE_
 #define CINN_FILE_
@@ -66,12 +68,12 @@ void basic (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
       // vectorize - points
       // tile - points
       // vectorize - tiles
-      for (int c5 = 0; (c5 <= cinn_min(15, ((-c1) + 199))); c5 += 4) {
+      for (int c5 = 0; (c5 <= cinn_min(15, ((-c1) + 199))); c5 += 8) {
         // vectorize - points
-        __m128& var2 = *(__m128*)(&C[((c0 * 200) + (c1 + c5))]);
-        __m128& var1 = *(__m128*)(&B[((c0 * 200) + (c1 + c5))]);
-        __m128& var0 = *(__m128*)(&A[((c0 * 200) + (c1 + c5))]);
-        var2 = _mm_mul_ps(_mm_add_ps(var0, var1), var1);
+        __m256& var2 = *(__m256*)(&C[((c0 * 200) + (c1 + c5))]);
+        __m256& var1 = *(__m256*)(&B[((c0 * 200) + (c1 + c5))]);
+        __m256& var0 = *(__m256*)(&A[((c0 * 200) + (c1 + c5))]);
+        var2 = _mm256_mul_ps(_mm256_add_ps(var0, var1), var1);
       }
     }
   }

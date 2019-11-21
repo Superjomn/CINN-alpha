@@ -30,9 +30,9 @@ code_gen = open('python_gen.cc').read()
 target = '''
 #ifndef CINN_FILE_
 #define CINN_FILE_
+#include <immintrin.h>
 #include <math.h>
 #include <stdio.h>
-#include <xmmintrin.h>
 
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;
