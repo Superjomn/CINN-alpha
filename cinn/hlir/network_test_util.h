@@ -19,7 +19,7 @@ struct Network1Builder {
     Var w0 = net->DeclWeight<float>("w0", primitive_t::float32, w0_shape, w0_data);
     Var b = net->DeclWeight<float>("b", primitive_t::float32, b_shape, b_data);
 
-    auto fc_out = net->AddFc(x0, w0, b);
+    auto fc_out = net->AddFc(x0, w0, b, false);
     auto tanh_out = net->AddTanh(fc_out);
 
     net->DeclOutput(fc_out.name);
@@ -30,12 +30,15 @@ struct Network2Builder {
   using Var = Network::Var;
 
   const int layers;
+  bool matmul_transposed{};
 
-  Network2Builder(int layers) : layers(layers) {}
+  const int dim = 128;
 
-  Shape x0_shape{{10, 64}};
-  Shape w0_shape{{64, 64}};
-  Shape b_shape{{64}};
+  Network2Builder(int layers, bool matmul_transposed = false) : layers(layers), matmul_transposed(matmul_transposed) {}
+
+  Shape x0_shape{{10, dim}};
+  Shape w0_shape{{dim, dim}};
+  Shape b_shape{{dim}};
 
   std::vector<float> w0_data;
   std::vector<float> b_data;
@@ -86,7 +89,7 @@ struct Network2Builder {
   }
 
   Var AddLayer(Network* net, Var x, Var w0, Var b) {
-    auto fc_out = net->AddFc(x, w0, b);
+    auto fc_out = net->AddFc(x, w0, b, matmul_transposed);
     auto tanh_out = net->AddTanh(fc_out);
     return tanh_out;
   }

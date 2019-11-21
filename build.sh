@@ -28,6 +28,7 @@ function build {
     run_exe_test 7
     run_exe_test 8
     run_exe_test 9
+    run_exe_test 10
 
     make -j8
 }
@@ -36,7 +37,7 @@ function run_exe_test {
     export MALLOC_CHECK_=2
     local no=$1
     make exe_test$no -j8
-    ctest -R exe_test$no
+    ctest -R "exe_test$no$"
 }
 
 function run_python_test {

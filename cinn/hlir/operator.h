@@ -67,7 +67,10 @@ class Operator {
    * @param argument
    * @param value
    */
-  void SetOutput(const std::string& argument, const std::string& value) { output_argument2value_[argument] = value; }
+  void SetOutput(const std::string& argument, const std::string& value) {
+    CHECK(!value.empty()) << "value is null";
+    output_argument2value_[argument] = value;
+  }
 
   /**
    * Get a output argument.

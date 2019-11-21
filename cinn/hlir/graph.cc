@@ -174,7 +174,8 @@ std::vector<Function> Graph::PartitionFunctions() {
   auto collect_tensor_input_stages = [&](Node* tensor_node) {
     CHECK(tensor_node->tensor);
     for (Node* in_op_node : tensor_node->inlinks) {
-      CHECK(op_accu_stages.count(in_op_node));
+      auto accu_it = op_accu_stages.find(in_op_node);
+      if (accu_it == op_accu_stages.end()) continue;
       for (auto& stage : op_accu_stages[in_op_node]) {
         tensor_node->tensor->AddStage(stage);
       }

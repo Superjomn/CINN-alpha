@@ -35,7 +35,7 @@ TEST(Point, basic) {
   auto fns = graph.PartitionFunctions();
 
   ASSERT_EQ(fns.size(), 1UL);
-  ASSERT_EQ(fns.front().stages().size(), 3UL);
+  ASSERT_EQ(fns.front().stages().size(), 4UL);
 
   Point point(&fns);
   point.Fuse(fns.front().stages()[0].name(), fns.front().stages()[1].name());
@@ -89,7 +89,7 @@ TEST(Point, multiple) {
   auto fns = graph.PartitionFunctions();
 
   ASSERT_EQ(fns.size(), 1UL);
-  ASSERT_EQ(fns.front().stages().size(), 3UL);
+  ASSERT_EQ(fns.front().stages().size(), 4UL);
 
   {
     Point point(&fns);
