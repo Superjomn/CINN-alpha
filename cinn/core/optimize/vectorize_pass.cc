@@ -22,7 +22,7 @@ struct SimdReferenceCollector : public ir::IRVisitor {
   void Visit(const ir::Assign *op) override {
     if (op->b.is_simd_opr()) {
       if (op->a.is_reference()) {
-        Collect(op->a);
+        CollectReference(op->a);
       }
     }
 
@@ -31,10 +31,10 @@ struct SimdReferenceCollector : public ir::IRVisitor {
 
   void Visit(const ir::SIMDOpr *op) override {
     if (op->a.is_reference()) {
-      Collect(op->a);
+      CollectReference(op->a);
     }
     if (op->b.is_reference()) {
-      Collect(op->b);
+      CollectReference(op->b);
     }
 
     ir::IRVisitor::Visit(op);
@@ -49,7 +49,7 @@ struct SimdReferenceCollector : public ir::IRVisitor {
     }
   }
 
-  void Collect(const ir::Expr &a) {
+  void CollectReference(const ir::Expr &a) {
     auto key = ir::Dump(a);
     if (arguments.count(key)) {
       arguments[key].set_ptr(a.ptr());
@@ -59,6 +59,9 @@ struct SimdReferenceCollector : public ir::IRVisitor {
   }
 };
 
+/**
+ * Replace the SIMD op's arguments with the casted variables.
+ */
 struct SimdArgumentReplacer : public ir::IRMutator {
   const std::map<std::string, ir::Expr /* var */> &ref_repr_to_var;
 
@@ -77,8 +80,6 @@ struct SimdArgumentReplacer : public ir::IRMutator {
   void Visit(const ir::SIMDOpr *op, ir::Expr *expr) override {
     LOG(INFO) << "******** Visit simd";
     auto *node = expr->As<ir::SIMDOpr>();
-    LOG(INFO) << "a: " << node->a;
-    LOG(INFO) << "b: " << node->b;
     ReplaceSimdArgument(&node->a);
     ReplaceSimdArgument(&node->b);
 
@@ -106,10 +107,12 @@ struct SimdArgumentReplacer : public ir::IRMutator {
 };
 
 struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
+  int vector_width{-1};
+
   std::map<std::string, ir::Expr> arguments;
   std::vector<std::map<std::string, ir::Expr /* var */>> ref_repr_to_var;
 
-  SimdArgumentCastInsertToBlock() {}
+  explicit SimdArgumentCastInsertToBlock(int vector_width) : vector_width{vector_width} {}
 
   void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
   void Visit(const ir::Block *op, Expr *expr) override {
@@ -131,17 +134,27 @@ struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
 
  protected:
   void PreappendCastToBlock(ir::Block *block, const std::map<std::string, ir::Expr> &simd_args) {
+    composite_t simd_type = composite_t::primitive;
+    if (vector_width > 0) {
+      if (vector_width == 4)
+        simd_type = composite_t::simd128;
+      else if (vector_width == 8)
+        simd_type = composite_t::simd256;
+      else
+        NOT_IMPLEMENT;
+    }
+
     for (const auto &item : simd_args) {
       LOG(INFO) << "collected " << item.first << " -> " << item.second;
-      auto cast = ir::Cast::make(item.second, item.second.ptype(), composite_t::simd128);
-      cast.set_ctype(composite_t::simd128);
+      auto cast = ir::Cast::make(item.second, item.second.ptype());
+      cast.set_ctype(simd_type);
       ir::Var var(GlobalContext().name_generator().NewVarName());
       var.set_is_reference();
       Expr var_expr(var);
       ref_repr_to_var.back()[item.first] = var_expr;
 
       auto let = ir::Let::make(var_expr, cast);
-      let.set_ctype(composite_t::simd128);
+      let.set_ctype(simd_type);
 
       // Preappend cast expressions to block.
       block->body.insert(std::begin(block->body), let);
@@ -151,10 +164,9 @@ struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
 
 }  // namespace
 
-class VectorizeMutator : public ir::IRMutator {
+struct VectorizeMutator : public ir::IRMutator {
   int vector_width{-1};
 
- public:
   VectorizeMutator() = default;
 
   void Visit(const ir::Add *op, ir::Expr *expr) override {
@@ -285,13 +297,11 @@ class VectorizePass : public Pass<ir::Expr> {
   explicit VectorizePass(const std::string &name) : Pass(name) {}
 
   void Impl(ir::Expr *expr) override {
-    {
-      VectorizeMutator mutator;
-      mutator.Visit(expr, expr);
-    }
+    VectorizeMutator vectorize_mutator;
+    vectorize_mutator.Visit(expr, expr);
 
     {
-      SimdArgumentCastInsertToBlock mutator;
+      SimdArgumentCastInsertToBlock mutator(vectorize_mutator.vector_width);
       mutator.Visit(expr, expr);
     }
 

@@ -24,6 +24,10 @@ cc_test(test7_c_launcher SRCS test7_launcher.cc DEPS cinn_lib hlir_lib)
 cc_test(exe_test8 SRCS test8_fc_autotune.cc DEPS cinn_lib hlir_lib)
 cc_test(test8_c_launcher SRCS test8_c_launcher.cc DEPS cinn_lib hlir_lib)
 
+cc_test(exe_test9 SRCS test9.cc DEPS cinn_lib hlir_lib)
+cc_test(test9_c_launcher SRCS test9_c_launcher.cc DEPS cinn_lib)
+
 add_dependencies(test6_c_launcher exe_test6)
 add_dependencies(test7_c_launcher exe_test7)
 add_dependencies(test8_c_launcher exe_test8)
+add_dependencies(test9_c_launcher exe_test9)

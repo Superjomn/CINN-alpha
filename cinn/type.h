@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include <string>
 #include "cinn/utils/macros.h"
 
 namespace cinn {
@@ -35,6 +36,7 @@ enum class primitive_t : int {
 enum class composite_t : int {
   primitive = 0,
   simd128,
+  simd256,
 };
 
 //! Get a string representation of a primitive type.
