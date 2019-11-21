@@ -14,10 +14,10 @@ TEST(test8, basic) {
   hlir::Session session;
   hlir::Network net("tmp", &session);
 
-  hlir::Network2Builder net_builder(5, false);
+  hlir::Network2Builder net_builder(2, true);
   net_builder.Build(&net, &session);
 
   hlir::Builder builder;
   auto expr = builder.Build(&session, &net);
-  builder.ToCSourceCode(expr, "exe_test8");
+  builder.ToCSourceCode(expr, "exe_test10");
 }

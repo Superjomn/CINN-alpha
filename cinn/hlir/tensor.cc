@@ -17,7 +17,6 @@ ir::Expr Tensor::Elem() const {
 const std::vector<ir::Expr> &Tensor::iterators() const {
   CHECK(!shape_.empty());
   if (iterators_.empty()) {
-    LOG(INFO) << "**** generate random iterators";
     for (int i = 0; i < shape().size(); i++) {
       iterators_.emplace_back(ir::Var());
       CHECK(iterators_.back().valid());
@@ -31,7 +30,6 @@ const std::vector<ir::Expr> &Tensor::iterators() const {
 std::vector<ir::Expr> &Tensor::iterators() {
   CHECK(!shape_.empty());
   if (iterators_.empty()) {
-    LOG(INFO) << "**** generate random iterators";
     for (int i = 0; i < shape().size(); i++) {
       iterators_.emplace_back(ir::Var());
     }

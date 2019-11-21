@@ -19,13 +19,15 @@ x0 = net.decl_input("x0", cinn.primitive_t.float32, x_shape)
 b = net.decl_weight("b", cinn.primitive_t.float32, cinn.Shape([16]), [0.1 * i for i in range(16)])
 w = net.decl_weight("w", cinn.primitive_t.float32, cinn.Shape([2, 16]), [0.1 * i for i in range(64)])
 
-out = net.add_fc(x0, w, b)
+out = net.add_fc(x0, w, b, False)
 out = net.add_tanh(out)
 
 expr = builder.build(session, net)
 builder.to_c_source_code(expr, "python_gen")
 
 code_gen = open('python_gen.cc').read()
+
+print('code_gen:\n', code_gen)
 
 target = '''
 #ifndef CINN_FILE_
@@ -63,9 +65,10 @@ cinn_float32_t* tmp2 =  (cinn_float32_t*) malloc(2048);
 void set_input_x0 (cinn_float32_t* x0_) {
   cinn_copy(x0_, x0, 256);
 }
-void func8 (cinn_float32_t* b, cinn_float32_t* w, cinn_float32_t* x0, cinn_float32_t* tmp2) {
+void func9 (cinn_float32_t* b, cinn_float32_t* w, cinn_float32_t* x0, cinn_float32_t* tmp2) {
   for (int c0 = 0; (c0 <= 31); c0 += 1) {
     for (int c1 = 0; (c1 <= 15); c1 += 1) {
+      tmp0[((c0 * 16) + c1)] = 0;
       for (int c2 = 0; (c2 <= 1); c2 += 1) {
         tmp0[((c0 * 16) + c1)] += (x0[((c0 * 2) + c2)] * w[((c2 * 16) + c1)]);
       }
@@ -75,7 +78,7 @@ void func8 (cinn_float32_t* b, cinn_float32_t* w, cinn_float32_t* x0, cinn_float
   }
 }
 void main_ () {
-  func8(b, w, x0, tmp2);
+  func9(b, w, x0, tmp2);
 }
 
 #endif  // CINN_FILE_

@@ -1,33 +1,23 @@
-cc_test(exe_test1 SRCS test1.cc DEPS cinn_lib)
-
 # include the generate source file.
 include_directories(${CMAKE_BINARY_DIR})
 
-cc_test(test1_c_launcher SRCS test1_c_launcher.cc)
-add_dependencies(test1_c_launcher exe_test1)
+function (_exe_test_ id test_src launcher_src)
+  set(oneValueArgs "")
+  cmake_parse_arguments(exe_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  cc_test(exe_test${id} SRCS ${test_src} DEPS cinn_lib hlir_lib)
+  cc_test(test${id}_c_launcher SRCS ${launcher_src} DEPS cinn_lib hlir_lib)
+  add_dependencies(test${id}_c_launcher exe_test${id})
+endfunction()
 
-cc_test(exe_test2 SRCS test2.cc DEPS cinn_lib)
-cc_test(test2_c_launcher SRCS test2_c_launcher.cc)
-
-cc_test(exe_test3 SRCS test3.cc DEPS cinn_lib)
-cc_test(test3_c_launcher SRCS test3_c_launcher.cc)
+_exe_test_(1 test1.cc test1_c_launcher.cc)
+_exe_test_(2 test2.cc test2_c_launcher.cc)
+_exe_test_(3 test3.cc test3_c_launcher.cc)
 
 cc_test(exe_test4 SRCS test4.cc DEPS cinn_lib)
 cc_test(exe_test5 SRCS test5.cc DEPS cinn_lib)
 
-cc_test(exe_test6 SRCS test6_vectorize.cc DEPS cinn_lib)
-cc_test(test6_c_launcher SRCS test6_launcher.cc DEPS cinn_lib)
-
-cc_test(exe_test7 SRCS test7_fc_model.cc DEPS cinn_lib hlir_lib)
-cc_test(test7_c_launcher SRCS test7_launcher.cc DEPS cinn_lib hlir_lib)
-
-cc_test(exe_test8 SRCS test8_fc_autotune.cc DEPS cinn_lib hlir_lib)
-cc_test(test8_c_launcher SRCS test8_c_launcher.cc DEPS cinn_lib hlir_lib)
-
-cc_test(exe_test9 SRCS test9.cc DEPS cinn_lib hlir_lib)
-cc_test(test9_c_launcher SRCS test9_c_launcher.cc DEPS cinn_lib)
-
-add_dependencies(test6_c_launcher exe_test6)
-add_dependencies(test7_c_launcher exe_test7)
-add_dependencies(test8_c_launcher exe_test8)
-add_dependencies(test9_c_launcher exe_test9)
+_exe_test_(6 test6_vectorize.cc test6_launcher.cc)
+_exe_test_(7 test7_fc_model.cc test7_launcher.cc)
+_exe_test_(8 test8_fc_autotune.cc test8_c_launcher.cc)
+_exe_test_(9 test9.cc test9_c_launcher.cc)
+_exe_test_(10 test10.cc test10_c_launcher.cc)

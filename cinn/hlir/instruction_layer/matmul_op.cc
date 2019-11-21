@@ -58,6 +58,7 @@ class MatMulOp : public Operator {
     k = W->iterators()[0];
     j = W->iterators()[1];
 
+    output0.AddStage(out[i][j] = Expr(0.f));
     output0.AddStage(out[i][j] += x[i][k] * w[k][j]);
 
     input0->set_iterators({i, k});
@@ -117,6 +118,7 @@ class MatMulTransposedOp : public Operator {
     auto* W = GetInput("W");
     auto& output0 = GetOutput("Out");
 
+    output0.AddStage(output0.Elem() = Expr(0.f));
     output0.AddStage(  //
         output0.Elem() += input0->Elem() * W->Elem());
   }

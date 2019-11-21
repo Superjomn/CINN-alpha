@@ -3,10 +3,10 @@
 #include <vector>
 #include "cinn/hlir/network_test_util.h"
 #include "cinn/utils/timer.h"
-#include "exe_tests/exe_test8.cc"
+#include "exe_tests/exe_test10.cc"
 
 TEST(exe, test) {
-  cinn::hlir::Network2Builder builder(5, false);
+  cinn::hlir::Network2Builder builder(2, false);
 
   std::vector<float> input(builder.x0_shape.num_elements(), 1.0);
   std::vector<float> output(10 * builder.dim, 0.);
@@ -20,9 +20,9 @@ TEST(exe, test) {
     main_();
   }
   timer.Stop();
-  LOG(INFO) << "duration: " << (float)timer.duration() / repeat;
+  LOG(INFO) << "duration: " << static_cast<float>(timer.duration()) / repeat;
 
-  get_output_tmp14(&output[0]);
+  get_output_tmp7(&output[0]);
 
   // check result
   auto cal_result = [&](const std::vector<float>& input) {

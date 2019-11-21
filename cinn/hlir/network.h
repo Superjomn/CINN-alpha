@@ -20,6 +20,7 @@ class Network {
  public:
   //! Variables of the operators' inputs and outputs.
   struct Var {
+    Var() = default;
     Var(const std::string& name) : name(name) {}
 
     //! Tell whether the variale is valid.
@@ -57,9 +58,10 @@ class Network {
    * @param x the input.
    * @param w the weight.
    * @param b the bias, leave empty is not valid.
+   * @param w_transposed transpose w before matmul.
    * @return the output.
    */
-  Var AddFc(Var x, Var w, Var b);
+  Network::Var AddFc(Network::Var x, Network::Var w, Network::Var b, bool w_transposed = false);
 
   /**
    * Add a MatMul operator.
@@ -67,7 +69,15 @@ class Network {
    * @param y Name of the second input.
    * @param out Name of the output.
    */
-  Var AddMatMul(const Var& x, const Var& y);
+  Var AddMatMul(const Var& x, const Var& y, bool y_transposed = false);
+
+  /**
+   * Transpose a tensor.
+   * @param x the input.
+   * @param perm the permutated indexs.
+   * @return the transposed tensor.
+   */
+  Var AddTranspose(const Var& x, const std::vector<int>& perm);
 
   /**
    * Add a Tanh operator.
@@ -89,15 +99,6 @@ class Network {
     kMul,
     kDiv,
   };
-
-  /**
-   * Add an Elementwise operator.
-   * @param kind The kind of this elementwise operation.
-   * @param x Name of the first input.
-   * @param y Name of the second input.
-   * @param out Name of the output.
-   */
-  Var AddElementwise(ElementwiseOpKind kind, Var x, Var y);
 
   Var AddElementwiseAdd(Var x, Var y) { AddElementwise(ElementwiseOpKind::kAdd, x, y); }
   Var AddElementwiseSub(Var x, Var y) { AddElementwise(ElementwiseOpKind::kSub, x, y); }
@@ -126,6 +127,16 @@ class Network {
   const std::set<std::string>& output_names() const { return output_names_; }
   const std::set<std::string>& weight_names() const { return weight_names_; }
   const std::set<std::string>& tmp_var_names() const { return tmp_var_names_; }
+
+ private:
+  /**
+   * Add an Elementwise operator.
+   * @param kind The kind of this elementwise operation.
+   * @param x Name of the first input.
+   * @param y Name of the second input.
+   * @param out Name of the output.
+   */
+  Var AddElementwise(ElementwiseOpKind kind, Var x, Var y);
 
  private:
   /**

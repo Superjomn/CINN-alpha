@@ -31,7 +31,19 @@ TEST(hlir_optimizer, basic) {
   ASSERT_EQ(funcs.size(), 1UL);
   auto generated = ir::Dump(funcs.front().ir_function());
 
-  std::string target = R"ROC(def func8 (Tensor& w0, Tensor& w1, Tensor& x0, Tensor& y0) {
+  LOG(INFO) << std::endl << "generated code:" << std::endl << generated;
+
+  std::string target = R"ROC(def func10 (Tensor& w0, Tensor& w1, Tensor& x0, Tensor& y0) {
+  for(c0, 0, (c0 <= 19), 1) {
+    for(c1, 0, (c1 <= 49), 1) {
+      y1<20,50>[c0,c1] = 0;
+    }
+  }
+  for(c0, 0, (c0 <= 19), 1) {
+    for(c1, 0, (c1 <= 39), 1) {
+      y0<20,40>[c0,c1] = 0;
+    }
+  }
   for(c0, 0, (c0 <= 19), 1) {
     for(c1, 0, (c1 <= 39), 1) {
       for(c2, 0, (c2 <= 29), 1) {
