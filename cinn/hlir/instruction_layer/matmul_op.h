@@ -6,6 +6,8 @@ namespace instruction_layer {
 
 struct MatMulParam {};
 
+using MatMulTransposedParam = MatMulParam;
+
 }  // namespace instruction_layer
 }  // namespace hlir
 }  // namespace cinn
