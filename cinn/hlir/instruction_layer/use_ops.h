@@ -3,6 +3,7 @@
 
 USE_OP(pad, kInstructionWise);
 USE_OP(matmul, kInstructionWise);
+USE_OP(matmul_transposed, kInstructionWise);
 USE_OP(reshape, kInstructionWise);
 USE_OP(transpose, kInstructionWise);
 
