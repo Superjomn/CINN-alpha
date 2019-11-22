@@ -30,6 +30,7 @@ class Constant : public ExprNode<Constant> {
     int64_t int64_val_;
     float float32_val_;
     double float64_val_;
+    bool bool_var_;
   };
   bool value_set_{false};
 
@@ -242,6 +243,7 @@ class Expr : public IRHandle {
   explicit Expr(int64_t x) { ptr_ = IntImm::make(Type(type_code_t::Int, 64), x); }
   //! Create an float Expr.
   explicit Expr(float x) { ptr_ = FloatImm::make(Type(type_code_t::Float, 32), x); }
+  explicit Expr(bool x) { ptr_ = BoolImm::make(x); }
 
   //! Construct from dimentions, and get a Tensor.
   explicit Expr(const std::vector<Constant>& dims, primitive_t ptype, const std::string& name = "");
@@ -342,6 +344,8 @@ class Expr : public IRHandle {
   IS_TYPE(sub, Sub);
   IS_TYPE(mul, Mul);
   IS_TYPE(div, Div);
+
+  IS_TYPE(module, Module);
 #undef IS_TYPE
 
   // Inference the dimention indice on the id-th dimention.
@@ -852,18 +856,25 @@ struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
   static const NodeTy node_type = NodeTy::SIMDOpr;
 };
 
+/**
+ * CallOnce is a block that call only once.
+ */
+struct CallOnce : public ir::ExprNode<CallOnce> {
+  std::string cond_var_name;
+  Expr block;
+
+  static Expr make(Expr block);
+
+  static const NodeTy node_type = NodeTy::CallOnce;
+};
+
 struct Module : public ir::ExprNode<Module> {
   //! The section of global data definitions.
   Expr global_data_section;
   //! The section of functions.
   Expr function_section;
 
-  static Expr make(Expr data_section, Expr function_section) {
-    auto node = std::make_shared<Module>();
-    node->global_data_section = data_section;
-    node->function_section = function_section;
-    return Expr(node);
-  }
+  static Expr make(Expr data_section, Expr function_section);
 
   static const NodeTy node_type = NodeTy::Module;
 };

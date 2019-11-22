@@ -16,7 +16,7 @@ Network::Var Network::AddMatMul(const Var &x, const Var &y, bool y_transposed) {
     // Add transpose op
     auto *y_tensor = session_->GetTensor(y.name);
     CHECK_EQ(y_tensor->shape().size(), 2UL);
-    transpose_out = AddTranspose(y, {1, 0});
+    transpose_out = AddTranspose(y, {1, 0}, true);
   }
 
   matmul_op->set_session(session_);
@@ -144,8 +144,10 @@ bool Network::IsVarNameAvailable(const std::string &name) const {
   return !(is_input(name) || is_output(name) || is_weight(name) || is_tmp_var(name));
 }
 
-Network::Var Network::AddTranspose(const Network::Var &x, const std::vector<int> &perm) {
+Network::Var Network::AddTranspose(const Network::Var &x, const std::vector<int> &perm, bool call_once) {
   auto op = OpRegistry::Global().CreateOp(HlirLayer::kInstructionWise, "transpose");
+  op->set_call_once(call_once);
+
   op->set_session(session_);
   op->SetInput("X", x.name);
   op->param<hlir::instruction_layer::TransposeParam>().perm = perm;
@@ -155,6 +157,7 @@ Network::Var Network::AddTranspose(const Network::Var &x, const std::vector<int>
 
   op->SetOutput("Out", out.name);
   operators_.emplace_back(std::move(op));
+
   return out;
 }
 

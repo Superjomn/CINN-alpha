@@ -3,6 +3,7 @@
  * This file defines IRPrinter, it dumps the IR to human-readable texture format.
  */
 #include <sstream>
+#include <string>
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/type.h"
 
@@ -25,7 +26,7 @@ class IRPrinter : public IRVisitor {
   std::string reference_braces{"[]"};
 
  public:
-  IRPrinter(std::ostream &os, int indent_num = 2) : os_(os), indent_block_(indent_num) {}
+  explicit IRPrinter(std::ostream &os, int indent_num = 2) : os_(os), indent_block_(indent_num) {}
 
   //! Add indent to the current line.
   void PrintIndent(bool avoid_continuous_indent = true);
@@ -61,8 +62,11 @@ class IRPrinter : public IRVisitor {
   void Visit(const And *op) override;
   void Visit(const Or *op) override;
   void Visit(const Block *op) override;
+
   void Visit(const IntImm *op) override;
   void Visit(const FloatImm *op) override;
+  void Visit(const BoolImm *op) override;
+
   void Visit(const Tensor *op) override;
   void Visit(const Constant *op) override;
   void Visit(const Var *op) override;
@@ -88,6 +92,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const Cast *op) override;
 
   void Visit(const Module *op) override;
+  void Visit(const CallOnce *op) override;
 
   void indent_left() { indent_size_--; }
   void indent_right() { indent_size_++; }

@@ -185,7 +185,7 @@ std::vector<Function> Graph::PartitionFunctions() {
   auto collect_op_input_stages = [&](Node* op_node) {
     CHECK(op_node->op);
     for (Node* in_tensor_node : op_node->inlinks) {
-      if (in_tensor_node->outlinks.size() > 1) continue;
+      if (in_tensor_node->IsMidEndPoint()) continue;
       op_accu_stages[op_node].insert(op_accu_stages[op_node].end(),
                                      in_tensor_node->tensor->stages().begin(),
                                      in_tensor_node->tensor->stages().end());
@@ -213,7 +213,7 @@ std::vector<Function> Graph::PartitionFunctions() {
     auto* tensor = node.tensor;
 
     if (in_nodes.count(&node)) continue;  // skip the input nodes of the graph.
-    if (node.outlinks.size() > 1 || out_nodes.count(&node)) {
+    if (node.IsMidEndPoint() || out_nodes.count(&node)) {
       fns.emplace_back(GlobalContext().name_generator().NewFuncionName());
       Function& fn = fns.back();
       CINN_DEBUG(2) << "partition a new function " << fn.name();

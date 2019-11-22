@@ -30,11 +30,23 @@ struct Node {
   bool is_tensor() const { return tensor; }
 
   /**
+   * is middle endpoint.
    * Tell whether this node is a end point of the expression. We make a node end point if it
    * - has more than one consumers.
    * - is the start point of the graph.
    */
-  bool IsEndPoint() const { return inlinks.empty() || outlinks.size() >= 2UL; }
+  bool IsMidEndPoint() const { return outlinks.size() >= 2UL || HasCallOnceOpAsInput(); }
+
+  bool is_call_once_node() { return op && op->is_call_once(); }
+
+ private:
+  bool HasCallOnceOpAsInput() const {
+    if (!tensor) return false;
+    for (auto* op_node : inlinks) {
+      if (op_node->is_call_once_node()) return true;
+    }
+    return false;
+  }
 };
 
 static int dot_node_count = 0;

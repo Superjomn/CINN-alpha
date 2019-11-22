@@ -175,6 +175,19 @@ class FloatImm : public ExprNodeBase<FloatImm> {
   static const NodeTy node_type = NodeTy::FloatImm;
 };
 
+struct BoolImm : public ExprNodeBase<BoolImm> {
+  bool val;
+
+  static std::shared_ptr<BoolImm> make(bool val) {
+    auto node = std::make_shared<BoolImm>();
+    node->val = val;
+    node->set_ptype(primitive_t::boolean);
+    return node;
+  }
+
+  static const NodeTy node_type = NodeTy::BoolImm;
+};
+
 class Stmt : public IRHandle {
  public:
   Stmt() = default;

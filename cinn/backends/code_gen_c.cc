@@ -18,6 +18,7 @@ void C_CodeGen::PrintHeader() {
   os_ << "#include <math.h>\n";
   os_ << "#include <stdio.h>\n";
   os_ << "\n";
+  os_ << "typedef bool cinn_boolean_t;\n";
   os_ << "typedef char cinn_int8_t;\n";
   os_ << "typedef int cinn_int32_t;\n";
   os_ << "typedef long long cinn_int64_t;\n";
@@ -190,6 +191,7 @@ void C_CodeGen::Visit(const ir::Let *op) {
     }
 
     if (op->a.As<ir::Var>()->is_reference()) os_ << "&";
+
     os_ << " ";
     Print(op->a);
     os_ << " = ";
@@ -226,6 +228,7 @@ void C_CodeGen::PrintPType(primitive_t ptype) {
     __(int32);
     __(int64);
     __(uint8);
+    __(boolean);
     default:
       LOG(FATAL) << "Unsupported type " << ptype;
   }

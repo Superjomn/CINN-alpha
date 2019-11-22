@@ -28,6 +28,7 @@ void IRVisitor::Visit(const Call *op) {
 void IRVisitor::Visit(const Minus *op) {}
 
 void IRVisitor::Visit(const IntImm *op) {}
+void IRVisitor::Visit(const BoolImm *op) {}
 void IRVisitor::Visit(const FloatImm *op) {}
 
 void IRVisitor::Visit(const Tensor *op) {}
@@ -96,6 +97,8 @@ void IRVisitor::Visit(const Module *op) {
   if (op->global_data_section.valid()) Visit(&op->global_data_section);
   if (op->function_section.valid()) Visit(&op->function_section);
 }
+
+void IRVisitor::Visit(const CallOnce *op) { Visit(&op->block); }
 
 }  // namespace ir
 }  // namespace cinn

@@ -7,8 +7,10 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
         nested_block_clean_pass.cc
         vectorize_pass.cc
         display_program_pass.cc
+        call_once_pass.cc
         DEPS pass pass_registry)
 
 cc_library(optimizer SRCS optimizer.cc DEPS ir passes pass_registry)
 
 cc_test(test_optimizer SRCS optimizer_test.cc DEPS ir optimizer passes)
+cc_test(test_call_once_pass SRCS call_once_pass_test.cc DEPS optimizer)

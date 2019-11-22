@@ -4,6 +4,7 @@
  */
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "cinn/hlir/operator.h"
@@ -21,7 +22,7 @@ class Network {
   //! Variables of the operators' inputs and outputs.
   struct Var {
     Var() = default;
-    Var(const std::string& name) : name(name) {}
+    explicit Var(const std::string& name) : name(name) {}
 
     //! Tell whether the variale is valid.
     operator bool() { return !name.empty(); }
@@ -75,9 +76,10 @@ class Network {
    * Transpose a tensor.
    * @param x the input.
    * @param perm the permutated indexs.
+   * @param call_once execute only once.
    * @return the transposed tensor.
    */
-  Var AddTranspose(const Var& x, const std::vector<int>& perm);
+  Network::Var AddTranspose(const Network::Var& x, const std::vector<int>& perm, bool call_once = false);
 
   /**
    * Add a Tanh operator.

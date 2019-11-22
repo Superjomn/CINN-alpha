@@ -35,13 +35,12 @@ class Operator {
   /**
    * Compile to lower layer of operators or IR.
    */
-  void Compile() {
-    CHECK(!compiled_) << "operator duplicate compiled";
-    InferenceOutputType();
-    Resize();
-    CompileImpl();
-    compiled_ = true;
-  }
+  void Compile();
+
+  /**
+   * Append an expression to tensor's stages.
+   */
+  void TensorAppendExpr(Tensor* tensor, ir::Expr expr);
 
   /**
    * Tell whether this operator is compiled, each operator can only compiled once.
@@ -67,10 +66,7 @@ class Operator {
    * @param argument
    * @param value
    */
-  void SetOutput(const std::string& argument, const std::string& value) {
-    CHECK(!value.empty()) << "value is null";
-    output_argument2value_[argument] = value;
-  }
+  void SetOutput(const std::string& argument, const std::string& value);
 
   /**
    * Get a output argument.
@@ -92,6 +88,10 @@ class Operator {
   const T& param() const {
     return param_.get<T>();
   }
+
+  //! Tell whether it just execute once.
+  bool is_call_once() const { return call_once_; }
+  void set_call_once(bool x = true) { call_once_ = x; }
 
  protected:
   /**
@@ -115,6 +115,7 @@ class Operator {
   std::map<std::string, std::string> output_argument2value_;
   Any param_;
   bool compiled_ = false;
+  bool call_once_ = false;
 };
 
 }  // namespace hlir

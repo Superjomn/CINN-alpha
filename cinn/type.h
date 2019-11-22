@@ -13,6 +13,7 @@ using float64_t = double;
 enum class type_code_t {
   Int,
   Float,
+  Boolean,
   Handle,
   UNK,
 };

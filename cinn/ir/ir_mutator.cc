@@ -133,5 +133,11 @@ void IRMutator::Visit(const Module* op, Expr* expr) {
   if (op->function_section.valid()) Visit(&node->function_section, &node->function_section);
 }
 
+void IRMutator::Visit(const CallOnce* op, Expr* expr) {
+  auto* node = expr->As<ir::CallOnce>();
+
+  Visit(&node->block, &node->block);
+}
+
 }  // namespace ir
 }  // namespace cinn

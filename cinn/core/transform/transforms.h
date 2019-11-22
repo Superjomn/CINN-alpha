@@ -3,11 +3,19 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 #include "cinn/core/transform/schedule_tree_writer.h"
 #include "cinn/utils/isl_utils.h"
 #include "cinn/utils/string.h"
 
 namespace cinn {
+
+static const char* _call_once_mark_ = "call_once_statement";
+
+isl::schedule CallOnceStagesInsertMark(const std::set<std::string>& stage_names, isl::schedule schedule);
 
 /**
  * Perform Tile transform in a schedule tree, currently a naive implementation, traverse the schedule tree,

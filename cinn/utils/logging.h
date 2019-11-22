@@ -44,7 +44,7 @@ struct Log {
 
     std::cerr << std::left << "'";
     for (int i = 0; i < __cinn_log_indent__; i++) std::cerr << "    |";
-    std::cerr << ' ' << log << std::endl;
+    std::cerr << ' ' << log << '\n';
   }
 
  private:

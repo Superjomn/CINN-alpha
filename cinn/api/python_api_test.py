@@ -36,6 +36,7 @@ target = '''
 #include <math.h>
 #include <stdio.h>
 
+typedef bool cinn_boolean_t;
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;
 typedef long long cinn_int64_t;

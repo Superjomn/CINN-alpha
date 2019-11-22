@@ -24,6 +24,7 @@ struct IRVisitorBase {
 
       __(FloatImm);
       __(IntImm);
+      __(BoolImm);
 
       __(Var);
       __(Tensor);
@@ -76,6 +77,7 @@ struct IRVisitorBase {
       __(SIMDOpr);
 
       __(Module);
+      __(CallOnce);
       __(Constant);
 
       default:
@@ -115,6 +117,7 @@ struct IRVisitorBase {
 
   virtual RetTy Visit(const IntImm* op, Args... args) = 0;
   virtual RetTy Visit(const FloatImm* op, Args... args) = 0;
+  virtual RetTy Visit(const BoolImm* op, Args... args) = 0;
 
   virtual RetTy Visit(const Tensor* op, Args... args) = 0;
   virtual RetTy Visit(const Constant* op, Args... args) = 0;
@@ -141,6 +144,7 @@ struct IRVisitorBase {
   virtual RetTy Visit(const SIMDOpr* op, Args... args) = 0;
 
   virtual RetTy Visit(const Module* op, Args... args) = 0;
+  virtual RetTy Visit(const CallOnce* op, Args... args) = 0;
 };
 
 /// Visitor pattern for IR nodes. The default one just visit their children.
@@ -178,6 +182,7 @@ class IRVisitor : public IRVisitorBase<void> {
 
   virtual void Visit(const IntImm* op);
   virtual void Visit(const FloatImm* op);
+  virtual void Visit(const BoolImm* op);
 
   virtual void Visit(const Tensor* op);
   virtual void Visit(const Constant* op);
@@ -205,6 +210,7 @@ class IRVisitor : public IRVisitorBase<void> {
 
   virtual void Visit(const SIMDOpr* op);
   virtual void Visit(const Module* op);
+  virtual void Visit(const CallOnce* op);
 };
 
 }  // namespace ir

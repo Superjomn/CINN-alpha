@@ -23,6 +23,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
 
   void Visit(const ir::IntImm* op, ir::Expr* expr) override {}
   void Visit(const ir::FloatImm* op, ir::Expr* expr) override {}
+  void Visit(const ir::BoolImm* op, ir::Expr* expr) override {}
 
   //! A callback that visit all the basic expressions(no control flow) of the program.
   virtual Expr VisitBasicExpr(Expr* expr) { return *expr; }
@@ -106,6 +107,7 @@ class IRMutator : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const Cast* op, Expr* expr) override;
   void Visit(const Array* op, Expr* expr) override;
   void Visit(const Module* op, Expr* expr) override;
+  void Visit(const CallOnce* op, Expr* expr) override;
 
  protected:
   //! Update the expression if their data address is different.

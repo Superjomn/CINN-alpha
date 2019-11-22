@@ -54,7 +54,7 @@ class GraphToIrFunctionsPass : public Pass<Graph> {
 
     // if this node is a endpoint, that means a ir::Function will be generated and make this tensor a input.
     // so it shouldn't spread.
-    if (tensor_node->IsEndPoint()) return;
+    if (tensor_node->IsMidEndPoint()) return;
 
     for (auto& out_op : tensor_node->outlinks) {
       for (auto& out_tensor : out_op->outlinks) {

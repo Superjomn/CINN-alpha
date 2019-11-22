@@ -42,6 +42,7 @@ TEST(code_gen_c, easy) {
 #include <math.h>
 #include <stdio.h>
 
+typedef bool cinn_boolean_t;
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;
 typedef long long cinn_int64_t;
@@ -105,6 +106,7 @@ TEST(cpp_code_gen, basic) {
 #include <math.h>
 #include <stdio.h>
 
+typedef bool cinn_boolean_t;
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;
 typedef long long cinn_int64_t;
@@ -152,6 +154,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 #include <math.h>
 #include <stdio.h>
 
+typedef bool cinn_boolean_t;
 typedef char cinn_int8_t;
 typedef int cinn_int32_t;
 typedef long long cinn_int64_t;
