@@ -8,6 +8,7 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
         vectorize_pass.cc
         display_program_pass.cc
         call_once_pass.cc
+        temp_variable_fold_pass.cc
         DEPS pass pass_registry)
 
 cc_library(optimizer SRCS optimizer.cc DEPS ir passes pass_registry)

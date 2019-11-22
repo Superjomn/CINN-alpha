@@ -13,7 +13,7 @@ std::vector<const Var*> CollectVarsFromExpr(const Expr& expr);
 
 //! Collect the expressions of type `type`.
 template <typename T>
-std::vector<const T*> CollectExprNode(const Expr& expr);
+std::vector<Expr> CollectExprNode(const Expr& expr);
 
 static Expr tanh(Expr x) { return Max::make(Expr(0.f), x); }
 static Expr exp(Expr x) { return Exp::make(x); }
@@ -42,6 +42,14 @@ ir::Expr IRDeepCopy(const Expr& a);
  * @return
  */
 ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to);
+
+/**
+ * Count the occurence of target expression in a expression.
+ * @param context the expression to count.
+ * @param target the target to search.
+ * @return the count.
+ */
+int IRCount(const Expr& context, const Expr& target);
 
 /**
  * Simplify a IR expression.

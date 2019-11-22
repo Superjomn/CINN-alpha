@@ -28,7 +28,6 @@ struct CallOnceStageInsertMarkMutator : public ScheduleNodeRewriter<CallOnceStag
       isl::set set = isl::manage(isl_union_set_get_nth_element(domain.get(), i));
       auto* tuple_name = isl_set_get_tuple_name(set.get());
       if (stage_name == tuple_name) {
-        LOG(INFO) << "******************* get call once band";
         is_call_once = true;
         break;
       }
