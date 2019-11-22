@@ -99,5 +99,17 @@ TEST(ir, replace_basic_expr) {
   EXPECT_EQ(GetStreamStr(expr), "C<10,20>[i,j] = ((A<10,20>[i,j] + 1) + 1);");
 }
 
+TEST(ir, ir_count) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Expr a("a", primitive_t::float32);
+  ir::Expr b("b", primitive_t::float32);
+  ir::Expr c("c", primitive_t::float32);
+
+  ir::Expr assign = ir::Assign::make(c, a + b);
+
+  ASSERT_EQ(ir::IRCount(assign, a + b), 1);
+}
+
 }  // namespace ir
 }  // namespace cinn

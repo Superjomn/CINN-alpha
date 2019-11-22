@@ -32,7 +32,22 @@ TEST(test8, basic) {
     }
     file.close();
 
-    std::string target = R"ROC(// functions for reading output data
+    std::string target = R"ROC(// create input buffers
+cinn_float32_t* x0 =  (cinn_float32_t*) malloc(5120);
+// create output buffers
+cinn_float32_t* tmp7 =  (cinn_float32_t*) malloc(5120);
+// create temporary variable buffers
+cinn_float32_t* tmp0 =  (cinn_float32_t*) malloc(65536);
+cinn_float32_t* tmp1 =  (cinn_float32_t*) malloc(5120);
+cinn_float32_t* tmp2 =  (cinn_float32_t*) malloc(5120);
+cinn_float32_t* tmp3 =  (cinn_float32_t*) malloc(5120);
+cinn_float32_t* tmp4 =  (cinn_float32_t*) malloc(65536);
+cinn_float32_t* tmp5 =  (cinn_float32_t*) malloc(5120);
+cinn_float32_t* tmp6 =  (cinn_float32_t*) malloc(5120);
+cinn_boolean_t tmp8 = 1;
+cinn_boolean_t tmp9 = 1;
+
+// functions for reading output data
 void get_output_tmp7 (cinn_float32_t* tmp7_) {
   cinn_copy(tmp7, tmp7_, 5120);
 }

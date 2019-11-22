@@ -23,7 +23,6 @@ ir::Expr Builder::Build(Session *session, Network *net) {
   AutoFuseStages(&fns);
 
   auto main_expr = graph.CompileExpr(&fns);
-
   auto global_vars = DeclBuffersGlobal(session, *net);
 
   AddMainFnToProgram(&main_expr, CreateMainFn(main_expr));

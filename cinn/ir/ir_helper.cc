@@ -127,68 +127,51 @@ std::vector<const Var*> CollectVarsFromExpr(const Expr& expr) {
 }
 
 template <>
-std::vector<const Reference*> CollectExprNode<Reference>(const Expr& expr) {
-  class Visitor : public IRVisitor {
+std::vector<Expr> CollectExprNode<Reference>(const Expr& expr) {
+  class Mutator : public IRMutator {
    public:
-    std::set<const Reference*> set;
+    std::vector<Expr> exprs;
+    std::set<std::string> keys;
 
-    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
-    void Visit(const Reference* op) override {
-      set.insert(op);
-      IRVisitor::Visit(op);
+    void Visit(const Expr* op, Expr* expr) override { IRMutator::Visit(op, expr); }
+    void Visit(const Reference* op, Expr* expr) override {
+      auto key = ir::Dump(*expr);
+      if (!keys.count(key)) {
+        exprs.push_back(*expr);
+        keys.insert(key);
+      }
+      IRMutator::Visit(op, expr);
     }
   };
 
-  Visitor visitor;
-  visitor.Visit(&expr);
+  Mutator visitor;
+  visitor.Visit(&expr, const_cast<ir::Expr*>(&expr));
 
-  std::vector<const Reference*> result(visitor.set.begin(), visitor.set.end());
-  return result;
+  return visitor.exprs;
 }
 
 template <>
-std::vector<const Var*> CollectExprNode<Var>(const Expr& expr) {
-  class Collector : public ir::IRVisitor {
-    std::vector<const ir::Var*> iterators_;
-    bool in_reference_{false};
-
+std::vector<Expr> CollectExprNode<Var>(const Expr& expr) {
+  class Mutator : public IRMutator {
    public:
-    Collector() : ir::IRVisitor() {}
+    std::vector<Expr> exprs;
+    std::set<std::string> keys;
 
-    const std::vector<const ir::Var*>& iterators() { return iterators_; }
-
-    void Visit(const Expr* op) override { IRVisitor::Visit(op); }
-    void Visit(const ir::Var* var) override {
-      if (!in_reference_) return;
-      // check if exists
-      auto it = std::find_if(
-          iterators_.begin(), iterators_.end(), [&](const ir::Var* o) { return o->name() == var->name(); });
-      if (it == iterators_.end()) {
-        iterators_.push_back(var);
+    void Visit(const Expr* op, Expr* expr) override { IRMutator::Visit(op, expr); }
+    void Visit(const Var* op, Expr* expr) override {
+      auto key = ir::Dump(*expr);
+      if (!keys.count(key)) {
+        exprs.push_back(*expr);
+        keys.insert(key);
       }
-    }
-    void Visit(const ir::Reference* op) override {
-      in_reference_ = true;
-      for (auto& x : op->iterators) {
-        Visit(&x);
-      }
-      in_reference_ = false;
-    }
-    void Visit(const ir::Function* op) override {
-      for (auto& x : op->inputs) {
-        Visit(&x);
-      }
-      for (auto& x : op->outputs) {
-        Visit(&x);
-      }
-      Visit(&op->body);
+      IRMutator::Visit(op, expr);
     }
   };
 
-  Collector collector;
-  collector.Visit(&expr);
+  Mutator visitor;
+  visitor.Visit(&expr, const_cast<ir::Expr*>(&expr));
 
-  return collector.iterators();
+  return visitor.exprs;
 }
 
 struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
@@ -526,7 +509,12 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
   }
 
   bool Visit(const Stmt* a, const Expr* expr) override { NOT_IMPLEMENT }
-  bool Visit(const Tensor* a, const Expr* expr) override { NOT_IMPLEMENT }
+  bool Visit(const Tensor* a, const Expr* expr) override {
+    auto* b = expr->As<ir::Tensor>();
+    if (a->getptr() == b->getptr()) return true;
+    if (a == b) return true;
+    return a->name() == b->name();
+  }
   bool Visit(const Statement* a, const Expr* expr) override { NOT_IMPLEMENT }
   bool Visit(const Allocate* a, const Expr* expr) override { NOT_IMPLEMENT }
 
@@ -617,7 +605,7 @@ struct IRReplaceMutator : public ir::IRMutator {
 
   void Visit(const ir::Expr* expr, ir::Expr* op) override {
     if (ir::Dump(*op) == from_repr) {
-      *op = to;
+      op->Reset(to);
     } else {
       IRMutator::Visit(expr, op);
     }
@@ -766,11 +754,37 @@ struct IRSimplifyMutator : public ir::IRMutator {
   }
 };
 
+struct IRCountVisitor : public ir::IRVisitor {
+  IRCountVisitor(const ir::Expr& target) : target(target) {}
+
+  int operator()(ir::Expr context) {
+    Visit(&context);
+    return count;
+  }
+
+ private:
+  int count = 0;
+  ir::Expr target;
+
+  void Visit(const Expr* op) override {
+    if (ir::Dump(*op) == ir::Dump(target)) {
+      ++count;
+    } else {
+      IRVisitor::Visit(op);
+    }
+  }
+};
+
 }  // namespace
 
 void IRSimplify(ir::Expr* source) {
   IRSimplifyMutator mutator;
   mutator.Visit(source, source);
+}
+
+int IRCount(const Expr& context, const Expr& target) {
+  IRCountVisitor visitor(target);
+  return visitor(context);
 }
 
 }  // namespace ir

@@ -34,9 +34,9 @@ void Stage::ExtractDomainFromExpr(Expr x) {
 
   if (iterators_in_order.empty()) {
     CINN_DEBUG(3) << "collect " << iterators_in_order.size() << " iterators";
-    std::vector<const ir::Var*> iterators = ir::CollectExprNode<ir::Var>(expr());
-    std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterators_in_order), [](const ir::Var* x) {
-      return *x;
+    std::vector<ir::Expr> iterators = ir::CollectExprNode<ir::Var>(expr());
+    std::transform(iterators.begin(), iterators.end(), std::back_inserter(iterators_in_order), [](const ir::Expr& x) {
+      return *x.As<ir::Var>();
     });
   }
   if (iterators_in_order.empty()) return;
@@ -54,7 +54,8 @@ void Stage::ExtractDomainFromExpr(Expr x) {
   CHECK(!references.empty());
 
   // make all the reference's the same space
-  for (const auto* ref : references) {
+  for (ir::Expr _ref : references) {
+    ir::Reference* ref = _ref.As<ir::Reference>();
     if (ref->domain.is_null()) continue;  // skip constant iterators.
     auto ref_domain = ref->domain;
     int ref_dim = isl_set_dim(ref->domain.get(), isl_dim_set);
