@@ -28,5 +28,25 @@ void Operator::set_session(Session *x) {
   session_ = x;
 }
 
+void Operator::TensorAppendExpr(Tensor *tensor, ir::Expr expr) {
+  auto stage = tensor->AddStage(expr);
+  if (call_once_) {
+    GlobalContext().once_call_registry().Register(stage.name());
+  }
+}
+
+void Operator::Compile() {
+  CHECK(!compiled_) << "operator duplicate compiled";
+  InferenceOutputType();
+  Resize();
+  CompileImpl();
+  compiled_ = true;
+}
+
+void Operator::SetOutput(const std::string &argument, const std::string &value) {
+  CHECK(!value.empty()) << "value is null";
+  output_argument2value_[argument] = value;
+}
+
 }  // namespace hlir
 }  // namespace cinn

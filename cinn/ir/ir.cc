@@ -854,5 +854,19 @@ Expr Mark::make(const std::string &content) {
   node->content = content;
   return Expr(node);
 }
+
+Expr CallOnce::make(Expr block) {
+  auto node = std::make_shared<CallOnce>();
+  node->block = block;
+  node->cond_var_name = GlobalContext().name_generator().NewTmpVar();
+  return Expr(node);
+}
+
+Expr Module::make(Expr data_section, Expr function_section) {
+  auto node = std::make_shared<Module>();
+  node->global_data_section = data_section;
+  node->function_section = function_section;
+  return Expr(node);
+}
 }  // namespace ir
 }  // namespace cinn

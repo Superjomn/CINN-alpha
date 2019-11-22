@@ -4,9 +4,8 @@
 #define NODETY_PRIMITIVE_TYPE_FOR_EACH(macro__) \
   macro__(IntImm)                               \
   macro__(FloatImm)                             \
+  macro__(BoolImm)                              \
 
-//macro__(UInt)
-//macro__(String)
 
 #define NODETY_OP_FOR_EACH(macro__) \
   macro__(Add)                      \
@@ -38,6 +37,7 @@
   macro__(Block)                            \
   macro__(Call)                             \
   macro__(Function)                         \
+  macro__(CallOnce)                         \
   macro__(Module)                           \
 
 #define NODETY_DS_FOR_EACH(macro__) \
@@ -117,6 +117,6 @@ macro__(Function)
 
 #define NOT_IMPLEMENT LOG(FATAL) << "Not Implemented";
 
-#define PRIMITIVE_TYPE_FOR_EACH(macro__)                                                                     \
-  macro__(uint8) macro__(uint16) macro__(uint32) macro__(uint64) macro__(int8) macro__(int16) macro__(int32) \
-      macro__(int64) macro__(float32) macro__(float64) macro__(boolean)
+// clang-format off
+#define PRIMITIVE_TYPE_FOR_EACH(macro__) macro__(uint8) macro__(uint16) macro__(uint32) macro__(uint64) macro__(int8) macro__(int16) macro__(int32) macro__(int64) macro__(float32) macro__(float64) macro__(boolean)  // NOLINT
+// clang-format on

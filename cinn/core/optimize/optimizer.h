@@ -38,17 +38,18 @@ class Optimizer {
  */
 class IrOptimizer : public Optimizer<ir::Expr> {
  public:
-  IrOptimizer()
-      : Optimizer({
-            "nested_block_clean",          //
-            "display_program",             //
-            "indices_to_absolute_offset",  //
-            "display_program",             //
-            "fold_reference_indices",      //
-            "display_program",             //
-            "vectorize",                   //
-            "display_program",             //
-        }) {}
+  IrOptimizer(const std::vector<std::string>& passes =
+                  {
+                      "nested_block_clean",          //
+                      "display_program",             //
+                      "indices_to_absolute_offset",  //
+                      "display_program",             //
+                      "fold_reference_indices",      //
+                      "display_program",             //
+                      "vectorize",                   //
+                      "display_program",             //
+                  })
+      : Optimizer(passes) {}
 };
 
 }  // namespace cinn

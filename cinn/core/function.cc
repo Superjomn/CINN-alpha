@@ -292,6 +292,7 @@ isl::schedule Snippet::ComputeSchedule() {
 }
 
 void Snippet::ApplyTransforms() {
+  *schedule_ = CallOnceStagesInsertMark(GlobalContext().once_call_registry().stages(), *schedule_);
   ApplyTransposes();
   ApplyTiles();
   ApplyVectorize();

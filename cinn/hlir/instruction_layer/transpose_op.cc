@@ -49,7 +49,8 @@ class TransposeOp : public Operator {
     auto* input0 = GetInput("X");
     auto& output0 = GetOutput("Out");
 
-    output0.AddStage(output0.Elem() = input0->Elem());
+    TensorAppendExpr(&output0,  //
+                     output0.Elem() = input0->Elem());
   }
 };
 

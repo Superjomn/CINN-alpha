@@ -93,6 +93,14 @@ Expr CopyExpr(const Expr& expr) {
       return Expr(node);
     }
 
+    case NodeTy::CallOnce: {
+      auto* x = expr.As<CallOnce>();
+      auto node = std::make_shared<CallOnce>();
+      *node = *x;
+      node->set_ptype(x->ptype());
+      return Expr(node);
+    }
+
     default:
       LOG(FATAL) << "unsupported type " << GetNodeTyRepr(expr.type());
   }
@@ -277,6 +285,10 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     auto b = std::make_shared<FloatImm>(*op);
     *to = Expr(b);
   }
+  void Visit(const BoolImm* op, Expr* to) override {
+    auto b = std::make_shared<BoolImm>(*op);
+    *to = Expr(b);
+  }
   void Visit(const Tensor* op, Expr* to) override { *to = Tensor::make(op->dims(), op->ptype(), op->name()); }
   void Visit(const Constant* op, Expr* to) override {
     auto x = std::make_shared<Constant>(*op);
@@ -357,6 +369,11 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     Visit(&op->global_data_section, &a);
     Visit(&op->function_section, &b);
     *to = Module::make(a, b);
+  }
+  void Visit(const CallOnce* op, Expr* to) override {
+    Expr block;
+    Visit(&op->block, &block);
+    *to = CallOnce::make(block);
   }
 };
 
@@ -525,6 +542,12 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     return a->val() == b->val();
   }
 
+  bool Visit(const BoolImm* a, const Expr* expr) override {
+    auto* b = expr->As<BoolImm>();
+    if (a == b) return true;
+    return a->val == b->val;
+  }
+
   bool Visit(const Mark* a, const Expr* expr) override {
     auto* b = expr->As<Mark>();
     if (a == b) return true;
@@ -560,6 +583,13 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     if (a->function_section.valid() && !Visit(&a->function_section, &b->function_section)) return false;
 
     return true;
+  }
+
+  bool Visit(const CallOnce* a, const Expr* expr) override {
+    auto* b = expr->As<CallOnce>();
+    if (a == b) return true;
+    if (a->getptr() == b->getptr()) return true;
+    return Visit(&a->block, &b->block);
   }
 };
 

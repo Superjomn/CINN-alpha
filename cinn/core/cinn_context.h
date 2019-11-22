@@ -7,6 +7,7 @@
 #include <isl/cpp.h>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "cinn/backends/x86_simd.h"
@@ -49,11 +50,20 @@ class Generator {
   friend class CINNContext;
 };
 
+struct OnceCallStageRegistry {
+  void Register(const std::string& stage) { stages_.insert(stage); }
+  bool Contains(const std::string& name) const { return stages_.count(name); }
+  const std::set<std::string>& stages() const { return stages_; };
+
+ private:
+  std::set<std::string> stages_;
+};
+
 class CINNContext {
  public:
   NameGenerator& name_generator() { return name_generator_; }
-
   Generator& generator() { return generator_; }
+  OnceCallStageRegistry& once_call_registry() { return once_call_registry_; }
 
   static const backends::X86SIMD x86_simd_128;
   static const backends::X86SIMD x86_simd_256;
@@ -61,6 +71,7 @@ class CINNContext {
  private:
   NameGenerator name_generator_;
   Generator generator_;
+  OnceCallStageRegistry once_call_registry_;
 };
 
 extern std::unique_ptr<CINNContext> _g_cinn_context;

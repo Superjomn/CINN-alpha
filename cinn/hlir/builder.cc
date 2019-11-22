@@ -1,5 +1,6 @@
 #include "cinn/hlir/builder.h"
 #include "cinn/backends/code_gen_c.h"
+#include "cinn/core/optimize/optimizer.h"
 #include "cinn/core/stage.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/utils/logging.h"
@@ -30,6 +31,10 @@ ir::Expr Builder::Build(Session *session, Network *net) {
   AddIOFnsToProgram(&main_expr, CreateGetOutputFns(*net, *session));
 
   auto expr = ir::Module::make(global_vars, main_expr);
+
+  IrOptimizer optimizer({"call_once_process"});
+  optimizer(&expr);
+
   return expr;
 }
 

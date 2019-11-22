@@ -1,5 +1,6 @@
 #include "cinn/ir/ir.h"
 #include <gtest/gtest.h>
+#include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ops_overload.h"
 
@@ -83,7 +84,7 @@ TEST(Interval, basic1) {
 }
 
 TEST(Reference, basic1) {
-  Expr A("A");
+  Expr A("A", primitive_t::float32);
   Var i("i", 0, 100);
   Var j("j", 0, 100);
   Expr r = A[i][j];
@@ -93,6 +94,7 @@ TEST(Reference, basic1) {
   auto* ref = r.As<Reference>();
   ASSERT_EQ(ref->iterators.size(), 2UL);
 
+  LOG(INFO) << "ref->target.type() " << ref->target.type();
   ASSERT_EQ(ref->target.type(), ir::NodeTy::Var);
   ASSERT_EQ(ref->target.As<ir::Var>()->name(), "A");
 

@@ -4,6 +4,56 @@
 
 namespace cinn {
 
+namespace {
+
+struct CallOnceStageInsertMarkMutator : public ScheduleNodeRewriter<CallOnceStageInsertMarkMutator> {
+  const std::string& stage_name;
+  bool is_call_once = false;
+
+  using BaseTy = ScheduleNodeRewriter<CallOnceStageInsertMarkMutator>;
+  BaseTy& GetBase() { return *this; }
+  const BaseTy& GetBase() const { return *this; }
+
+  CallOnceStageInsertMarkMutator(const std::string& x) : stage_name(x) {}
+
+  isl::schedule_node VisitBand(const isl::schedule_node& node) {
+    if (is_call_once) {
+      return Visit(node.first_child()).parent();
+    }
+
+    isl::union_set domain = isl::manage(isl_schedule_node_get_domain(node.get()));
+
+    int n_set = isl_union_set_n_set(domain.get());
+    for (int i = 0; i < n_set; i++) {
+      isl::set set = isl::manage(isl_union_set_get_nth_element(domain.get(), i));
+      auto* tuple_name = isl_set_get_tuple_name(set.get());
+      if (stage_name == tuple_name) {
+        LOG(INFO) << "******************* get call once band";
+        is_call_once = true;
+        break;
+      }
+    }
+
+    if (is_call_once) {
+      CHECK_EQ(n_set, 1) << "call once stage should not fuse with others";
+      auto new_node = node.insert_mark(_call_once_mark_);
+      return Visit(new_node.first_child()).parent();
+    }
+
+    return Visit(node.first_child()).parent();
+  }
+};
+
+}  // namespace
+
+isl::schedule CallOnceStagesInsertMark(const std::set<std::string>& stage_names, isl::schedule schedule) {
+  for (auto stage : stage_names) {
+    CallOnceStageInsertMarkMutator mutator(stage);
+    schedule = mutator.Visit(schedule).schedule();
+  }
+  return schedule;
+}
+
 // NOTE tricks here.
 std::string::size_type FindDimension(const isl::union_pw_aff& aff, const std::string& dimension) {
   auto aff_repr = GetStreamStr(aff);

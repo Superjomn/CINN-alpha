@@ -49,6 +49,7 @@ void IRPrinter::Visit(const Div *op) {
 }
 void IRPrinter::Visit(const IntImm *op) { os_ << op->val(); }
 void IRPrinter::Visit(const FloatImm *op) { os_ << op->val(); }
+void IRPrinter::Visit(const BoolImm *op) { os_ << op->val ? "true" : "false"; }
 
 void IRPrinter::Visit(const Expr *op) { IRVisitor::Visit(op); }
 
@@ -475,6 +476,20 @@ void IRPrinter::Visit(const Module *op) {
     os_ << "\n\n";
   }
   if (op->function_section.valid()) Print(op->function_section);
+}
+
+void IRPrinter::Visit(const CallOnce *op) {
+  PrintIndent();
+  os_ << "call_once { //" << op->cond_var_name;
+  Println();
+
+  indent_right();
+  Print(op->block);
+  indent_left();
+
+  Println();
+  PrintIndent();
+  os_ << "}";
 }
 
 }  // namespace ir
