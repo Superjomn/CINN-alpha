@@ -113,7 +113,6 @@ struct VectorizeMutator : public ir::IRMutator {
   bool to_vectorize_{false};
   bool reatch_vectorize_mark_{false};
   bool inside_reference_{false};
-  bool is_block_subsequent_vectorize_for_{false};
 };
 
 class VectorizePass : public Pass<ir::Expr> {
