@@ -8,3 +8,4 @@ USE_IR_PASS(vectorize);
 USE_IR_PASS(display_program);
 USE_IR_PASS(call_once_process);
 USE_IR_PASS(temp_variable_fold);
+USE_IR_PASS(unroll);

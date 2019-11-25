@@ -130,7 +130,9 @@ void C_CodeGen::Visit(const ir::Reference *op) {
 void C_CodeGen::Visit(const ir::Tensor *op) { os_ << op->name(); }
 
 void C_CodeGen::operator()(const ir::Expr &expr) {
-  optimizer(const_cast<Expr *>(&expr));
+  if (compile_mode_ == Mode::source) {
+    optimizer(const_cast<Expr *>(&expr));
+  }
 
   PrintFileGuardHeader();
   PrintHeader();
@@ -166,6 +168,7 @@ void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std:
   {  // write source file
     C_CodeGen gen(/*is source*/ true);
     gen(expr);
+    LOG(INFO) << "******** after gen expr:\n" << expr;
     gen.WriteToFile(source_file);
   }
 

@@ -57,6 +57,8 @@ int IRCount(const Expr& context, const Expr& target);
  */
 void IRSimplify(ir::Expr* source);
 
+bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value);
+
 std::ostream& operator<<(std::ostream& os, const ir::Expr& x);
 
 std::ostream& operator<<(std::ostream& os, ir::NodeTy type);

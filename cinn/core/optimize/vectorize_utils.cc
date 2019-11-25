@@ -167,6 +167,7 @@ void Vectorize::operator()(int vector_width, ir::Expr *for_expr) {
   CINN_DEBUG(2) << "result:\n" << *for_expr;
 
   auto simd_refs = CollectSimdReferences(block_expr);
+  CHECK(!simd_refs.empty());
   CINN_DEBUG(2) << "collected simd references: " << simd_refs.size();
 
   auto ref_to_vars = InsertSimdCastExprToBlock(&block_expr, vector_width, simd_refs);
@@ -262,7 +263,7 @@ void Vectorize::VectorizeOprerations(ir::Expr *block_expr, int vector_width) {
     }
 
     void Vectorize(Expr *expr) {
-      LOG_INDENT(0);
+      LOG_INDENT(6);
       CINN_DEBUG(2) << "*********** Vectorize " << *expr;
       CHECK_GT(vector_width, 1);
       switch (expr->type()) {

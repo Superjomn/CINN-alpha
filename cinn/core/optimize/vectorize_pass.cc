@@ -55,57 +55,16 @@ struct VectorizeMutator : public ir::IRMutator {
   //! Determines whether to vectorize this block
   bool Vectorizable(const Expr &expr, const std::set<int> &vectorize_widths, int *vector_width) {
     LOG_INDENT(6);
-    CHECK(expr.is_for_());
-    CINN_DEBUG(2) << "checking for\n" << expr;
-    auto &for_ = *expr.As<ir::For>();
-    // check for's init, cond and extent
-    auto *init_val = for_.iter_init.As<ir::IntImm>();
-    auto *cond_le = for_.iter_cond.As<ir::LE>();
-    auto *inc_val = for_.iter_inc.As<ir::IntImm>();
 
-    if (!init_val && init_val->val() != 0) {
-      CINN_DEBUG(3) << "init is not IntImm or value != 1, " << for_.iter_init;
-      return false;
-    }
-    if (!cond_le) {
-      CINN_DEBUG(3) << "cond_le fail, cond:" << for_.iter_cond;
-      return false;
-    }
-
-    if (!cond_le->b.is_int_imm()) {
-      CINN_DEBUG(3) << "cond_le value is not IntImm, " << cond_le->b;
-      return false;
-    }
-    if (!inc_val || inc_val->val() != 1) {
-      CINN_DEBUG(3) << "for iter_inc != 1, " << for_.iter_inc;
-      return false;
-    }
-
-    int cond_extent = cond_le->b.As<ir::IntImm>()->val();
-    int num_elements = cond_extent - init_val->val() + 1;
-    if (!vectorize_widths.count(num_elements)) {
-      CINN_DEBUG(3) << "num_elements not in vector_width set, " << num_elements;
-      return false;
-    }
-
-    // check the block content
-    auto *for_block = for_.body.As<ir::Block>();
-    // All the expressions in the block should be vectorizable.
-    // NOTE here is just a naive implementation.
-    // TODO(Superjomn) enhance here.
-    for (auto &expr : for_block->body) {
-      if (expr.is_block() || expr.is_for_() || expr.is_if_then_else()) {
-        CINN_DEBUG(3) << "found no simple expression:\n" << expr;
-        return false;
-      }
-    }
+    int init_value;
+    if (!ir::IsConstantFor(expr, vector_width, &init_value)) return false;
+    if (init_value != 0) return false;
 
     if (!ir::CollectExprNode<ir::SIMDOpr>(expr).empty()) {
       CINN_DEBUG(3) << "fail, already have SIMD opr";
       return false;
     }
 
-    *vector_width = num_elements;
     return true;
   }
 
