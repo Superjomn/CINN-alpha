@@ -86,4 +86,11 @@ static bool Contains(const std::string& s, const std::string& str) {
   return it != std::string::npos;
 }
 
+static std::string Trim(const std::string& s) {
+  const char* space = "\n\t\r";
+  size_t begin = s.find_first_not_of(space);
+  size_t end = s.find_last_not_of(space);
+  return s.substr(begin, end - begin + 1);
+}
+
 }  // namespace cinn

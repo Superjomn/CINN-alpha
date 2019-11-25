@@ -9,9 +9,10 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
         display_program_pass.cc
         call_once_pass.cc
         temp_variable_fold_pass.cc
-        DEPS pass pass_registry)
+        vectorize_utils.cc
+        DEPS pass pass_registry ir)
 
-cc_library(optimizer SRCS optimizer.cc DEPS ir passes pass_registry)
+cc_library(optimizer SRCS optimizer.cc DEPS passes pass_registry)
 
 cc_test(test_optimizer SRCS optimizer_test.cc DEPS ir optimizer passes)
 cc_test(test_call_once_pass SRCS call_once_pass_test.cc DEPS optimizer)

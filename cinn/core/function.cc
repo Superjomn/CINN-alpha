@@ -347,7 +347,7 @@ void Snippet::ApplyVectorize() {
   CHECK(schedule_) << "schedule tree should be built first";
 
   for (auto& stage : stages_) {
-    if (stage.vector_width() > 0) {
+    if (!stage.vector_width().empty()) {
       VectorizeTransform applyer(stage.name(), stage.vector_width());
       *schedule_ = applyer(*schedule_).get_schedule();
     }
@@ -392,6 +392,7 @@ isl::ast_node Snippet::GenerateIslAst() const {
 
   build = isl::manage(isl_ast_build_set_at_each_domain(build.release(), IslAstNodeInfoCollect, nullptr));
   CINN_DEBUG(0) << "schedule in Snippet::GenerateIslAst: \n" << schedule_->root();
+  CINN_DEBUG(0) << "schedule:\n" << *schedule_;
   isl::ast_node ast = isl::manage(isl_ast_build_node_from_schedule(build.get(), schedule_->copy()));
   CINN_DEBUG(0) << "schedule tree get C code:\n" << isl_ast_node_to_C_str(ast.get());
   return ast;

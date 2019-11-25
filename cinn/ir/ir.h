@@ -333,6 +333,7 @@ class Expr : public IRHandle {
   IS_TYPE(buffer_opr, BufferOpr)
   IS_TYPE(array, Array)
   IS_TYPE(for_, For)
+  IS_TYPE(if_then_else, IfThenElse)
   IS_TYPE(le, LE)
   IS_TYPE(lt, LT)
   IS_TYPE(eq, EQ)
