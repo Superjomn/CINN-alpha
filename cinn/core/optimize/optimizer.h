@@ -47,9 +47,11 @@ class IrOptimizer : public Optimizer<ir::Expr> {
                       "fold_reference_indices",      //
                       "display_program",             //
                       "vectorize",                   //
+                      "nested_block_clean",          //
                       "display_program",             //
-                                                     //"temp_variable_fold",          //
-                      "display_program",             //
+                      //"temp_variable_fold",          //
+                      "unroll",           //
+                      "display_program",  //
                   })
       : Optimizer(passes) {}
 };

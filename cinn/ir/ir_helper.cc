@@ -8,6 +8,7 @@
 #include "cinn/ir/ir_mutator.h"
 #include "cinn/ir/ir_printer.h"
 #include "cinn/ir/ir_visitor.h"
+#include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
 
 namespace cinn {
@@ -766,6 +767,51 @@ void IRSimplify(ir::Expr* source) {
 int IRCount(const Expr& context, const Expr& target) {
   IRCountVisitor visitor(target);
   return visitor(context);
+}
+
+bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value) {
+  LOG_INDENT(0);
+  CHECK(expr.is_for_());
+  CINN_DEBUG(2) << "checking for\n" << expr;
+  auto& for_ = *expr.As<ir::For>();
+  // check for's init, cond and extent
+  auto* init_val = for_.iter_init.As<ir::IntImm>();
+  auto* cond_le = for_.iter_cond.As<ir::LE>();
+  auto* inc_val = for_.iter_inc.As<ir::IntImm>();
+
+  *init_value = init_val->val();
+  if (!cond_le) {
+    CINN_DEBUG(3) << "cond_le fail, cond:" << for_.iter_cond;
+    return false;
+  }
+
+  if (!cond_le->b.is_int_imm()) {
+    CINN_DEBUG(3) << "cond_le value is not IntImm, " << cond_le->b;
+    return false;
+  }
+  if (!inc_val || inc_val->val() != 1) {
+    CINN_DEBUG(3) << "for iter_inc != 1, " << for_.iter_inc;
+    return false;
+  }
+
+  int cond_extent = cond_le->b.As<ir::IntImm>()->val();
+  *num_elements = cond_extent - init_val->val() + 1;
+
+  // check the block content
+  auto* for_block = for_.body.As<ir::Block>();
+  // All the expressions in the block should be vectorizable.
+  // NOTE here is just a naive implementation.
+  // TODO(Superjomn) enhance here.
+  for (auto& expr : for_block->body) {
+    if (expr.is_block() || expr.is_for_() || expr.is_if_then_else()) {
+      CINN_DEBUG(3) << "found no simple expression:\n" << expr;
+      return false;
+    }
+  }
+
+  CINN_DEBUG(2) << "get constant for";
+
+  return true;
 }
 
 }  // namespace ir

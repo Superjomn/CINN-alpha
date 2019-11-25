@@ -20,7 +20,7 @@ TEST(test, basic) {
 
     auto s0 = fn.AddStage(C[i][j] = (A[i][j] + B[i][j]) * B[i][j]);
     auto s1 = fn.AddStage(C[i][j] += Expr(1.f));
-    s0.Vectorize({16, 4});
+    s0.Vectorize({4, 4});
 
     fn.Inputs({A, B});
     fn.Outputs({C});
@@ -41,33 +41,101 @@ TEST(test, basic) {
     std::string target = R"ROC(
 void basic (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
   // vectorize - tiles
-  for (int c1 = 0; (c1 <= 49); c1 += 4) {
-    // vectorize - points
-    for (int c2 = 0; (c2 <= 15); c2 += 1) {
-      __m128& var2 = *(__m128*)(&C[((c2 * 200) + c1)]);
-      __m128& var1 = *(__m128*)(&B[((c2 * 200) + c1)]);
-      __m128& var0 = *(__m128*)(&A[((c2 * 200) + c1)]);
-      var2 = _mm_mul_ps(_mm_add_ps(var0, var1), var1);
+  for (int c0 = 0; (c0 <= 24); c0 += 4) {
+    for (int c1 = 0; (c1 <= 49); c1 += 4) {
+      // vectorize - points
+      if(1) {
+        __m128& var2 = *(__m128*)(&C[((c0 * 200) + c1)]);
+        __m128& var1 = *(__m128*)(&B[((c0 * 200) + c1)]);
+        __m128& var0 = *(__m128*)(&A[((c0 * 200) + c1)]);
+        var2 = _mm_mul_ps(_mm_add_ps(var0, var1), var1);
+      }
+
+      if(1) {
+        __m128& var2 = *(__m128*)(&C[(((c0 + 1) * 200) + c1)]);
+        __m128& var1 = *(__m128*)(&B[(((c0 + 1) * 200) + c1)]);
+        __m128& var0 = *(__m128*)(&A[(((c0 + 1) * 200) + c1)]);
+        var2 = _mm_mul_ps(_mm_add_ps(var0, var1), var1);
+      }
+
+      if(1) {
+        __m128& var2 = *(__m128*)(&C[(((c0 + 2) * 200) + c1)]);
+        __m128& var1 = *(__m128*)(&B[(((c0 + 2) * 200) + c1)]);
+        __m128& var0 = *(__m128*)(&A[(((c0 + 2) * 200) + c1)]);
+        var2 = _mm_mul_ps(_mm_add_ps(var0, var1), var1);
+      }
+
+      if(1) {
+        __m128& var2 = *(__m128*)(&C[(((c0 + 3) * 200) + c1)]);
+        __m128& var1 = *(__m128*)(&B[(((c0 + 3) * 200) + c1)]);
+        __m128& var0 = *(__m128*)(&A[(((c0 + 3) * 200) + c1)]);
+        var2 = _mm_mul_ps(_mm_add_ps(var0, var1), var1);
+      }
+
+    }
+    for (int c1 = 52; (c1 <= 199); c1 += 4) {
+      // vectorize - points
+      if(1) {
+        __m128& var5 = *(__m128*)(&C[((c0 * 200) + c1)]);
+        __m128& var4 = *(__m128*)(&B[((c0 * 200) + c1)]);
+        __m128& var3 = *(__m128*)(&A[((c0 * 200) + c1)]);
+        var5 = _mm_mul_ps(_mm_add_ps(var3, var4), var4);
+      }
+
+      if(1) {
+        __m128& var5 = *(__m128*)(&C[(((c0 + 1) * 200) + c1)]);
+        __m128& var4 = *(__m128*)(&B[(((c0 + 1) * 200) + c1)]);
+        __m128& var3 = *(__m128*)(&A[(((c0 + 1) * 200) + c1)]);
+        var5 = _mm_mul_ps(_mm_add_ps(var3, var4), var4);
+      }
+
+      if(1) {
+        __m128& var5 = *(__m128*)(&C[(((c0 + 2) * 200) + c1)]);
+        __m128& var4 = *(__m128*)(&B[(((c0 + 2) * 200) + c1)]);
+        __m128& var3 = *(__m128*)(&A[(((c0 + 2) * 200) + c1)]);
+        var5 = _mm_mul_ps(_mm_add_ps(var3, var4), var4);
+      }
+
+      if(1) {
+        __m128& var5 = *(__m128*)(&C[(((c0 + 3) * 200) + c1)]);
+        __m128& var4 = *(__m128*)(&B[(((c0 + 3) * 200) + c1)]);
+        __m128& var3 = *(__m128*)(&A[(((c0 + 3) * 200) + c1)]);
+        var5 = _mm_mul_ps(_mm_add_ps(var3, var4), var4);
+      }
+
     }
   }
-  for (int c1 = 52; (c1 <= 199); c1 += 4) {
-    // vectorize - points
-    for (int c2 = 0; (c2 <= 15); c2 += 1) {
-      __m128& var5 = *(__m128*)(&C[((c2 * 200) + c1)]);
-      __m128& var4 = *(__m128*)(&B[((c2 * 200) + c1)]);
-      __m128& var3 = *(__m128*)(&A[((c2 * 200) + c1)]);
-      var5 = _mm_mul_ps(_mm_add_ps(var3, var4), var4);
-    }
-  }
-  for (int c0 = 16; (c0 <= 99); c0 += 16) {
+  for (int c0 = 28; (c0 <= 99); c0 += 4) {
     for (int c1 = 0; (c1 <= 199); c1 += 4) {
       // vectorize - points
-      for (int c2 = 0; (c2 <= cinn_min(15, ((-c0) + 99))); c2 += 1) {
-        __m128& var8 = *(__m128*)(&C[(((c0 + c2) * 200) + c1)]);
-        __m128& var7 = *(__m128*)(&B[(((c0 + c2) * 200) + c1)]);
-        __m128& var6 = *(__m128*)(&A[(((c0 + c2) * 200) + c1)]);
+      if(1) {
+        __m128& var8 = *(__m128*)(&C[((c0 * 200) + c1)]);
+        __m128& var7 = *(__m128*)(&B[((c0 * 200) + c1)]);
+        __m128& var6 = *(__m128*)(&A[((c0 * 200) + c1)]);
         var8 = _mm_mul_ps(_mm_add_ps(var6, var7), var7);
       }
+
+      if(1) {
+        __m128& var8 = *(__m128*)(&C[(((c0 + 1) * 200) + c1)]);
+        __m128& var7 = *(__m128*)(&B[(((c0 + 1) * 200) + c1)]);
+        __m128& var6 = *(__m128*)(&A[(((c0 + 1) * 200) + c1)]);
+        var8 = _mm_mul_ps(_mm_add_ps(var6, var7), var7);
+      }
+
+      if(1) {
+        __m128& var8 = *(__m128*)(&C[(((c0 + 2) * 200) + c1)]);
+        __m128& var7 = *(__m128*)(&B[(((c0 + 2) * 200) + c1)]);
+        __m128& var6 = *(__m128*)(&A[(((c0 + 2) * 200) + c1)]);
+        var8 = _mm_mul_ps(_mm_add_ps(var6, var7), var7);
+      }
+
+      if(1) {
+        __m128& var8 = *(__m128*)(&C[(((c0 + 3) * 200) + c1)]);
+        __m128& var7 = *(__m128*)(&B[(((c0 + 3) * 200) + c1)]);
+        __m128& var6 = *(__m128*)(&A[(((c0 + 3) * 200) + c1)]);
+        var8 = _mm_mul_ps(_mm_add_ps(var6, var7), var7);
+      }
+
     }
   }
   for (int c0 = 0; (c0 <= 99); c0 += 1) {

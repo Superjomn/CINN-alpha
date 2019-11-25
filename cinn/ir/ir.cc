@@ -521,7 +521,7 @@ Expr XAssignMake(Expr a, Expr b) {
   auto node = std::make_shared<T>();
   node->a = a;
   node->b = b;
-  CHECK(!node->b.is_unk());
+  CHECK(!node->b.is_unk()) << "expr: " << node->b;
   node->a.set_ptype(node->b.ptype());
   node->set_ptype(node->b.ptype());
   return Expr(node);
@@ -762,7 +762,9 @@ Expr Let::make(Expr a, Expr b) {
   node->b = b;
   CHECK(!b.is_unk());
   node->set_ptype(b.ptype());
+  node->set_ctype(b.ctype());
   a.set_ptype(b.ptype());
+  a.set_ctype(b.ctype());
   return Expr(node);
 }
 
@@ -808,7 +810,13 @@ Expr SIMDOpr::make(int vector_width, SIMDOpr::Opr opr, Expr a, Expr b) {
   node->opr = opr;
   node->a = a;
   node->b = b;
-  if (node->vector_width == 4) node->set_ctype(composite_t::simd128);
+  node->set_ptype(node->a.ptype());
+  if (node->vector_width == 4)
+    node->set_ctype(composite_t::simd128);
+  else if (node->vector_width == 8)
+    node->set_ctype(composite_t::simd256);
+  else
+    NOT_IMPLEMENT
   return Expr(node);
 }
 
