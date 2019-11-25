@@ -48,8 +48,8 @@ class IrOptimizer : public Optimizer<ir::Expr> {
                       "display_program",             //
                       "vectorize",                   //
                       "display_program",             //
-                      //"temp_variable_fold",          //
-                      "display_program",  //
+                                                     //"temp_variable_fold",          //
+                      "display_program",             //
                   })
       : Optimizer(passes) {}
 };

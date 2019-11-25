@@ -329,26 +329,101 @@ isl::schedule_node TileDimsTransformer::VisitBand(const isl::schedule_node& node
   isl::schedule_node new_node;
 
   if (unroll_) {
-    new_node = TileNode(node, "tile-unroll", tile_sizes_, 1);
+    new_node = TileNode(node, "tile-unroll", tile_sizes_, 1, statement_, 1);
     auto child = new_node.first_child();
     new_node =
         new_node.as<isl::schedule_node_band>().set_ast_build_options(isl::union_set(new_node.ctx(), "{separate[x]}"));
   } else {
-    new_node = TileNode(node, "tile", tile_sizes_, 1);
+    new_node = TileNode(node, "tile", tile_sizes_, 1, statement_, 1);
   }
 
-  auto schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(new_node.get()));
-  LOG(INFO) << "schedule_relation: " << schedule_relation;
-  LOG(INFO) << "schedule_domain: " << isl::manage(isl_schedule_node_get_domain(new_node.get()));
+  // auto schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(new_node.get()));
+  // LOG(INFO) << "schedule_relation: " << schedule_relation;
+  // LOG(INFO) << "schedule_domain: " << isl::manage(isl_schedule_node_get_domain(new_node.get()));
 
   tiled_ = true;
   return Visit(new_node.first_child()).parent();
 }
 
+isl::set GetUnrollOption(isl::ctx ctx, int pos) {
+  return isl::set(ctx, StringFormat("{ [isolate[]->unroll[%d]] }", pos));
+}
+
+/**
+ * Generate the isolate option for a schedule node.
+ * @param statement the statement to operate on.
+ * @param schedule_node
+ * @param tile_sizes
+ * @param isolate_dims number of dimensions to isolate.
+ */
+isl::union_set GetIsolateOption2(const std::string& statement,
+                                 isl::schedule_node schedule_node,
+                                 isl::multi_val tile_sizes,
+                                 int isolate_dims) {
+  LOG_INDENT(0);
+
+  // get the statement's domain
+  isl::union_set domain = isl::manage(isl_schedule_node_get_domain(schedule_node.get()));
+  isl::set statement_domain;
+  for (int i = 0; i < isl_union_set_n_set(domain.get()); i++) {
+    isl::set set = isl::manage(isl_union_set_get_nth_element(domain.get(), i));
+    if (isl_set_get_tuple_name(set.get()) == statement) {
+      statement_domain = set;
+      break;
+    }
+  }
+  CHECK(statement_domain.get()) << "no statement in the domain";
+
+  // check domain
+  int ndim = isl_set_dim(statement_domain.get(), isl_dim_set);
+  CHECK_EQ(ndim, tile_sizes.size());
+  CINN_DEBUG(2) << "domain: " << domain;
+
+  // construct isolate dims and domain
+  std::vector<std::string> dim_names;
+  for (int i = 0; i < isl_set_n_dim(statement_domain.get()); i++) {
+    dim_names.push_back(StringFormat("a%d", i));
+  }
+  // prepare conditions.
+  std::vector<std::string> conds;
+  {
+    int dim = isl_set_n_dim(statement_domain.get());
+    for (int i = dim - isolate_dims; i < dim; i++) {
+      if (i < 0) continue;
+      int tile_size = tile_sizes.get_at(i).get_num_si();
+      CINN_DEBUG(2) << "i-th tile size: " << tile_size;
+      if (tile_size > 1) {
+        // TODO(Superjomn) refine this
+        conds.emplace_back(StringFormat("%s = %s*%d+%d-1",  //
+                                        isl_set_get_dim_name(statement_domain.get(),
+                                                             isl_dim_set,
+                                                             i),  //
+                                        dim_names[i].c_str(),     //
+                                        tile_size,
+                                        tile_size));
+      }
+    }
+  }
+
+  std::string tile_transform_repr = StringFormat("{ %s -> isolate[[] -> [%s]]: %s}",
+                                                 isl_set_get_statement_repr(statement_domain.get()).c_str(),  //
+                                                 Concat(dim_names, ", ").c_str(),                             //
+                                                 Concat(conds, " and ").c_str());
+  CINN_DEBUG(2) << "transform_repr: " << tile_transform_repr;
+  isl::map tile_transform(schedule_node.ctx(), tile_transform_repr);
+  CINN_DEBUG(2) << "transform: " << tile_transform;
+  auto new_domain = statement_domain.apply(tile_transform);
+  CINN_DEBUG(2) << "the transformed domain: " << new_domain;
+
+  return new_domain;
+}
+
 isl::schedule_node TileDimsTransformer::TileNode(isl::schedule_node node,
                                                  const std::string& id,
                                                  const std::vector<int>& tile_sizes,
-                                                 int default_tile_size) {
+                                                 int default_tile_size,
+                                                 const std::string& statement,
+                                                 unsigned isolate_dims) {
   LOG_INDENT(0);
   CHECK(isl_schedule_node_get_type(node.get()) == isl_schedule_node_band);
   auto space = isl::manage(isl_schedule_node_band_get_space(node.get()));
@@ -365,20 +440,17 @@ isl::schedule_node TileDimsTransformer::TileNode(isl::schedule_node node,
   node = node.first_child();
 
   node = node.as<isl::schedule_node_band>().tile(sizes);
+
+  auto band = node.as<isl::schedule_node_band>();
+  CINN_DEBUG(2) << "partial schedule: " << band.partial_schedule();
+  // Here we set isolate_dims to 2, for that the vectorize should utilize the last two dims, one will be replaced with
+  // SIMD operation, the other one will be unrolled.
+  auto ast_option = GetIsolateOption2(statement, node, sizes, isolate_dims /*isolate_dims*/);
+  // ast_option = isl::manage(isl_union_set_add_set(ast_option.release(), GetUnrollOption(band.ctx(), 2).release()));
+  CINN_DEBUG(2) << "option: " << ast_option;
+  node = band.set_ast_build_options(ast_option);
+
   node = node.first_child();
-  // LOG(INFO) << "tiled node.domain " << isl::manage(isl_schedule_node_get_domain(node.get()));
-  // LOG(INFO) << "tiled node.prefix_schedule " <<
-  // isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
-  // LOG(INFO) << "tiled node.prefix_union_map "
-  //           << isl::manage(isl_schedule_node_get_prefix_schedule_union_map(node.get()));
-  // LOG(INFO) << "tiled node.prefix_schedule_multi_union_pw_aff "
-  //           << isl::manage(isl_schedule_node_get_prefix_schedule_multi_union_pw_aff(node.get()));
-  // LOG(INFO) << "tiled band.get_partial_schedule "
-  //           << isl::manage(isl_schedule_node_band_get_partial_schedule(node.get()));
-  isl::union_map schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(node.get()));
-  // LOG(INFO) << "** relation: " << schedule_relation.space();
-  // LOG(INFO) << "relation dim: " << isl_space_dim(schedule_relation.space().get(), isl_dim_in);
-  // node = node.as<isl::schedule_node_band>().set_ast_build_options(isl::union_set(node.ctx(), "{  unroll[x] }"));
 
   auto pointer_loop_marker = isl::manage(isl_id_alloc(node.ctx().get(), (id + " - points").c_str(), nullptr));
   node = node.insert_mark(pointer_loop_marker);
@@ -450,7 +522,7 @@ isl::schedule_node VectorizeTransform::VisitBand(const isl::schedule_node& node)
     return Visit(node.first_child()).parent();
   }
 
-  auto new_node = TileDimsTransformer::TileNode(node, "vectorize", {vector_width_}, 1);
+  auto new_node = TileDimsTransformer::TileNode(node, "vectorize", {vector_width_}, 1, statement_, 2);
   // tiled_ = true;
   return Visit(new_node.first_child()).parent();
 }

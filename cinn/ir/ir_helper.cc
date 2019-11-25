@@ -126,53 +126,34 @@ std::vector<const Var*> CollectVarsFromExpr(const Expr& expr) {
   return std::vector<const Var*>(visitor.vars.begin(), visitor.vars.end());
 }
 
-template <>
-std::vector<Expr> CollectExprNode<Reference>(const Expr& expr) {
-  class Mutator : public IRMutator {
-   public:
-    std::vector<Expr> exprs;
-    std::set<std::string> keys;
-
-    void Visit(const Expr* op, Expr* expr) override { IRMutator::Visit(op, expr); }
-    void Visit(const Reference* op, Expr* expr) override {
-      auto key = ir::Dump(*expr);
-      if (!keys.count(key)) {
-        exprs.push_back(*expr);
-        keys.insert(key);
-      }
-      IRMutator::Visit(op, expr);
-    }
-  };
-
-  Mutator visitor;
-  visitor.Visit(&expr, const_cast<ir::Expr*>(&expr));
-
-  return visitor.exprs;
-}
-
-template <>
-std::vector<Expr> CollectExprNode<Var>(const Expr& expr) {
-  class Mutator : public IRMutator {
-   public:
-    std::vector<Expr> exprs;
-    std::set<std::string> keys;
-
-    void Visit(const Expr* op, Expr* expr) override { IRMutator::Visit(op, expr); }
-    void Visit(const Var* op, Expr* expr) override {
-      auto key = ir::Dump(*expr);
-      if (!keys.count(key)) {
-        exprs.push_back(*expr);
-        keys.insert(key);
-      }
-      IRMutator::Visit(op, expr);
-    }
-  };
-
-  Mutator visitor;
-  visitor.Visit(&expr, const_cast<ir::Expr*>(&expr));
-
-  return visitor.exprs;
-}
+#define __(type__)                                              \
+  template <>                                                   \
+  std::vector<Expr> CollectExprNode<type__>(const Expr& expr) { \
+    class Mutator : public IRMutator {                          \
+     public:                                                    \
+      std::vector<Expr> exprs;                                  \
+      std::set<std::string> keys;                               \
+      void Visit(const Expr* op, Expr* expr) override {         \
+        if (expr->type() == type__::node_type) {                \
+          auto key = ir::Dump(*expr);                           \
+          if (!keys.count(key)) {                               \
+            exprs.push_back(*expr);                             \
+            keys.insert(key);                                   \
+          }                                                     \
+        }                                                       \
+        IRMutator::Visit(op, expr);                             \
+      }                                                         \
+    };                                                          \
+                                                                \
+    Mutator visitor;                                            \
+    visitor.Visit(&expr, const_cast<ir::Expr*>(&expr));         \
+                                                                \
+    return visitor.exprs;                                       \
+  }
+__(SIMDOpr);
+__(Reference);
+__(Var);
+#undef __
 
 struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
   void Visit(const Expr* a, Expr* b) override { IRVisitorBase::Visit(a, b); }

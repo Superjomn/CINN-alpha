@@ -10,3 +10,4 @@
 - test8: test the HLIR model interface using a multi-level FC model
 - test9: X86 AVX instruction generation test
 - test10: final FC model with transpose and transform optimize
+- test11: enhanced tile, unroll and vectorize transform

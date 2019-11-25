@@ -253,9 +253,14 @@ void Stage::Tile(ir::Var i, size_t w) { data_->tiles[i.name()] = w; }
 
 void Stage::Tile(const std::vector<int>& sizes) { data_->tile_sizes = sizes; }
 
-void Stage::Vectorize(size_t vector_size) {
+void Stage::Vectorize(int vector_size) {
   CHECK_GT(vector_size, 1);
   CHECK_LT(vector_size, 30);
+  data_->vector_width = {vector_size};
+}
+
+void Stage::Vectorize(const std::vector<int>& vector_size) {
+  CHECK(!vector_size.empty());
   data_->vector_width = vector_size;
 }
 

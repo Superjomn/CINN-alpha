@@ -926,6 +926,68 @@ TEST(isl, schedule_tile) {
   DisplayScheduleC(schedule.get());
 }
 
+// to avoid guard
+TEST(isl, schedule_tree4) {
+  std::string schedule_repr = R"ROC(
+{ domain: "{ B[i, j] : 0 < i <= 200 and 0 < j <= 200; A[i, j] : 0 < i <= 200 and 0 < j <= 200 }",
+  child:
+   { sequence:
+      [ { filter: "{ A[i, j] }",
+          child:
+           { schedule: "[{ A[i, j] -> [floor((i)/4)] }, { A[i, j] -> [floor((j)/4)] }, { A[i,j] -> [i] }, { A[i,j] -> [j] }]",
+             permutable: 1,
+             coincident: [ 1, 1 ],
+             options: "{ isolate[[]->[a,b,c,d]] : 4a >= 1 and 4a+3 <= 200 and 4b>=1 and 4b+3<=200; [isolate[]->unroll[2]] }"
+           } },
+        { filter: "{ B[i, j] }",
+          child:
+           { schedule: "[{ B[i, j] -> [(i)] }, { B[i, j] -> [(j)] }]",
+             permutable: 1,
+             coincident: [ 1, 1 ] } } ] } }
+  )ROC";
+
+  LOG(INFO) << schedule_repr;
+
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::schedule schedule = isl::manage(isl_schedule_read_from_str(ctx.get(), schedule_repr.c_str()));
+
+  DisplayScheduleC(schedule.get());
+}
+
+TEST(isl, schedule_tree5) {
+  std::string schedule_repr = R"ROC(
+domain: "{ S0[i, j] : 0 <= i <= 99 and 0 <= j <= 199; S1[i, j, k] : 0 <= i <= 99 and 0 <= j <= 199 and 0 <= k <= 149; S2[i, j] : 0 <= i <= 99 and 0 <= j <= 199; S3[i, j] : 0 <= i <= 99 and 0 <= j <= 199 }"
+child:
+  sequence:
+    -
+      filter: "{ S1[i, j, k] }"
+      child:
+        schedule: "[{ S1[i, j, k] -> [(i)] }, { S1[i, j, k] -> [(8*floor((j)/8))] }, { S1[i, j, k] -> [(32*floor((k)/32))] }]"
+        permutable: 1
+        coincident:
+          - 1
+          - 1
+          - 1
+        options: "{ isolate[[] -> [a, b, c]] : a,b,c>=0 and b+7<=199 and c+31<=149 }"
+        #child:
+          #mark: "tile - points"
+          #child:
+            #schedule: "[{ S1[i, j, k] -> [(0)] }, { S1[i, j, k] -> [(j - 8*floor((j)/8))] }, { S1[i, j, k] -> [(k - 32*floor((k)/32))] }]"
+            #permutable: 1
+            #coincident:
+              #- 1
+              #- 1
+              #- 1
+            #options: "{ isolate[[] -> [a, b, c, d, e]] : a >= 0 and 0 <= b <= 192 and c >= 118 }"
+
+)ROC";
+
+  isl::ctx ctx(isl_ctx_alloc());
+  isl::schedule schedule = isl::manage(isl_schedule_read_from_str(ctx.get(), schedule_repr.c_str()));
+
+  DisplayScheduleC(schedule.get());
+}
+
 TEST(isl, schedule_tree3) {
   std::string schedule_repr = R"ROC(
 { domain: "{ B[i, j] : 0 < i <= 200 and 0 < j <= 200; A[i, j] : 0 < i <= 200 and 0 < j <= 200 }",
@@ -936,7 +998,7 @@ TEST(isl, schedule_tree3) {
            { schedule: "[{ A[i, j] -> [floor((i)/4)] }, { A[i, j] -> [floor((j)/4)] }, { A[i,j] -> [i] }, { A[i,j] -> [j] }]",
              permutable: 1,
              coincident: [ 1, 1 ],
-             options: "{ isolate[[]->[a,b,c,d]] : 4a+4b+3+3<=200 ; [isolate[]->unroll[3]] }"
+             options: "{ isolate[[]->[a,b,c,d]] : 4a+4b+3+3<=200 ; [isolate[]->unroll[2]] }"
            } },
         { filter: "{ B[i, j] }",
           child:

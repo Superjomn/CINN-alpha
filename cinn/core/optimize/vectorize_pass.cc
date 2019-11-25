@@ -1,5 +1,6 @@
 #include "cinn/core/optimize/pass.h"
 #include "cinn/core/optimize/pass_registry.h"
+#include "cinn/core/optimize/vectorize_utils.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/ir/ir_mutator.h"
 #include "cinn/ir/ir_mutator_helpers.h"
@@ -9,214 +10,20 @@
 
 namespace cinn {
 
-namespace {
-
-/**
- * Collect the arguments of SIMDOpr in a single block(not nested).
- */
-struct SimdReferenceCollector : public ir::IRVisitor {
-  std::map<std::string, Expr> arguments;
-
-  void Visit(const Expr *op) override { IRVisitor::Visit(op); }
-
-  void Visit(const ir::Assign *op) override {
-    if (op->b.is_simd_opr()) {
-      if (op->a.is_reference()) {
-        CollectReference(op->a);
-      }
-    }
-
-    ir::IRVisitor::Visit(op);
-  }
-
-  void Visit(const ir::SIMDOpr *op) override {
-    if (op->a.is_reference()) {
-      CollectReference(op->a);
-    }
-    if (op->b.is_reference()) {
-      CollectReference(op->b);
-    }
-
-    ir::IRVisitor::Visit(op);
-  }
-
-  void Visit(const ir::Block *op) override {
-    for (auto &expr : op->body) {
-      if (!expr.is_block()) {
-        // This should works with the "nested_block_clean_pass".
-        Visit(&expr);  // avoid nested
-      }
-    }
-  }
-
-  void CollectReference(const ir::Expr &a) {
-    auto key = ir::Dump(a);
-    if (arguments.count(key)) {
-      arguments[key].set_ptr(a.ptr());
-    } else {
-      arguments[ir::Dump(a)] = a;
-    }
-  }
-};
-
-/**
- * Replace the SIMD op's arguments with the casted variables.
- */
-struct SimdArgumentReplacer : public ir::IRMutator {
-  const std::map<std::string, ir::Expr /* var */> &ref_repr_to_var;
-
-  explicit SimdArgumentReplacer(const std::map<std::string, ir::Expr> &x) : ref_repr_to_var(x) {}
-
-  void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
-  void Visit(const ir::Assign *op, ir::Expr *expr) override {
-    auto *node = expr->As<ir::Assign>();
-    if (op->b.is_simd_opr()) {
-      ReplaceSimdArgument(&node->a);
-    }
-
-    IRMutator::Visit(&node->b, &node->b);
-  }
-
-  void Visit(const ir::SIMDOpr *op, ir::Expr *expr) override {
-    LOG(INFO) << "******** Visit simd";
-    auto *node = expr->As<ir::SIMDOpr>();
-    ReplaceSimdArgument(&node->a);
-    ReplaceSimdArgument(&node->b);
-
-    IRMutator::Visit(op, expr);
-  }
-
-  void Visit(const ir::Block *op, Expr *expr) override {
-    auto *node = expr->As<ir::Block>();
-    for (auto &e : node->body) {
-      if (!e.is_block()) {
-        ir::IRMutator::Visit(&e, &e);
-      }
-    }
-  }
-
- protected:
-  void ReplaceSimdArgument(ir::Expr *expr) {
-    for (auto &item : ref_repr_to_var) {
-      if (ir::Dump(*expr) == item.first) {
-        expr->set_ptr(item.second.ptr());
-        break;
-      }
-    }
-  }
-};
-
-struct SimdArgumentCastInsertToBlock : public ir::IRMutator {
-  int vector_width{-1};
-
-  std::map<std::string, ir::Expr> arguments;
-  std::vector<std::map<std::string, ir::Expr /* var */>> ref_repr_to_var;
-
-  explicit SimdArgumentCastInsertToBlock(int vector_width) : vector_width{vector_width} {}
-
-  void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
-  void Visit(const ir::Block *op, Expr *expr) override {
-    ref_repr_to_var.emplace_back();
-
-    auto *block = expr->As<ir::Block>();
-    SimdReferenceCollector collector;
-    collector.Visit(expr);
-    if (!collector.arguments.empty()) {
-      PreappendCastToBlock(expr->As<ir::Block>(), collector.arguments);
-
-      SimdArgumentReplacer replacer(ref_repr_to_var.back());
-      replacer.Visit(expr, expr);
-    }
-    IRMutator::Visit(op, expr);
-
-    ref_repr_to_var.pop_back();
-  }
-
- protected:
-  void PreappendCastToBlock(ir::Block *block, const std::map<std::string, ir::Expr> &simd_args) {
-    composite_t simd_type = composite_t::primitive;
-    if (vector_width > 0) {
-      if (vector_width == 4)
-        simd_type = composite_t::simd128;
-      else if (vector_width == 8)
-        simd_type = composite_t::simd256;
-      else
-        NOT_IMPLEMENT;
-    }
-
-    for (const auto &item : simd_args) {
-      LOG(INFO) << "collected " << item.first << " -> " << item.second;
-      auto cast = ir::Cast::make(item.second, item.second.ptype());
-      cast.set_ctype(simd_type);
-      ir::Var var(GlobalContext().name_generator().NewVarName());
-      var.set_is_reference();
-      Expr var_expr(var);
-      ref_repr_to_var.back()[item.first] = var_expr;
-
-      auto let = ir::Let::make(var_expr, cast);
-      let.set_ctype(simd_type);
-
-      // Preappend cast expressions to block.
-      block->body.insert(std::begin(block->body), let);
-    }
-  }
-};
-
-}  // namespace
-
 struct VectorizeMutator : public ir::IRMutator {
   int vector_width{-1};
 
   VectorizeMutator() = default;
 
-  void Visit(const ir::Add *op, ir::Expr *expr) override {
-    if (to_vectorize_ && !inside_reference_) {
-      Vectorize(expr);
-      ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-    } else {
-      ir::IRMutator::Visit(op, expr);
-    }
-  }
-  void Visit(const ir::Sub *op, ir::Expr *expr) override {
-    if (to_vectorize_ && !inside_reference_) {
-      Vectorize(expr);
-      ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-    } else {
-      ir::IRMutator::Visit(op, expr);
-    }
-  }
-  void Visit(const ir::Mul *op, ir::Expr *expr) override {
-    if (to_vectorize_ && !inside_reference_) {
-      Vectorize(expr);
-      ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-    } else {
-      ir::IRMutator::Visit(op, expr);
-    }
-  }
-  void Visit(const ir::Div *op, ir::Expr *expr) override {
-    if (to_vectorize_ && !inside_reference_) {
-      Vectorize(expr);
-      ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-    } else {
-      ir::IRMutator::Visit(op, expr);
-    }
-  }
-  void Visit(const ir::Reference *op, ir::Expr *expr) override {
-    inside_reference_ = true;
-    ir::IRMutator::Visit(op, expr);
-    inside_reference_ = false;
-  }
   void Visit(const ir::For *op, Expr *expr) override {
+    auto *for_ = expr->As<ir::For>();
+    auto iter = for_->iterator;
+    auto &for_block = for_->body;
+
     if (to_vectorize_) {
-      auto *for_ = expr->As<ir::For>();
-      auto iter = for_->iterator;
-      auto &for_block = for_->body;
-      *expr = for_block;
-
-      // TODO(Superjomn) replace all with the global zero constant.
-      ir::IRReplace(expr, iter, Expr(0));
-
-      Visit(expr->As<ir::Block>(), expr);
+      optimize::Vectorize vectorize;
+      vectorize(vector_width, expr);
+      CHECK(expr->is_block());
     } else {
       IRMutator::Visit(op, expr);
     }
@@ -225,69 +32,86 @@ struct VectorizeMutator : public ir::IRMutator {
   void Visit(const ir::Block *op, Expr *expr) override {
     auto *block = expr->As<ir::Block>();
     for (int i = 0; i < block->body.size(); i++) {
-      auto &expr = block->body[i];
-      if (expr.is_mark() && Contains(expr.As<ir::Mark>()->content, "vectorize - points")) {
-        if (i + 1 >= block->body.size() || !block->body[i + 1].is_for_()) continue;
-        auto &for_expr = block->body[i + 1];
-        if (!ForGetExtent(for_expr.As<ir::For>())) continue;
-        i++;
+      auto &cexpr = block->body[i];
 
+      // reatch a vectorize mark, tell that the following forloop(or the forloop inside it) can be vectorized.
+      if (cexpr.is_mark() && Contains(cexpr.As<ir::Mark>()->content, "vectorize - points")) {
+        reatch_vectorize_mark_ = true;
+      } else if (reatch_vectorize_mark_ && cexpr.is_for_() && Vectorizable(cexpr, {4, 8}, &vector_width)) {
         to_vectorize_ = true;
-        Visit(&for_expr, &for_expr);
+        Visit(cexpr.As<ir::For>(), &cexpr);
+        CHECK(cexpr.is_block());
         to_vectorize_ = false;
       } else {
-        Visit(&expr, &expr);
+        Visit(&cexpr, &cexpr);
       }
     }
-  }
 
-  /*
-  void Visit(const ir::For *op, Expr *expr) override {
-    if (to_vectorize_) {
-      LOG(INFO) << "vectorize for:\n" << *expr;
-      auto *node = expr->As<ir::For>();
-      ForGetExtent(node);
-    }
-    ir::IRMutator::Visit(op, expr);
+    reatch_vectorize_mark_ = false;
   }
-  */
 
   void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
 
-  bool ForGetExtent(ir::For *op) {
-    LOG_INDENT(0);
-    ir::Expr cond = op->iter_cond;
-    if (!cond.is_le()) return false;
-    auto *le = cond.As<ir::LE>();
-    if (!le->a.is_var() || !le->b.is_int_imm()) return false;
-    this->vector_width = le->b.As<ir::IntImm>()->val() + 1;
-    return true;
-  }
+  //! Determines whether to vectorize this block
+  bool Vectorizable(const Expr &expr, const std::set<int> &vectorize_widths, int *vector_width) {
+    LOG_INDENT(6);
+    CHECK(expr.is_for_());
+    CINN_DEBUG(2) << "checking for\n" << expr;
+    auto &for_ = *expr.As<ir::For>();
+    // check for's init, cond and extent
+    auto *init_val = for_.iter_init.As<ir::IntImm>();
+    auto *cond_le = for_.iter_cond.As<ir::LE>();
+    auto *inc_val = for_.iter_inc.As<ir::IntImm>();
 
-  void Vectorize(Expr *expr) {
-    LOG_INDENT(0);
-    CINN_DEBUG(2) << "*********** Vectorize " << *expr;
-    CHECK_GT(vector_width, 1);
-    switch (expr->type()) {
-#define __(op__)                                                                      \
-  case ir::NodeTy::op__: {                                                            \
-    auto *op = expr->As<ir::op__>();                                                  \
-    *expr = ir::SIMDOpr::make(vector_width, ir::SIMDOpr::Opr::k##op__, op->a, op->b); \
-  } break;
-      __(Add)
-      __(Sub)
-      __(Mul)
-      __(Div)
-#undef __
-      default:
-        LOG(ERROR) << "unsupported " << expr->type();
+    if (!init_val && init_val->val() != 0) {
+      CINN_DEBUG(3) << "init is not IntImm or value != 1, " << for_.iter_init;
+      return false;
+    }
+    if (!cond_le) {
+      CINN_DEBUG(3) << "cond_le fail, cond:" << for_.iter_cond;
+      return false;
     }
 
-    LOG(INFO) << "after vectorize " << *expr;
+    if (!cond_le->b.is_int_imm()) {
+      CINN_DEBUG(3) << "cond_le value is not IntImm, " << cond_le->b;
+      return false;
+    }
+    if (!inc_val || inc_val->val() != 1) {
+      CINN_DEBUG(3) << "for iter_inc != 1, " << for_.iter_inc;
+      return false;
+    }
+
+    int cond_extent = cond_le->b.As<ir::IntImm>()->val();
+    int num_elements = cond_extent - init_val->val() + 1;
+    if (!vectorize_widths.count(num_elements)) {
+      CINN_DEBUG(3) << "num_elements not in vector_width set, " << num_elements;
+      return false;
+    }
+
+    // check the block content
+    auto *for_block = for_.body.As<ir::Block>();
+    // All the expressions in the block should be vectorizable.
+    // NOTE here is just a naive implementation.
+    // TODO(Superjomn) enhance here.
+    for (auto &expr : for_block->body) {
+      if (expr.is_block() || expr.is_for_() || expr.is_if_then_else()) {
+        CINN_DEBUG(3) << "found no simple expression:\n" << expr;
+        return false;
+      }
+    }
+
+    if (!ir::CollectExprNode<ir::SIMDOpr>(expr).empty()) {
+      CINN_DEBUG(3) << "fail, already have SIMD opr";
+      return false;
+    }
+
+    *vector_width = num_elements;
+    return true;
   }
 
  private:
   bool to_vectorize_{false};
+  bool reatch_vectorize_mark_{false};
   bool inside_reference_{false};
   bool is_block_subsequent_vectorize_for_{false};
 };
@@ -299,11 +123,6 @@ class VectorizePass : public Pass<ir::Expr> {
   void Impl(ir::Expr *expr) override {
     VectorizeMutator vectorize_mutator;
     vectorize_mutator.Visit(expr, expr);
-
-    {
-      SimdArgumentCastInsertToBlock mutator(vectorize_mutator.vector_width);
-      mutator.Visit(expr, expr);
-    }
 
     ir::IRSimplify(expr);
   }

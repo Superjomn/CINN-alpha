@@ -68,7 +68,7 @@ class Stage {
     std::vector<int> tile_sizes;
 
     // The size to vectorize.
-    int vector_width{-1};
+    std::vector<int> vector_width;
 
     bool unroll{false};
 
@@ -176,7 +176,7 @@ class Stage {
 
   const std::vector<std::pair<std::string, std::string>>& transposes() const { return data_->transposes; }
 
-  int vector_width() const { return data_->vector_width; }
+  const std::vector<int>& vector_width() const { return data_->vector_width; }
 
   const std::set<std::string>& stages_fuse_with() const { return data_->stages_fuse_with; }
 
@@ -219,7 +219,8 @@ class Stage {
   void Reverse(ir::Var i);
 
   //! Vectorize the loop level `i`.
-  void Vectorize(size_t vector_size);
+  void Vectorize(int vector_size);
+  void Vectorize(const std::vector<int>& vector_size);
 
   void ResetTransforms() {}
 
