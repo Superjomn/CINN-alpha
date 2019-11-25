@@ -689,34 +689,6 @@ isl::set BuildDomainFromDimensions(const std::vector<Constant> &dims, const std:
   return result;
 }
 
-namespace {
-// Replace the expression with the indexed name.
-Expr ReplaceVarWithIterator(int id, const Expr &expr) {
-  class Visitor : public IRVisitor {
-    int id_;
-    std::set<std::string> vars_;
-
-   public:
-    explicit Visitor(int id) : id_(id) {}
-
-    void Visit(const Expr *op) override { IRVisitor::Visit(op); }
-
-    void Visit(const Var *op) override {
-      vars_.insert(op->name());
-      CHECK_EQ(vars_.size(), 1UL) << "One dimension should contains only one variable.";
-      const_cast<Var *>(op)->set_name(GenIndexedIteratorName(id_));
-    }
-  };
-
-  Expr copied = CopyExpr(expr);
-  Visitor visitor(id);
-  visitor.Visit(&expr);
-
-  return copied;
-}
-
-}  // namespace
-
 isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const std::vector<Constant> &dimensions) {
   LOG_INDENT(6);
   CHECK_EQ(exprs.size(), dimensions.size());

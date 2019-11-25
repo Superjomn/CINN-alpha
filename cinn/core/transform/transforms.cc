@@ -190,7 +190,6 @@ isl::map GetTileTransform(const std::string& statement, isl::union_set domain, c
   return gen_transfrom_from_set(statement_set);
 }
 
-// isl::union_set isolate2(ctx, "{ isolate[[i1,j1] -> [c,d]] : 32i1 <= 199 and 32j1 <= 199 }");
 isl::union_set GetUnrollOption(const std::string& statement, isl::union_set domain, isl::map transform) {
   auto gen_transform = [&](isl::set set) {
     set = set.apply(transform);
@@ -249,7 +248,6 @@ isl::schedule_node TileUnrollTransformer::VisitBand(const isl::schedule_node& no
   relation = relation.reverse();
   isl::set wrapped = isl::manage(isl_map_wrap(relation.release()));
   wrapped = isl::manage(isl_set_set_tuple_name(wrapped.release(), "isolate"));
-  // LOG(INFO) << "relaton: " << wrapped;
 
   // full tile separation
   new_node = band.set_ast_build_options(wrapped);
@@ -336,10 +334,6 @@ isl::schedule_node TileDimsTransformer::VisitBand(const isl::schedule_node& node
   } else {
     new_node = TileNode(node, "tile", tile_sizes_, 1, statement_, 1);
   }
-
-  // auto schedule_relation = isl::manage(isl_schedule_node_get_prefix_schedule_relation(new_node.get()));
-  // LOG(INFO) << "schedule_relation: " << schedule_relation;
-  // LOG(INFO) << "schedule_domain: " << isl::manage(isl_schedule_node_get_domain(new_node.get()));
 
   tiled_ = true;
   return Visit(new_node.first_child()).parent();
