@@ -185,7 +185,7 @@ class Var : public ExprNode<Var> {
     set_ctype(other.ctype());
   }
 
-  operator Expr();
+  operator Expr() const;
 
   bool operator==(const Var& other) const {
     return data_ == other.data_ || (name() == other.name() && interval() == other.interval());
@@ -222,8 +222,6 @@ class Var : public ExprNode<Var> {
  * Expr(Expression) is a basic concept of CINN, everything in the IR can be an Expr.
  */
 class Expr : public IRHandle {
-  std::vector<Var> iterators_;
-
  public:
   Expr() : IRHandle() {}
   Expr(const std::shared_ptr<IRNode>& x) : IRHandle(x) {}

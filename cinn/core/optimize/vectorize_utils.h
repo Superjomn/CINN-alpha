@@ -1,6 +1,8 @@
 #pragma once
 #include <map>
 #include <string>
+#include <tuple>
+#include <vector>
 #include "cinn/core/optimize/pass.h"
 #include "cinn/core/optimize/pass_registry.h"
 #include "cinn/ir/ir_helper.h"
@@ -12,6 +14,26 @@
 
 namespace cinn {
 namespace optimize {
+
+//! Determines whether a block can be vectorized.
+bool Vectorizable(const Expr &expr, const std::set<int> &vectorize_widths, int *vector_width);
+
+//! NOTE Only support basic expressions.
+bool BasicExprContainsOnlySIMDReleatedOpr(const Expr &expr);
+
+/**
+ * Tell whether all the variables in a basic expression can pass to SIMD.
+ * if the innermost forloop's iterator is i, the Rules:
+ *
+ * 1. A[x][i]: true
+ * 2. A[i][x]: false
+ * 3. A[x]: true, as a scalar
+ *
+ *
+ * all in all, a basic expression is SIMD supported if the references contains the iterator as the last indice or not
+ * contain the iterator.
+ */
+bool BasicExprVarsCanPassToSIMD(const Expr &basic_expr, const Expr &iterator);
 
 /**
  * Vectorize this for expression.

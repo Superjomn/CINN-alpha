@@ -16,5 +16,6 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
 
 cc_library(optimizer SRCS optimizer.cc DEPS passes pass_registry)
 
-cc_test(test_optimizer SRCS optimizer_test.cc DEPS ir optimizer passes)
+cc_test(test_optimizer SRCS optimizer_test.cc DEPS ir optimizer)
 cc_test(test_call_once_pass SRCS call_once_pass_test.cc DEPS optimizer)
+cc_test(test_vectorize_utils SRCS vectorize_utils_test.cc DEPS optimizer)
