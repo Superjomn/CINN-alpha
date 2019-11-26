@@ -37,7 +37,7 @@ struct VectorizeMutator : public ir::IRMutator {
       // reatch a vectorize mark, tell that the following forloop(or the forloop inside it) can be vectorized.
       if (cexpr.is_mark() && Contains(cexpr.As<ir::Mark>()->content, "vectorize - points")) {
         reatch_vectorize_mark_ = true;
-      } else if (reatch_vectorize_mark_ && cexpr.is_for_() && Vectorizable(cexpr, {4, 8}, &vector_width)) {
+      } else if (reatch_vectorize_mark_ && cexpr.is_for_() && optimize::Vectorizable(cexpr, {4, 8}, &vector_width)) {
         to_vectorize_ = true;
         Visit(cexpr.As<ir::For>(), &cexpr);
         CHECK(cexpr.is_block());
@@ -51,22 +51,6 @@ struct VectorizeMutator : public ir::IRMutator {
   }
 
   void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
-
-  //! Determines whether to vectorize this block
-  bool Vectorizable(const Expr &expr, const std::set<int> &vectorize_widths, int *vector_width) {
-    LOG_INDENT(6);
-
-    int init_value;
-    if (!ir::IsConstantFor(expr, vector_width, &init_value)) return false;
-    if (init_value != 0) return false;
-
-    if (!ir::CollectExprNode<ir::SIMDOpr>(expr).empty()) {
-      CINN_DEBUG(3) << "fail, already have SIMD opr";
-      return false;
-    }
-
-    return true;
-  }
 
  private:
   bool to_vectorize_{false};

@@ -366,7 +366,7 @@ Expr IfThenElse::make(Expr condition, Expr true_block, Expr false_block) {
   return Expr(node);
 }
 
-Var::operator Expr() {
+Var::operator Expr() const {
   auto node =
       std::make_shared<Var>(data_->name_, ptype(), data_->interval_.lower_bound(), data_->interval_.upper_bound());
   node->set_ctype(ctype());

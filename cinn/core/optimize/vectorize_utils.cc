@@ -5,6 +5,18 @@ namespace optimize {
 
 /**
  * Collect the arguments of SIMDOpr in a single block(not nested).
+ *
+ * NOTE The references that can be used as arguments of SIMD should following the rules:
+ * 1. the innermost forloop will be transformed to the SIMD operations, name the corresponding iterator i
+ *   1. a reference with i as the last indice should be casted to a SIMD argument,
+ *   2. a reference whose indices don't contains i can be casted to a SIMD scalar (e.g. use _m128_set1_ps),
+ *   3. a reference with i in the other position, the whole block should not be vectorized.
+ *   4. a reference used as the left oprand in an assign expression, if is not a SIMD argument following the previous
+ * rules, the right oprand should be casted to scalar(by accumulate).
+ *      1. e.g. C[j] += A[i] * B[i]
+ *
+ *
+ *
  */
 struct SimdReferenceCollector : public ir::IRVisitor {
   std::map<std::string, Expr> arguments;
@@ -294,5 +306,87 @@ void Vectorize::ReplaceForIterToZero(ir::Expr *for_expr) {
   ir::IRReplace(for_expr, for_->iterator, Expr(0));
 }
 
+//! NOTE Only support basic expressions.
+bool BasicExprContainsOnlySIMDReleatedOpr(const Expr &expr) {
+  LOG_INDENT(0);
+  CHECK(ir::CollectExprNode<ir::Block>(expr).empty());
+  // Check if the operations(not in a reference) can be represented by SIMD.
+  struct AllOprCanSIMD : public ir::IRVisitor {
+    std::set<ir::NodeTy> supported_ops{
+        ir::NodeTy::Add, ir::NodeTy::Sub, ir::NodeTy::Mul, ir::NodeTy::Div, ir::NodeTy::Assign};
+
+    void Visit(const Expr *op) override {
+      if (op->type() == ir::NodeTy::Reference) return;
+      if (!supported_ops.count(op->type())) {
+        CINN_DEBUG(2) << "detect SIMD not supported operation: " << *op;
+        result = false;
+      } else {
+        IRVisitor::Visit(op);
+      }
+    }
+
+    void Visit(const ir::Reference *op) override {}
+
+    bool result{true};
+    bool in_reference{false};
+  };
+
+  AllOprCanSIMD visitor;
+  visitor.Visit(&expr);
+  return visitor.result;
+}
+
+bool BasicExprVarsCanPassToSIMD(const Expr &basic_expr, const Expr &iterator) {
+  CHECK(ir::CollectExprNode<ir::Block>(basic_expr).empty()) << "not a basic expression";
+
+  auto refs = ir::CollectExprNode<ir::Reference>(basic_expr);
+  for (auto &ref_expr : refs) {
+    // check the positions but the last one
+    auto *ref = ref_expr.As<ir::Reference>();
+    for (int i = 0; i < ref->iterators.size() - 1; i++) {
+      if (ir::IREquals(ref->iterators[i], iterator)) {
+        return false;
+      }
+    }
+  }
+
+  // all the other cases works
+  return true;
+}
+
+bool Vectorizable(const Expr &expr, const std::set<int> &vectorize_widths, int *vector_width) {
+  LOG_INDENT(0);
+
+  int init_value;
+  if (!ir::IsConstantFor(expr, vector_width, &init_value)) return false;
+  if (init_value != 0) {
+    CINN_DEBUG(3) << "fail, init_val != 0, " << init_value;
+    return false;
+  }
+
+  if (!ir::CollectExprNode<ir::SIMDOpr>(expr).empty()) {
+    CINN_DEBUG(3) << "fail, already have SIMD opr";
+    return false;
+  }
+
+  // check all the expressions in the for-block can represented by SIMD operations.
+  auto *for_ = expr.As<ir::For>();
+  for (auto &basic_expr : for_->body.As<ir::Block>()->body) {
+    if (!BasicExprContainsOnlySIMDReleatedOpr(basic_expr)) {
+      CINN_DEBUG(3) << "fail, detect operation that can't represent by SIMD, " << basic_expr;
+      return false;
+    }
+
+    // check the argument used in the basic expressions.
+    Expr iterator_expr = Expr(for_->iterator);
+    CHECK(iterator_expr.is_var());
+    if (!BasicExprVarsCanPassToSIMD(basic_expr, iterator_expr)) {
+      CINN_DEBUG(3) << "fail, detect variable in the operation can't supported by SIMD, " << basic_expr;
+      return false;
+    }
+  }
+
+  return true;
+}
 }  // namespace optimize
 }  // namespace cinn

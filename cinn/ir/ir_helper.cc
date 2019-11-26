@@ -154,6 +154,7 @@ std::vector<const Var*> CollectVarsFromExpr(const Expr& expr) {
 __(SIMDOpr);
 __(Reference);
 __(Var);
+__(Block);
 #undef __
 
 struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
@@ -343,7 +344,12 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
 };
 
 struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
-  bool Visit(const Expr* a, const Expr* b) override { return a == b || IRVisitorBase::Visit(a, b); }
+  bool Visit(const Expr* a, const Expr* b) override {
+    if (a == b || a->ptr() == b->ptr()) return true;
+    if (!(a->valid() && b->valid()) && (a->valid() || b->valid())) return false;
+    if (a->type() != b->type()) return false;
+    return IRVisitorBase::Visit(a, b);
+  }
 
 #define OP_2PARAM(op__)                                            \
   bool Visit(const ir::op__* a, const Expr* expr) override {       \

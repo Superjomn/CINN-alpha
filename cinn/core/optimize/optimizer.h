@@ -42,16 +42,16 @@ class IrOptimizer : public Optimizer<ir::Expr> {
                   {
                       "nested_block_clean",          //
                       "display_program",             //
-                      "indices_to_absolute_offset",  //
                       "display_program",             //
                       "fold_reference_indices",      //
                       "display_program",             //
                       "vectorize",                   //
+                      "indices_to_absolute_offset",  //
                       "nested_block_clean",          //
                       "display_program",             //
-                      //"temp_variable_fold",          //
-                      "unroll",           //
-                      "display_program",  //
+                                                     //"temp_variable_fold",          //
+                      "unroll",                      //
+                                                     //"display_program",  //
                   })
       : Optimizer(passes) {}
 };
