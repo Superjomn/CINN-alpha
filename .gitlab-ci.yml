@@ -44,6 +44,7 @@ build:server:
         - git config --global user.name "Your Name"
         #- git fetch origin master
         #- git merge --no-ff origin/master
+        - apt-get install libginac-dev -y
         - ./build.sh ci
 
     dependencies:

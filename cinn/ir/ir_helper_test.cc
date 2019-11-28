@@ -111,5 +111,41 @@ TEST(ir, ir_count) {
   ASSERT_EQ(ir::IRCount(assign, a + b), 1);
 }
 
+TEST(ir, ExprToGinacConveter) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Expr a("a", primitive_t::float32);
+  ir::Expr b("b", primitive_t::float32);
+  ir::Expr c("c", primitive_t::float32);
+
+  ExprToGinacConveter conveter;
+  LOG(INFO) << conveter.Repr(a);
+
+  auto ginac_expr = conveter(a + b / c);
+  LOG(INFO) << ginac_expr.expand();
+  // auto repr = GetStreamStr(ginac_expr);
+  LOG(INFO) << "-a: " << (ginac_expr - conveter.CreateGinacSymbol("a")).expand();
+}
+
+TEST(BasicExprIdentityVarScale, test) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Expr a("a", primitive_t::int32);
+  ir::Expr b("b", primitive_t::int32);
+  ir::Expr c("c", primitive_t::int32);
+
+  GiNaC::ex one = 1;
+
+  std::vector<std::pair<ir::Expr, bool>> datas({
+      std::make_pair(a * b + c + Expr(1), true),
+      std::make_pair(a * b + c * 2 + Expr(1), false),
+      std::make_pair(a * b + c * a + Expr(1), false),
+  });
+
+  for (auto& data : datas) {
+    ASSERT_TRUE(BasicExprIdentityVarScale(data.first, c) == data.second);
+  }
+}
+
 }  // namespace ir
 }  // namespace cinn

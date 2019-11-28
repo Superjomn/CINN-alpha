@@ -1,4 +1,5 @@
 #include "cinn/ir/ir_helper.h"
+#include <ginac/ginac.h>
 #include <algorithm>
 #include <memory>
 #include <set>
@@ -10,6 +11,7 @@
 #include "cinn/ir/ir_visitor.h"
 #include "cinn/utils/logging.h"
 #include "cinn/utils/macros.h"
+#include "cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {
@@ -155,6 +157,7 @@ __(SIMDOpr);
 __(Reference);
 __(Var);
 __(Block);
+__(Assign);
 #undef __
 
 struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
@@ -818,6 +821,101 @@ bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value) {
   CINN_DEBUG(2) << "get constant for";
 
   return true;
+}
+
+bool IsBasicExpr(ir::Expr expr) {
+  if (!CollectExprNode<ir::Block>(expr).empty()) return false;
+  if (!CollectExprNode<ir::SIMDOpr>(expr).empty()) return false;
+  if (!CollectExprNode<ir::Assign>(expr).empty()) return false;
+  return true;
+}
+
+bool BasicExprIdentityVarScale(const Expr& expr, const Expr& var_expr) {
+  CHECK(IsBasicExpr(expr));
+  CHECK(var_expr.is_var());
+
+  ExprToGinacConveter converter1;
+  auto expr_ex = converter1(expr);
+  auto var_ex = converter1(var_expr);
+  // Check diff(expr, var) == 1
+  return expr_ex.diff(converter1.CreateGinacSymbol(var_expr), 1) == GiNaC::ex(1);
+}
+
+std::string ExprToGinacConveter::Repr(const Expr& expr) {
+  CHECK(expr.is_reference() || expr.is_var());
+  std::string repr = GetStreamStr(expr);
+  Replace(&repr, "[", "lsq_");
+  Replace(&repr, "]", "_rsq");
+  Replace(&repr, "(", "lb_");
+  Replace(&repr, ")", "_rb");
+  Replace(&repr, "+", "_add_");
+  Replace(&repr, "-", "_sub_");
+  Replace(&repr, "*", "_mul_");
+  Replace(&repr, "/", "_div_");
+  return repr;
+}
+
+void ExprToGinacConveter::RecordExpr(const ir::Expr& expr) {
+  CHECK(expr.is_reference() || expr.is_var());
+  repr_to_expr_[GetStreamStr(expr)].Reset(expr);
+}
+
+GiNaC::ex ExprToGinacConveter::BuildHelper(ir::Expr expr) {
+  switch (expr.type()) {
+    case ir::NodeTy::Reference:
+    case ir::NodeTy::Var: {
+      RecordExpr(expr);
+
+      std::string repr = Repr(expr);
+      return CreateGinacSymbol(repr);
+    }
+    case ir::NodeTy::IntImm: {
+      auto* x = expr.As<ir::IntImm>();
+      return x->val();
+    }
+    case ir::NodeTy::FloatImm: {
+      auto* x = expr.As<ir::FloatImm>();
+      return x->val();
+    }
+    case ir::NodeTy::Add: {
+      auto* node = expr.As<ir::Add>();
+      auto a = BuildHelper(node->a);
+      auto b = BuildHelper(node->b);
+      return a + b;
+    }
+    case ir::NodeTy::Sub: {
+      auto* node = expr.As<ir::Sub>();
+      return BuildHelper(node->a) - BuildHelper(node->b);
+    }
+    case ir::NodeTy::Mul: {
+      auto* node = expr.As<ir::Mul>();
+      return BuildHelper(node->a) * BuildHelper(node->b);
+    }
+    case ir::NodeTy::Div: {
+      auto* node = expr.As<ir::Div>();
+      return BuildHelper(node->a) / BuildHelper(node->b);
+    }
+  }
+}
+
+GiNaC::ex ExprToGinacConveter::operator()(Expr expr) {
+  CHECK(CollectExprNode<ir::Block>(expr).empty()) << "basic math expression should not contain block";
+  CHECK(CollectExprNode<ir::SIMDOpr>(expr).empty());
+  return BuildHelper(expr);
+}
+
+GiNaC::symbol ExprToGinacConveter::CreateGinacSymbol(const std::string& repr) {
+  auto it = repr_to_ginac_.find(repr);
+  if (it != repr_to_ginac_.end()) return it->second;
+
+  GiNaC::symbol x(repr);
+  repr_to_ginac_[repr] = x;
+  return x;
+}
+
+GiNaC::symbol ExprToGinacConveter::CreateGinacSymbol(const ir::Expr& var) {
+  CHECK(var.is_var());
+  return CreateGinacSymbol(Repr(var));
 }
 
 }  // namespace ir
