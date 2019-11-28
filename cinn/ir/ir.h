@@ -93,6 +93,10 @@ class Constant : public ExprNode<Constant> {
 
   std::string __str__() const;
 
+#ifdef As  // disable the As macro included from ginic
+#undef As
+#endif
+
   template <typename T>
   T As() const;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ginac/ginac.h>
 #include <vector>
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ops_overload.h"
@@ -62,6 +63,40 @@ bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value);
 std::ostream& operator<<(std::ostream& os, const ir::Expr& x);
 
 std::ostream& operator<<(std::ostream& os, ir::NodeTy type);
+
+/**
+ * Helper to convert cinn::Expr to GiNaC::expr
+ */
+struct ExprToGinacConveter {
+  GiNaC::ex operator()(Expr expr);
+
+  std::string Repr(const Expr& expr);
+
+  GiNaC::symbol CreateGinacSymbol(const std::string& repr);
+  GiNaC::symbol CreateGinacSymbol(const ir::Expr& var);
+
+ private:
+  GiNaC::ex BuildHelper(ir::Expr expr);
+
+  void RecordExpr(const ir::Expr& expr);
+
+ private:
+  std::map<std::string, ir::Expr> repr_to_expr_;
+  std::map<std::string, GiNaC::symbol> repr_to_ginac_;
+};
+
+/**
+ * Tell whether an expression is a basic expression.
+ * A basic expression is defined as one without any blocks, and contains only the References, Vars and math operations
+ * include + - * / % and so on.
+ */
+bool IsBasicExpr(ir::Expr expr);
+
+/**
+ * Tell whether a expression has the sub-expression and the times is 1.
+ * @return
+ */
+bool BasicExprIdentityVarScale(const Expr& expr, const Expr& var_expr);
 
 }  // namespace ir
 }  // namespace cinn

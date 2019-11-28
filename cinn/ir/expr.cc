@@ -1,6 +1,5 @@
 #include "cinn/ir/expr.h"
 #include "cinn/core/function.h"
-#include "cinn/ir/ir_helper.h"
 
 namespace cinn {
 namespace ir {

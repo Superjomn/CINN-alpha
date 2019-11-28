@@ -33,6 +33,15 @@ static std::string Join(const std::vector<T>& fields,
   return ss.str();
 }
 
+//! Replace a substr 'from' to 'to' in string s.
+static void Replace(std::string* s, const std::string& from, const std::string& to) {
+  size_t pos = 0;
+  while ((pos = s->find(from, pos)) != std::string::npos) {
+    s->replace(pos, from.size(), to);
+    pos += to.length();
+  }
+}
+
 /**
  * Convert a container of some type to a vector of string.
  * @tparam Container container type such as std::vector.

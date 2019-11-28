@@ -78,6 +78,10 @@ class IRHandle {
 
   NodeTy type() const;
 
+#ifdef As  // disable the As macro included from ginic
+#undef As
+#endif
+
   template <typename T>
   const T* As() const;
   template <typename T>
