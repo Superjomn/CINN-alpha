@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdarg.h>  // For va_start, etc.
+#include <algorithm>
 #include <cstring>
 #include <functional>
 #include <memory>
@@ -93,6 +94,12 @@ static std::string StringFormat(const std::string fmt_str, ...) {
 static bool Contains(const std::string& s, const std::string& str) {
   auto it = s.find(str);
   return it != std::string::npos;
+}
+
+template <typename Container, typename T>
+bool Found(const Container& container, const T& val) {
+  return std::end(container) !=
+         std::find_if(std::begin(container), std::end(container), [&](const T& v) { return v == val; });
 }
 
 static std::string Trim(const std::string& s) {

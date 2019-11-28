@@ -136,5 +136,40 @@ TEST(ir, constant) {
   LOG(INFO) << "Tensor: " << ir::Dump(A);
 }
 
+// Test if any of the oprand is SIMD, the opr will be marked SIMD
+TEST(opr, set_simd) {
+  SetGlobalContext(new CINNContext);
+
+  Constant M("M", primitive_t::int32);
+  Constant K("K", primitive_t::int32);
+
+  Expr A({M, K}, primitive_t::float32, "A");
+
+  Var i, j;
+  Expr a = SIMDOpr::make(4, SIMDOpr::Opr::kAdd, A[i][j], A[i][j]);
+  a.set_ctype(composite_t::simd128);
+
+  Expr b = A[i][j];
+
+  EXPECT_TRUE(a.is_simd());
+  EXPECT_TRUE(b.is_primitive());
+
+  Expr add = a + b;
+
+  EXPECT_TRUE(add.is_simd());
+}
+
+TEST(Expr, pass_itype) {
+  Expr A(1.f);
+  A.set_impl_as_address();
+
+  Expr B = A;
+  ASSERT_TRUE(B.is_impl_address());
+
+  auto equal = [](ir::Expr x) { return x; };
+
+  ASSERT_TRUE(equal(B).is_impl_address());
+}
+
 }  // namespace ir
 }  // namespace cinn

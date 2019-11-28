@@ -83,6 +83,7 @@ void IRVisitor::Visit(const Reference *op) {
 }
 
 void IRVisitor::Visit(const Mark *op) {}
+void IRVisitor::Visit(const Identity *op) { Visit(&op->expr); }
 void IRVisitor::Visit(const BufferOpr *op) { Visit(&op->size); }
 void IRVisitor::Visit(const Cast *op) {}
 void IRVisitor::Visit(const Array *op) {}

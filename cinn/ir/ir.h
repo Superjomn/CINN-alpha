@@ -13,8 +13,8 @@
 #include "cinn/utils/name_generator.h"
 
 namespace cinn {
-
 namespace ir {
+
 struct Expr;
 struct Buffer;
 
@@ -229,8 +229,11 @@ class Expr : public IRHandle {
  public:
   Expr() : IRHandle() {}
   Expr(const std::shared_ptr<IRNode>& x) : IRHandle(x) {}
-  Expr(const Expr& n) : IRHandle(n.ptr_) {}
-  Expr(Expr&& other) { ptr_ = std::move(other.ptr_); }
+  Expr(const Expr& n) : IRHandle(n.ptr_), itype_(n.itype_) {}
+  Expr(Expr&& other) {
+    ptr_ = std::move(other.ptr_);
+    itype_ = other.itype_;
+  }
   Expr(const std::string& name, primitive_t dtype = primitive_t::float32) { *this = Expr(Var(name, dtype)); }
 
   Expr Assign(Expr other) const;
@@ -252,7 +255,10 @@ class Expr : public IRHandle {
 
   //! Assign self with another expression.
   //! NOTE Avoid using operator=, it is overloaded in op_overload.h, and will create an Assign Op.
-  void Reset(const Expr& other) { set_ptr(other.ptr()); }
+  void Reset(const Expr& other) {
+    set_ptr(other.ptr());
+    itype_ = other.itype();
+  }
 
   /**
    * Element assignment.
@@ -277,16 +283,16 @@ class Expr : public IRHandle {
   // Expr operator[](std::vector<Expr> iters);
 
   Expr operator()(const std::vector<Expr>& iters);
-
-  bool Equal(const Expr& other) {
-    if (ptr_ == other.ptr_) return true;
-  }
+  operator bool() const { return valid(); }
 
   primitive_t ptype() const { return ptr_->ptype(); }
   void set_ptype(primitive_t type) { ptr_->set_ptype(type); }
 
   composite_t ctype() const { return ptr_->ctype(); }
-  void set_ctype(composite_t type) { ptr_->set_ctype(type); }
+  void set_ctype(composite_t type) {
+    if (is_reference()) CHECK(type == composite_t::primitive) << "reference can only be scalar";
+    ptr_->set_ctype(type);
+  }
 
   bool is_unk() const { return ptr_->is_unk(); }
   bool is_boolean() const { return ptr_->is_boolean(); }
@@ -331,6 +337,7 @@ class Expr : public IRHandle {
   IS_TYPE(function, Function)
   IS_TYPE(block, Block)
   IS_TYPE(mark, Mark)
+  IS_TYPE(identity, Identity)
   IS_TYPE(simd_opr, SIMDOpr)
   IS_TYPE(buffer_opr, BufferOpr)
   IS_TYPE(array, Array)
@@ -353,6 +360,23 @@ class Expr : public IRHandle {
 
   // Inference the dimention indice on the id-th dimention.
   void InferenceIteratorDomain();
+
+  bool is_m128() const { return ptr()->ctype() == composite_t::simd128; }
+  bool is_m256() const { return ptr()->ctype() == composite_t::simd256; }
+  bool is_simd() const { return IsSimdType(ctype()); }
+  bool is_primitive() const { return ptr()->ctype() == composite_t::primitive; }
+
+  impl_detail_t itype() const { return itype_; }
+
+  bool is_impl_normal() const { return itype_ == impl_detail_t::kNormal; }
+  bool is_impl_address() const { return itype_ == impl_detail_t::kAddress; }
+  bool is_impl_reference() const { return itype_ == impl_detail_t::kReference; }
+  void set_impl_as_address() { itype_ = impl_detail_t::kAddress; }
+  void set_impl_as_reference() { itype_ = impl_detail_t::kReference; }
+
+ private:
+  // The itype is a member of Expr, that the same ptr can have different itype.
+  impl_detail_t itype_{impl_detail_t::kNormal};
 };
 
 /**
@@ -501,6 +525,7 @@ class Tensor : public ExprNode<Tensor> {
 };
 
 //-------------------- Arithmetical expressions -------------------------
+
 struct Add : public ExprNode<Add> {
   Expr a, b;
 
@@ -819,6 +844,21 @@ class Mark : public ir::ExprNode<Mark> {
   static const NodeTy node_type = NodeTy::Mark;
 };
 
+class Identity : public ir::ExprNode<Identity> {
+ public:
+  std::string id;
+  ir::Expr expr;
+
+  static Expr make(ir::Expr expr, const std::string& id);
+
+  //! Get expression without Identity.
+  Expr GetTrimedExpr(std::vector<std::string>* ids = nullptr) const;
+
+  bool marked_as_address() const;
+
+  static const NodeTy node_type = NodeTy::Identity;
+};
+
 /**
  * Cast a Expr from the original type to the another type.
  *
@@ -848,6 +888,10 @@ struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
     kSub,
     kMul,
     kDiv,
+    kStore,
+    kLoad,
+    kReduceAdd,
+    kReduceMul,
   };
 
   int vector_width;
@@ -855,9 +899,15 @@ struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
   Expr a, b;
 
   static Expr make(int vector_width, Opr opr, Expr a, Expr b);
+  static Expr make_load(int vector_width, Expr a);
+  // Store b to a(address).
+  static Expr make_store(int vector_width, Expr a, Expr b);
+  static Expr make_reduce_add(int vector_width, Expr a);
 
   static const NodeTy node_type = NodeTy::SIMDOpr;
 };
+
+std::ostream& operator<<(std::ostream& os, SIMDOpr::Opr opr);
 
 /**
  * CallOnce is a block that call only once.

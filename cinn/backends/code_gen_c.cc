@@ -5,6 +5,7 @@
 #include "cinn/backends/x86_simd.h"
 #include "cinn/core/function.h"
 #include "cinn/core/optimize/optimizer.h"
+#include "cinn/core/optimize/vectorize_utils.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_helper.h"
 #include "cinn/utils/logging.h"
@@ -168,7 +169,6 @@ void CompileAsC(const ir::Expr &expr, const std::string &header_file, const std:
   {  // write source file
     C_CodeGen gen(/*is source*/ true);
     gen(expr);
-    LOG(INFO) << "******** after gen expr:\n" << expr;
     gen.WriteToFile(source_file);
   }
 
@@ -184,10 +184,10 @@ void C_CodeGen::Visit(const ir::Let *op) {
   auto simd = [&](composite_t ctype) {
     switch (ctype) {
       case composite_t::simd128:
-        os_ << GlobalContext().x86_simd_128.packed_float_t();
+        os_ << x86::x86_128_simd.packed_float_t();
         break;
       case composite_t::simd256:
-        os_ << GlobalContext().x86_simd_256.packed_float_t();
+        os_ << x86::x86_256_simd.packed_float_t();
         break;
       default:
         NOT_IMPLEMENT
@@ -238,11 +238,11 @@ void C_CodeGen::PrintPType(primitive_t ptype) {
 }
 
 void C_CodeGen::Visit(const ir::SIMDOpr *op) {
-  const X86SIMD *x86_simd{};
+  const x86::X86SIMD *x86_simd{};
   if (op->vector_width == 4) {  // m128
-    x86_simd = &GlobalContext().x86_simd_128;
+    x86_simd = &x86::x86_128_simd;
   } else if (op->vector_width == 8) {
-    x86_simd = &GlobalContext().x86_simd_256;
+    x86_simd = &x86::x86_256_simd;
   }
   CHECK(x86_simd) << "not supported vector width: " << op->vector_width;
 
@@ -259,17 +259,58 @@ void C_CodeGen::Visit(const ir::SIMDOpr *op) {
     case ir::SIMDOpr::Opr::kDiv:
       os_ << x86_simd->div_ps();
       break;
+    case ir::SIMDOpr::Opr::kStore:
+      os_ << x86_simd->store_ps();
+      break;
+    case ir::SIMDOpr::Opr::kLoad:
+      os_ << x86_simd->load_ps();
+      break;
+    default:
+      LOG(FATAL) << "not supported " << op->opr;
   }
 
-  os_ << "(";
+  if (op->opr == ir::SIMDOpr::Opr::kLoad) {
+    os_ << "(";
+    Print(op->a);
+    os_ << ")";
+  } else {
+    os_ << "(";
+    Print(op->a);
+    os_ << ", ";
+    Print(op->b);
+    os_ << ")";
+  }
 
-  Print(op->a);
-  os_ << ", ";
-  Print(op->b);
-  os_ << ")";
+  if (op->opr == ir::SIMDOpr::Opr::kStore) os_ << ";";
 }
 
 void C_CodeGen::Visit(const ir::Cast *op) {
+  if (x86::IsCastSIMDReleated(*op)) {
+    x86::X86SIMD *simd{};
+    composite_t ctype;
+    if (op->is_simd())
+      ctype = op->ctype();
+    else if (op->expr.is_simd())
+      ctype = op->expr.ctype();
+
+    switch (ctype) {
+      case composite_t::simd128:
+        simd = &x86::x86_128_simd;
+        break;
+      case composite_t::simd256:
+        simd = &x86::x86_256_simd;
+        break;
+      default:
+        NOT_IMPLEMENT
+    }
+
+    std::string opr = x86::PrintCastOpr(*op, simd);
+    os_ << opr << "(";
+    Print(op->expr);
+    os_ << ")";
+    return;
+  }
+
   switch (op->ctype()) {
     case composite_t::primitive:
       os_ << "(";
@@ -279,16 +320,8 @@ void C_CodeGen::Visit(const ir::Cast *op) {
       Print(op->expr);
       os_ << ")";
       break;
-    case composite_t::simd128:
-      os_ << "*(" << GlobalContext().x86_simd_128.packed_float_t() << "*)(&";
-      Print(op->expr);
-      os_ << ")";
-      break;
-    case composite_t::simd256:
-      os_ << "*(" << GlobalContext().x86_simd_256.packed_float_t() << "*)(&";
-      Print(op->expr);
-      os_ << ")";
-      break;
+    default:
+      NOT_IMPLEMENT
   }
 }
 
@@ -354,5 +387,34 @@ void C_CodeGen::Visit(const ir::Min *op) {
   Print(op->b);
   os_ << ")";
 }
+
+void C_CodeGen::Visit(const ir::Assign *op) {
+  if (optimize::IsSimdData(op->a) && optimize::IsSimdData(op->b)) {
+    os_ << x86::GlobalX86SIMD(op->b.ctype()).store_ps();
+    os_ << "(&";
+    Print(op->a);
+    os_ << ", ";
+    Print(op->b);
+    os_ << ");";
+  } else if (!op->a.is_simd() && op->b.is_simd()) {
+    Print(op->a);
+    os_ << " = ";
+    os_ << x86::GlobalX86SIMD(op->b.ctype()).custom_reduce_add_ps();  // for default
+    os_ << "(";
+    Print(op->b);
+    os_ << ");";
+    LOG(WARNING) << "to refine here";
+  } else {
+    IRPrinter::Visit(op);
+  }
+}
+
+void C_CodeGen::Visit(const ir::Identity *op) {
+  if (op->marked_as_address()) {
+    os_ << "&";
+  }
+  IRPrinter::Visit(&op->expr);
+}
+
 }  // namespace backends
 }  // namespace cinn

@@ -53,11 +53,23 @@ ir::Expr IRReplace(ir::Expr* source, Expr from, ir::Expr to);
 int IRCount(const Expr& context, const Expr& target);
 
 /**
- * Simplify a IR expression.
+ * Simplify the constant expressions.
  * @param source
  */
 void IRSimplify(ir::Expr* source);
 
+/**
+ * Remove unnecessary Casts.
+ */
+void IRCleanRedundantCasts(ir::Expr* expr);
+
+/**
+ * Tell if this forloop's init, cond and extent are all constant integers.
+ * @param expr
+ * @param num_elements
+ * @param init_value
+ * @return
+ */
 bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value);
 
 std::ostream& operator<<(std::ostream& os, const ir::Expr& x);
@@ -97,6 +109,8 @@ bool IsBasicExpr(ir::Expr expr);
  * @return
  */
 bool BasicExprIdentityVarScale(const Expr& expr, const Expr& var_expr);
+
+bool ReferenceIsAddress(const Expr& expr);
 
 }  // namespace ir
 }  // namespace cinn

@@ -171,13 +171,21 @@ struct SimdArgumentCaster : public ir::IRMutator {
 
 void Vectorize::operator()(int vector_width, ir::Expr *for_expr) {
   LOG_INDENT(0);
-  CHECK(for_expr->is_for_());
+  auto *for_ = for_expr->As<ir::For>();
+  CHECK(for_);
 
   ir::Expr &block_expr = for_expr->As<ir::For>()->body;
   CINN_DEBUG(2) << "vectorize operation";
-  VectorizeOprerations(&block_expr, vector_width);
+  VectorizeOperations(for_expr, vector_width);
   CINN_DEBUG(2) << "result:\n" << *for_expr;
 
+  ir::IRCleanRedundantCasts(for_expr);
+
+  // CINN_DEBUG(2) << "add simd cast";
+  // AddNecessaryCastForSimdData(&block_expr, for_->iterator, vector_width);
+  // CINN_DEBUG(2) << "result:\n" << *for_expr;
+
+  /*
   auto simd_refs = CollectSimdReferences(block_expr);
   CHECK(!simd_refs.empty());
   CINN_DEBUG(2) << "collected simd references: " << simd_refs.size();
@@ -189,6 +197,7 @@ void Vectorize::operator()(int vector_width, ir::Expr *for_expr) {
   ReplaceSimdArgument(ref_to_vars, &block_expr);
   CINN_DEBUG(2) << "result:\n" << *for_expr;
 
+   */
   ReplaceForIterToZero(for_expr);
 
   CINN_DEBUG(2) << "remove for";
@@ -225,64 +234,125 @@ void Vectorize::RemoveForloop(ir::Expr *for_expr) {
   CHECK(for_expr->is_block());
 }
 
-void Vectorize::VectorizeOprerations(ir::Expr *block_expr, int vector_width) {
+void CastSimdBasicExprOprArgument(ir::Expr *expr) {
+  CHECK(expr->is_impl_normal());
+  auto *op = expr->As<ir::SIMDOpr>();
+  CHECK(op);
+
+  // make an expression to a SIMD data.
+  auto cast_argumet_for_simd_opr = [&](ir::Expr *a, composite_t simd_type) {
+    CHECK(IsSimdType(simd_type));
+    if (a->is_primitive()) {
+      auto cast = ir::Cast::make(*a, a->ptype(), simd_type);
+      a->Reset(cast);
+    } else if (a->is_simd()) {
+      return;
+    } else {
+      NOT_IMPLEMENT
+    }
+  };
+
+  switch (op->opr) {
+    case ir::SIMDOpr::Opr::kAdd:
+    case ir::SIMDOpr::Opr::kSub:
+    case ir::SIMDOpr::Opr::kMul:
+    case ir::SIMDOpr::Opr::kDiv:
+      cast_argumet_for_simd_opr(&op->a, op->ctype());
+      cast_argumet_for_simd_opr(&op->b, op->ctype());
+      break;
+    default:
+      NOT_IMPLEMENT
+  }
+}
+
+void Vectorize::VectorizeOperations(ir::Expr *block_expr, int vector_width) {
   struct Mutator : public ir::IRMutator {
-    bool inside_reference_ = false;
     int vector_width;
+    ir::Expr iterator;
 
     explicit Mutator(int vector_width) : vector_width(vector_width) {}
-    void operator()(ir::Expr *expr) { Visit(expr, expr); }
+    void operator()(ir::Expr *expr) {
+      auto *for_ = expr->As<ir::For>();
+      CHECK(for_);
+      iterator = for_->iterator;
+      Visit(expr, expr);
+    }
 
    private:
     void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
 
     void Visit(const ir::Add *op, ir::Expr *expr) override {
-      if (!inside_reference_) {
-        Vectorize(expr);
-        ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-      } else {
-        ir::IRMutator::Visit(op, expr);
-      }
-    }
-    void Visit(const ir::Sub *op, ir::Expr *expr) override {
-      if (!inside_reference_) {
-        Vectorize(expr);
-        ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-      } else {
-        ir::IRMutator::Visit(op, expr);
-      }
-    }
-    void Visit(const ir::Mul *op, ir::Expr *expr) override {
-      if (!inside_reference_) {
-        Vectorize(expr);
-        ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-      } else {
-        ir::IRMutator::Visit(op, expr);
-      }
-    }
-    void Visit(const ir::Div *op, ir::Expr *expr) override {
-      if (!inside_reference_) {
-        Vectorize(expr);
-        ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
-      } else {
-        ir::IRMutator::Visit(op, expr);
-      }
-    }
-    void Visit(const ir::Reference *op, ir::Expr *expr) override {
-      inside_reference_ = true;
-      ir::IRMutator::Visit(op, expr);
-      inside_reference_ = false;
+      auto *node = expr->As<ir::Add>();
+      ir::IRMutator::Visit(&node->a, &node->a);
+      ir::IRMutator::Visit(&node->b, &node->b);
+      DoVectorize(expr);
+      // ir::IRMutator::Visit(expr->As<ir::SIMDOpr>(), expr);
     }
 
-    void Vectorize(Expr *expr) {
+    void Visit(const ir::Sub *op, ir::Expr *expr) override {
+      auto *node = expr->As<ir::Sub>();
+      ir::IRMutator::Visit(&node->a, &node->a);
+      ir::IRMutator::Visit(&node->b, &node->b);
+      DoVectorize(expr);
+    }
+    void Visit(const ir::Mul *op, ir::Expr *expr) override {
+      auto *node = expr->As<ir::Mul>();
+      ir::IRMutator::Visit(&node->a, &node->a);
+      ir::IRMutator::Visit(&node->b, &node->b);
+      DoVectorize(expr);
+    }
+    void Visit(const ir::Div *op, ir::Expr *expr) override {
+      auto *node = expr->As<ir::Div>();
+      ir::IRMutator::Visit(&node->a, &node->a);
+      ir::IRMutator::Visit(&node->b, &node->b);
+      DoVectorize(expr);
+    }
+    void Visit(const ir::Assign *op, ir::Expr *expr) override {
+      LOG(INFO) << "visiting assign" << *expr;
+      if (IsReferenceExprSIMDLoadable(op->a, iterator)) {
+        auto *store = expr->As<ir::Assign>();
+        Visit(&store->a, &store->a);
+        Visit(&store->b, &store->b);
+
+        LOG(INFO) << "make assign a simd " << op->a;
+        Expr a = ir::Identity::make(op->a, expr_ids::reference_address);
+        Expr simd_store = ir::SIMDOpr::make_store(vector_width, a, store->b);
+        expr->Reset(simd_store);
+      } else {
+        ir::IRMutator::Visit(op, expr);
+      }
+    }
+
+    void Visit(const ir::Reference *op, ir::Expr *expr) override {}
+    void Visit(const ir::SIMDOpr *op, ir::Expr *expr) override {
+      auto *node = expr->As<ir::SIMDOpr>();
+      Visit(&node->a, &node->a);
+      Visit(&node->b, &node->b);
+    }
+
+    void DoVectorize(Expr *expr) {
       LOG_INDENT(6);
       CINN_DEBUG(2) << "*********** Vectorize " << *expr;
       CHECK_GT(vector_width, 1);
+      LOG(INFO) << "to vectorize expr: " << *expr;
+
+      auto cast_argument_to_simd = [&](ir::Expr a, composite_t simd_type, ir::Expr iterator) -> ir::Expr {
+        if (!a.is_simd()) {
+          if (BasicExprVarsCanPassToSIMD(a, iterator)) {
+            a.Reset(ir::Identity::make(a, expr_ids::reference_address));
+          }
+          return ir::Cast::make(a, a.ptype(), simd_type);
+        }
+        return a;
+      };
+
       switch (expr->type()) {
-#define __(op__)                                                                      \
-  case ir::NodeTy::op__: {                                                            \
-    auto *op = expr->As<ir::op__>();                                                  \
-    *expr = ir::SIMDOpr::make(vector_width, ir::SIMDOpr::Opr::k##op__, op->a, op->b); \
+#define __(op__)                                                                   \
+  case ir::NodeTy::op__: {                                                         \
+    auto *op = expr->As<ir::op__>();                                               \
+    auto a = cast_argument_to_simd(op->a, ToSimdType(vector_width), iterator);     \
+    auto b = cast_argument_to_simd(op->b, ToSimdType(vector_width), iterator);     \
+    expr->Reset(ir::SIMDOpr::make(vector_width, ir::SIMDOpr::Opr::k##op__, a, b)); \
   } break;
         __(Add)
         __(Sub)
@@ -293,12 +363,50 @@ void Vectorize::VectorizeOprerations(ir::Expr *block_expr, int vector_width) {
           LOG(ERROR) << "unsupported " << expr->type();
       }
 
-      LOG(INFO) << "after vectorize " << *expr;
+      LOG(INFO) << "************* vectorize to " << *expr;
     }
   };
 
   Mutator mutator(vector_width);
   mutator(block_expr);
+}
+
+void AddSimdCast(Expr *expr) {
+  struct Mutator : public ir::IRMutator {
+    void Visit(const ir::Expr *expr, ir::Expr *op) override { IRMutator::Visit(expr, op); }
+
+    void Visit(const ir::SIMDOpr *expr, ir::Expr *op) override {
+      auto *node = op->As<ir::SIMDOpr>();
+      AddCast(node);
+      IRMutator::Visit(expr, op);
+    }
+
+    void Visit(const ir::Reference *expr, ir::Expr *op) override {}
+
+    void AddCast(ir::SIMDOpr *node) {
+      auto cast_argument_to_simd = [&](ir::Expr a, composite_t simd_type) -> ir::Expr {
+        if (!a.is_simd()) {
+          return ir::Cast::make(a, a.ptype(), simd_type);
+        }
+        return a;
+      };
+
+      switch (node->opr) {
+        case ir::SIMDOpr::Opr::kAdd:
+        case ir::SIMDOpr::Opr::kSub:
+        case ir::SIMDOpr::Opr::kMul:
+        case ir::SIMDOpr::Opr::kDiv:
+          node->a.Reset(cast_argument_to_simd(node->a, node->ctype()));
+          node->b.Reset(cast_argument_to_simd(node->b, node->ctype()));
+          break;
+        default:
+          NOT_IMPLEMENT
+      }
+    }
+  };
+
+  auto *node = expr->As<ir::SIMDOpr>();
+  if (!node) return;
 }
 
 void Vectorize::ReplaceForIterToZero(ir::Expr *for_expr) {
@@ -388,5 +496,89 @@ bool Vectorizable(const Expr &expr, const std::set<int> &vectorize_widths, int *
 
   return true;
 }
+
+void CastAssignLeftSimdArgument(ir::Expr *expr) {
+  auto *op = expr->As<ir::Assign>();
+  CHECK(op);
+  CHECK(op->a.is_simd());
+  CHECK(!op->b.is_simd());
+  CHECK(op->b.is_primitive());
+  // argument a is a SIMD
+  // argument b is a scalar
+  auto cast = ir::Cast::make(op->b, op->a.ptype(), op->a.ctype());
+  op->b.Reset(cast);
+}
+
+void CastAssignRightSimdArgument(ir::Expr *expr) {
+  auto *op = expr->As<ir::Assign>();
+  CHECK(op);
+  CHECK(op->a.is_primitive());
+  CHECK(op->b.is_simd());
+  CHECK(op->a.ptype() == op->b.ptype());
+
+  auto cast = ir::Cast::make(op->b, op->b.ptype(), composite_t::primitive);
+  op->b.Reset(cast);
+}
+
+bool IsReferenceExprSIMDLoadable(const Expr &expr, ir::Expr iterator) {
+  auto *reference = expr.As<ir::Reference>();
+  CHECK(reference);
+  CHECK(!reference->iterators.empty());
+  // check that this argument is a valid SIMD Opr argument.
+  for (int i = 0; i < reference->iterators.size() - 1; i++) {
+    // A[.. i ..] can not cast to SIMD in i-th forloop.
+    if (ir::BasicExprIdentityVarScale(reference->iterators[i], iterator)) return false;
+  }
+  // Check the last indice is something like 1 + i, with coefficient of i is 1
+  return ir::BasicExprIdentityVarScale(reference->iterators.back(), iterator);
+}
+
+bool IsSimdData(ir::Expr expr) {
+  if (expr.is_simd()) return true;
+
+  std::vector<std::string> ids;
+  auto *identity = expr.As<ir::Identity>();
+  if (!identity) return false;
+  identity->GetTrimedExpr(&ids);
+  return Found(ids, std::string(expr_ids::reference_address));
+}
+
+void Vectorize::AddNecessaryCastForSimdData(ir::Expr *block_expr, ir::Expr iterator, int vector_width) {
+  auto *block = block_expr->As<ir::Block>();
+  CHECK(block);
+
+  AddSimdCast(block_expr);
+  return;
+
+  for (auto &expr : block->body) {
+    auto *assign = expr.As<ir::Assign>();
+    auto *simd_opr = expr.As<ir::SIMDOpr>();
+
+    // CHECK(BasicExprContainsOnlySIMDReleatedOpr(expr))
+    //<< "the expressions in the block should all can be cast to SIMD, or this forloop should not be vectorized";
+
+    if (assign) {
+      if (assign->a.is_simd() && !assign->b.is_simd()) {
+        CastAssignLeftSimdArgument(&expr);
+      } else if (!assign->a.is_simd() && assign->b.is_simd()) {
+        CastAssignRightSimdArgument(&expr);
+      }
+    } else if (simd_opr) {
+      switch (simd_opr->opr) {
+        case ir::SIMDOpr::Opr::kAdd:
+        case ir::SIMDOpr::Opr::kSub:
+        case ir::SIMDOpr::Opr::kMul:
+        case ir::SIMDOpr::Opr::kDiv:
+          CastSimdBasicExprOprArgument(&expr);
+          break;
+        default:
+          NOT_IMPLEMENT
+      }
+    } else {
+      NOT_IMPLEMENT
+    }
+  }
+}
+
 }  // namespace optimize
 }  // namespace cinn

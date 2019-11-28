@@ -88,6 +88,7 @@ class IRPrinter : public IRVisitor {
   void Visit(const Array *op) override;
 
   void Visit(const Mark *op) override;
+  void Visit(const Identity *op) override;
   void Visit(const SIMDOpr *op) override;
   void Visit(const Cast *op) override;
 

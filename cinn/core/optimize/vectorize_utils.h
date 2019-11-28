@@ -35,6 +35,22 @@ bool BasicExprContainsOnlySIMDReleatedOpr(const Expr &expr);
  */
 bool BasicExprVarsCanPassToSIMD(const Expr &basic_expr, const Expr &iterator);
 
+//! Cast the argument of an assign expression, whose left argument is a SIMD opr, the right argument is a scalar.
+//! e.g. __m128 a = 1 will be casted to __m128 a = cast<simd>(1).
+void CastAssignLeftSimdArgument(ir::Expr *expr);
+
+//! Cast the argument of an assign expression, whose right argument is a SIMD opr, while the left argument is a scalar.
+//! e.g. "float a = __m128_val" will be casted to "float a = simd_reduce(__m128_val).
+void CastAssignRightSimdArgument(ir::Expr *expr);
+
+//! cast arguments for SIMD oprations + - * /
+void CastSimdBasicExprOprArgument(ir::Expr *expr);
+
+//! is the reference can be casted to a SIMD from its address.
+bool IsReferenceExprSIMDLoadable(const Expr &expr, ir::Expr iterator);
+
+bool IsSimdData(ir::Expr expr);
+
 /**
  * Vectorize this for expression.
  * It will perform following operations:
@@ -56,7 +72,9 @@ class Vectorize {
    *    Add(expression) to SIMDOpr::Add
    */
 
-  static void VectorizeOprerations(ir::Expr *block_expr, int vector_width);
+  static void VectorizeOperations(ir::Expr *block_expr, int vector_width);
+
+  static void AddNecessaryCastForSimdData(ir::Expr *block_expr, ir::Expr iterator, int vector_width);
 
   /**
    * Collect the references used as SIMD arguments.

@@ -55,7 +55,11 @@ class IRNode : public std::enable_shared_from_this<IRNode> {
 
   bool is_unk() const { return ptype() == primitive_t::unk; }
   bool is_boolean() const { return ptype() == primitive_t::boolean; }
-  bool is_m128() const { return ctype_ == composite_t::simd128; }
+
+  bool is_m128() const { return ctype() == composite_t::simd128; }
+  bool is_m256() const { return ctype() == composite_t::simd256; }
+  bool is_simd() const { return is_m128() || is_m256(); }
+  bool is_primitive() const { return ctype() == composite_t::primitive; }
 
   virtual ~IRNode() = default;
 

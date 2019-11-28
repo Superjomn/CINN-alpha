@@ -65,4 +65,31 @@ std::ostream &operator<<(std::ostream &os, composite_t t) {
   }
 }
 
+composite_t ToSimdType(int vector_width) {
+  switch (vector_width) {
+    case 4:
+      return composite_t::simd128;
+    case 8:
+      return composite_t::simd256;
+    default:
+      NOT_IMPLEMENT
+  }
+}
+
+std::ostream &operator<<(std::ostream &os, impl_detail_t t) {
+  switch (t) {
+    case impl_detail_t::kNormal:
+      os << "normal";
+      break;
+    case impl_detail_t::kAddress:
+      os << "address";
+      break;
+    case impl_detail_t::kReference:
+      os << "reference";
+      break;
+  }
+}
+
+const char *expr_ids::reference_address = "reference_address";
+
 }  // namespace cinn
