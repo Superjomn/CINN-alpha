@@ -16,20 +16,6 @@
 namespace cinn {
 namespace ir {
 
-Expr Add::make(Expr a, Expr b) {
-  CHECK(a.valid()) << "Expr a not defined";
-  CHECK(b.valid()) << "Expr b not defined";
-  CHECK(!a.is_unk());
-  CHECK(!b.is_unk());
-  auto node = std::make_shared<Add>();
-  node->a = a;
-  node->b = b;
-
-  CHECK_EQ(a.ptype(), b.ptype());
-  node->set_ptype(a.ptype());
-  return Expr(node);
-}
-
 //-------------------- Logical expressions -------------------------
 Expr EQ::make(Expr a, Expr b) {
   CHECK(a.valid()) << "Expr a not defined";
@@ -86,17 +72,42 @@ Expr Mod::make(Expr a, Expr b) {
   return Expr(node);
 }
 
-Expr Sub::make(Expr a, Expr b) {
-  CHECK(a.valid());
-  CHECK(b.valid());
-  auto node = std::make_shared<Sub>();
-  node->a = std::move(a);
-  node->b = std::move(b);
-  CHECK_EQ(node->a.ptype(), node->b.ptype());
-  CHECK(!node->a.is_unk());
-  node->set_ptype(node->a.ptype());
-  return Expr(node);
+//! + - * /
+template <typename T>
+Expr MakeMathExpr(Expr a, Expr b) {
+  CHECK(a.valid()) << "Expr a not defined";
+  CHECK(b.valid()) << "Expr b not defined";
+  CHECK(!a.is_unk());
+  CHECK(!b.is_unk());
+  // CHECK(a.is_primitive()) << "a should be a scalar, get " << a.ctype();
+  // CHECK(b.is_primitive()) << "b should be a scalar, get "<< b.ctype();
+
+  auto node = std::make_shared<T>();
+  node->a = a;
+  node->b = b;
+
+  CHECK_EQ(a.ptype(), b.ptype());
+  node->set_ptype(a.ptype());
+  auto expr = Expr(node);
+  SetOprSimdIfAnyOprandIsSimd(&expr, node->a, node->b);
+  return expr;
 }
+
+// Set the operation as SIMD if any of its oprands is SIMD data.
+void SetOprSimdIfAnyOprandIsSimd(ir::Expr *op, ir::Expr &a, ir::Expr &b) {
+  if (a.is_simd() && b.is_simd()) {
+    CHECK_EQ(a.ctype(), b.ctype());
+  }
+  if (a.is_simd() || b.is_simd()) op->set_ctype(a.ctype());
+}
+
+Expr Add::make(Expr a, Expr b) { return MakeMathExpr<Add>(a, b); }
+
+Expr Sub::make(Expr a, Expr b) { return MakeMathExpr<Sub>(a, b); }
+
+Expr Mul::make(Expr a, Expr b) { return MakeMathExpr<Mul>(a, b); }
+
+Expr Div::make(Expr a, Expr b) { return MakeMathExpr<Div>(a, b); }
 
 Expr Min::make(Expr a, Expr b) {
   CHECK(a.valid());
@@ -237,32 +248,6 @@ int64_t Constant::int_val() const {
     case primitive_t::int64:
       return int64_val_;
   }
-}
-
-Expr Mul::make(Expr a, Expr b) {
-  CHECK(a.valid()) << "Mul a not defined";
-  CHECK(b.valid()) << "Mul b not defined";
-
-  auto node = std::make_shared<Mul>();
-  node->a = std::move(a);
-  node->b = std::move(b);
-  CHECK_EQ(node->a.ptype(), node->b.ptype());
-  CHECK(!node->a.is_unk());
-  node->set_ptype(node->a.ptype());
-  return Expr(node);
-}
-
-Expr Div::make(Expr a, Expr b) {
-  CHECK(a.valid()) << "Div a not defined";
-  CHECK(b.valid()) << "Div b not defined";
-
-  auto node = std::make_shared<Div>();
-  node->a = std::move(a);
-  node->b = std::move(b);
-  CHECK_EQ(node->a.ptype(), node->b.ptype());
-  CHECK(!node->a.is_unk());
-  node->set_ptype(node->a.ptype());
-  return Expr(node);
 }
 
 Expr LT::make(Expr a, Expr b) {
@@ -738,6 +723,27 @@ isl::set BuildDomainFromExprWithDimension(const std::vector<Expr> &exprs, const 
 
 std::string GenIndexedIteratorName(int id) { return StringFormat("ii%d", id); }
 
+std::ostream &operator<<(std::ostream &os, SIMDOpr::Opr opr) {
+  switch (opr) {
+#define __(type__)              \
+  case SIMDOpr::Opr::k##type__: \
+    os << "simd-" #type__;      \
+    return os;
+
+    __(Add);
+    __(Sub);
+    __(Mul);
+    __(Div);
+    __(Store);
+    __(Load);
+    __(ReduceAdd);
+    default:
+      NOT_IMPLEMENT
+
+#undef __
+  }
+}
+
 std::string Interval::__str__() const {
   std::stringstream ss;
   ss << "Interval";
@@ -806,22 +812,101 @@ Expr Array::make(Expr size, primitive_t ptype, const std::string &name) {
 
 Expr SIMDOpr::make(int vector_width, SIMDOpr::Opr opr, Expr a, Expr b) {
   auto node = std::make_shared<SIMDOpr>();
+  CHECK(vector_width == 4 || vector_width == 8);
+
+  switch (opr) {
+    case Opr::kAdd:
+    case Opr::kSub:
+    case Opr::kMul:
+    case Opr::kDiv:
+
+      node->vector_width = vector_width;
+      node->opr = opr;
+      node->a = a;
+      node->b = b;
+      node->set_ptype(node->a.ptype());
+      if (node->vector_width == 4)
+        node->set_ctype(composite_t::simd128);
+      else if (node->vector_width == 8)
+        node->set_ctype(composite_t::simd256);
+      else
+        NOT_IMPLEMENT
+
+      return Expr(node);
+
+    case Opr::kStore:
+      return make_store(vector_width, a, b);
+    case Opr::kLoad:
+      return make_load(vector_width, a);
+    default:
+      NOT_IMPLEMENT
+  }
+
+  // CHECK(a.is_simd()) << "both oprand of SIMD should be SIMD too, get " << a;
+  // CHECK(b.is_simd()) << "both oprand of SIMD should be SIMD too, get " << b;
+}
+
+Expr SIMDOpr::make_load(int vector_width, Expr a) {
+  CHECK(a.is_impl_normal());
+  CHECK(a.is_primitive());
+
+  auto node = std::make_shared<SIMDOpr>();
+  node->opr = Opr::kLoad;
+  node->set_ptype(a.ptype());
+  node->a = a;
   node->vector_width = vector_width;
-  node->opr = opr;
+  a.set_impl_as_address();
+  node->opr = SIMDOpr::Opr::kLoad;
+
+  // set ctype
+  switch (vector_width) {
+    case 4:
+      node->set_ctype(composite_t::simd128);
+      break;
+    case 8:
+      node->set_ctype(composite_t::simd256);
+      break;
+    default:
+      NOT_IMPLEMENT
+  }
+
+  return Expr(node);
+}
+
+Expr SIMDOpr::make_store(int vector_width, Expr a, Expr b) {
+  CHECK(a.valid());
+  CHECK(b.valid());
+  CHECK(b.is_impl_normal());
+  CHECK(b.is_simd());
+  CHECK(a.ptype() == b.ptype());
+
+  auto node = std::make_shared<SIMDOpr>();
+  node->opr = Opr::kStore;
   node->a = a;
   node->b = b;
-  node->set_ptype(node->a.ptype());
-  if (node->vector_width == 4)
-    node->set_ctype(composite_t::simd128);
-  else if (node->vector_width == 8)
-    node->set_ctype(composite_t::simd256);
-  else
-    NOT_IMPLEMENT
+  node->vector_width = vector_width;
+  node->set_ptype(b.ptype());
+  node->set_ctype(ToSimdType(vector_width));
+  return Expr(node);
+}
+
+Expr SIMDOpr::make_reduce_add(int vector_width, Expr a) {
+  CHECK(a.is_simd());
+  CHECK(a.is_impl_normal());
+
+  auto node = std::make_shared<SIMDOpr>();
+  node->opr = Opr::kReduceAdd;
+  node->a = a;
+  node->set_ptype(a.ptype());
+  node->set_ctype(composite_t::primitive);
+  node->vector_width = vector_width;
   return Expr(node);
 }
 
 Expr Cast::make(Expr expr, primitive_t type, composite_t ctype) {
   CHECK(CheckPTypeCastable(expr.ptype(), type));
+  CHECK(!(expr.ptype() == type && expr.ctype() == ctype)) << "no necessary cast found";
+  CHECK_NE(type, primitive_t::unk);
   auto node = std::make_shared<Cast>();
   node->expr = expr;
   node->set_ptype(type);
@@ -834,6 +919,29 @@ Expr Mark::make(const std::string &content) {
   node->content = content;
   return Expr(node);
 }
+
+Expr Identity::make(ir::Expr expr, const std::string &id) {
+  auto node = std::make_shared<Identity>();
+  node->expr = expr;
+  node->id = id;
+  node->set_ptype(expr.ptype());
+  node->set_ctype(expr.ctype());
+  return Expr(node);
+}
+
+Expr Identity::GetTrimedExpr(std::vector<std::string> *ids) const {
+  if (ids) ids->push_back(id);
+  Expr result = expr;
+  auto *e = expr.As<ir::Identity>();
+  while (e) {
+    if (ids) ids->push_back(e->id);
+    e = e->expr.As<ir::Identity>();
+    result = e->expr;
+  }
+  return result;
+}
+
+bool Identity::marked_as_address() const { return id == expr_ids::reference_address; }
 
 Expr CallOnce::make(Expr block) {
   auto node = std::make_shared<CallOnce>();

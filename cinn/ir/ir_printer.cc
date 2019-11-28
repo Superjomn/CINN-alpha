@@ -435,6 +435,11 @@ void IRPrinter::Visit(const BufferOpr *op) {
 }
 
 void IRPrinter::Visit(const Mark *op) { os_ << "// " << op->content; }
+void IRPrinter::Visit(const Identity *op) {
+  os_ << "#" << op->id << "(";
+  Print(op->expr);
+  os_ << ")";
+}
 
 void IRPrinter::Visit(const Array *op) {
   os_ << op->name << "<";
@@ -456,11 +461,23 @@ void IRPrinter::Visit(const SIMDOpr *op) {
     case ir::SIMDOpr::Opr::kDiv:
       os_ << "simd_div_" << op->vector_width << "(";
       break;
+    case ir::SIMDOpr::Opr::kLoad:
+      os_ << "simd_load" << op->vector_width << "(";
+      break;
+    case ir::SIMDOpr::Opr::kStore:
+      os_ << "simd_store" << op->vector_width << "(";
+      break;
   }
-  Print(op->a);
-  os_ << ", ";
-  Print(op->b);
-  os_ << ")";
+
+  if (op->opr == ir::SIMDOpr::Opr::kLoad) {
+    Print(op->a);
+    os_ << ")";
+  } else {
+    Print(op->a);
+    os_ << ", ";
+    Print(op->b);
+    os_ << ")";
+  }
 }
 
 void IRPrinter::Visit(const Cast *op) {

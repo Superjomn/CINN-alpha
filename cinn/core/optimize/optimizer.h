@@ -49,9 +49,9 @@ class IrOptimizer : public Optimizer<ir::Expr> {
                       "indices_to_absolute_offset",  //
                       "nested_block_clean",          //
                       "display_program",             //
-                                                     //"temp_variable_fold",          //
-                      "unroll",                      //
-                                                     //"display_program",  //
+                      //"temp_variable_fold",          //
+                      "unroll",  //
+                                 //"display_program",  //
                   })
       : Optimizer(passes) {}
 };

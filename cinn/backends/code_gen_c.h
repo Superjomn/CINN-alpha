@@ -71,6 +71,8 @@ class C_CodeGen : public ir::IRPrinter {
   void Visit(const ir::Cast* op) override;
   void Visit(const ir::Max* op) override;
   void Visit(const ir::Min* op) override;
+  void Visit(const ir::Assign* op) override;
+  void Visit(const ir::Identity* op) override;
 
  private:
   /**

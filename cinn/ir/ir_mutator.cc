@@ -139,5 +139,10 @@ void IRMutator::Visit(const CallOnce* op, Expr* expr) {
   Visit(&node->block, &node->block);
 }
 
+void IRMutator::Visit(const Identity* p, Expr* expr) {
+  auto* node = expr->As<Identity>();
+  Visit(&node->expr, &node->expr);
+}
+
 }  // namespace ir
 }  // namespace cinn

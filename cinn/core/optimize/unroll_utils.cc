@@ -33,9 +33,9 @@ void Unroller::Convert(ir::Expr *for_expr) {
     ir::IRReplace(&block, for_->iterator, Expr(cur_val));
     // we create a if-else with condition always be true to force add a block to hold the local variables.
     // the real compiler should optimize the redundantion well.
-    ir::Expr fake_ifelse = ir::IfThenElse::make(ir::Expr(true), block);
+    // ir::Expr fake_ifelse = ir::IfThenElse::make(ir::Expr(true), block);
 
-    blocks.push_back(fake_ifelse);
+    blocks.push_back(block);
   }
 
   ir::Expr new_block = ir::Block::make(std::move(blocks));

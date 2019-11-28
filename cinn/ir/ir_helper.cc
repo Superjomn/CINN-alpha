@@ -168,13 +168,13 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     ir::Expr a, b;                               \
     Visit(&op->a, &a);                           \
     Visit(&op->b, &b);                           \
-    *to = ir::op__::make(a, b);                  \
+    to->Reset(ir::op__::make(a, b));             \
   }
 #define OP_1PARAM(op__)                          \
   void Visit(const ir::op__* op, ir::Expr* to) { \
     ir::Expr a;                                  \
     Visit(&op->a, &a);                           \
-    *to = ir::op__::make(a);                     \
+    to->Reset(ir::op__::make(a));                \
   }
 
   OP_2PARAM(Add);
@@ -272,7 +272,7 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
       Visit(&iter, &i);
       iters.emplace_back(i);
     }
-    *to = Reference::make(target, std::move(iters));
+    to->Reset(Reference::make(target, std::move(iters)));
   }
   void Visit(const Call* op, Expr* to) override {
     std::vector<Expr> iters;
@@ -309,6 +309,11 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     *to = Allocate::make(op->buffer_name, size, op->dtype);
   }
   void Visit(const Mark* op, Expr* to) override { *to = Mark::make(op->content); }
+  void Visit(const Identity* op, Expr* to) override {
+    Expr expr;
+    Visit(&op->expr, &expr);
+    *to = Identity::make(expr, op->id);
+  }
   void Visit(const BufferOpr* op, Expr* to) override {
     Expr size;
     Visit(&op->size, &size);
@@ -331,6 +336,8 @@ struct IRCopy : public IRVisitorBase<void, ir::Expr*> {
     Expr a, b;
     Visit(&op->a, &a);
     Visit(&op->b, &b);
+    CHECK(a);
+    CHECK(b);
     *to = SIMDOpr::make(op->vector_width, op->opr, a, b);
   }
   void Visit(const Module* op, Expr* to) override {
@@ -531,6 +538,12 @@ struct IREqualTeller : public IRVisitorBase<bool, const ir::Expr*> {
     auto* b = expr->As<Mark>();
     if (a == b) return true;
     return a->content == b->content;
+  }
+
+  bool Visit(const Identity* a, const Expr* expr) override {
+    auto* b = expr->As<Identity>();
+    if (a == b) return true;
+    return a->id == b->id && Visit(&a->expr, &b->expr);
   }
 
   bool Visit(const Cast* a, const Expr* expr) override {
@@ -779,7 +792,7 @@ int IRCount(const Expr& context, const Expr& target) {
 }
 
 bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value) {
-  LOG_INDENT(0);
+  LOG_INDENT(6);
   CHECK(expr.is_for_());
   CINN_DEBUG(2) << "checking for\n" << expr;
   auto& for_ = *expr.As<ir::For>();
@@ -823,6 +836,25 @@ bool IsConstantFor(const ir::Expr& expr, int* num_elements, int* init_value) {
   return true;
 }
 
+void IRCleanRedundantCasts(ir::Expr* expr) {
+  struct IRCleanRedundantCastsMutator : public ir::IRMutator {
+    void Visit(const ir::Expr* expr, ir::Expr* op) override { IRMutator::Visit(expr, op); }
+
+    void Visit(const Cast* op, Expr* expr) override {
+      if (op->ctype() == op->expr.ctype() && op->ptype() == op->expr.ptype()) {
+        LOG(INFO) << "xxxxxxxx clean " << *expr;
+        expr->Reset(op->expr);
+        IRMutator::Visit(expr, expr);
+      } else {
+        auto* node = expr->As<ir::Cast>();
+        Visit(&node->expr, &node->expr);
+      }
+    }
+  };
+
+  IRCleanRedundantCastsMutator mutator;
+  mutator.Visit(expr, expr);
+}
 bool IsBasicExpr(ir::Expr expr) {
   if (!CollectExprNode<ir::Block>(expr).empty()) return false;
   if (!CollectExprNode<ir::SIMDOpr>(expr).empty()) return false;
@@ -916,6 +948,12 @@ GiNaC::symbol ExprToGinacConveter::CreateGinacSymbol(const std::string& repr) {
 GiNaC::symbol ExprToGinacConveter::CreateGinacSymbol(const ir::Expr& var) {
   CHECK(var.is_var());
   return CreateGinacSymbol(Repr(var));
+}
+
+bool ReferenceIsAddress(const Expr& expr) {
+  auto* identity = expr.As<ir::Identity>();
+  if (!identity) return false;
+  return identity->marked_as_address();
 }
 
 }  // namespace ir

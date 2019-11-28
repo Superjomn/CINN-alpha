@@ -40,6 +40,21 @@ enum class composite_t : int {
   simd256,
 };
 
+enum class impl_detail_t {
+  kNormal = 0,
+  kReference = 1,
+  kAddress = 2,
+};
+
+//! Predifined expression ids used in ir::Identity.
+struct expr_ids {
+  //! Mark that a expr is used as address.
+  static const char* reference_address;
+};
+
+static bool IsSimdType(composite_t x) { return x == composite_t::simd128 || x == composite_t::simd256; }
+composite_t ToSimdType(int vector_width);
+
 //! Get a string representation of a primitive type.
 static std::string ptype_to_str(primitive_t type) {
   switch (type) {
@@ -70,6 +85,7 @@ static bool is_float(primitive_t ptype) { return ptype == primitive_t::float32 |
 
 std::ostream& operator<<(std::ostream& os, primitive_t t);
 std::ostream& operator<<(std::ostream& os, composite_t t);
+std::ostream& operator<<(std::ostream& os, impl_detail_t t);
 
 enum class memory_location_t {
   host = 0,

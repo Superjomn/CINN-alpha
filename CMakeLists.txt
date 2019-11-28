@@ -17,7 +17,7 @@ include(cmake/external/gflags.cmake)
 include(cmake/external/glog.cmake)
 include(cmake/external/gtest.cmake)
 include(cmake/external/protobuf.cmake)
-#include(cmake/external/mklml.cmake)
+include(cmake/external/mklml.cmake)
 
 add_subdirectory(cinn)
 add_subdirectory(exe_tests)

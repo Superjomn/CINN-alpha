@@ -29,6 +29,7 @@ struct IRVisitorBase {
       __(Var);
       __(Tensor);
       __(Mark);
+      __(Identity);
 
       __(Reference);
 
@@ -138,6 +139,7 @@ struct IRVisitorBase {
   virtual RetTy Visit(const Sigmoid* op, Args... args) = 0;
 
   virtual RetTy Visit(const Mark* op, Args... args) = 0;
+  virtual RetTy Visit(const Identity* op, Args... args) = 0;
   virtual RetTy Visit(const BufferOpr* op, Args... args) = 0;
   virtual RetTy Visit(const Cast* op, Args... args) = 0;
   virtual RetTy Visit(const Array* op, Args... args) = 0;
@@ -204,6 +206,7 @@ class IRVisitor : public IRVisitorBase<void> {
   virtual void Visit(const Sigmoid* op);
 
   virtual void Visit(const Mark* op);
+  virtual void Visit(const Identity* op);
   virtual void Visit(const BufferOpr* op);
   virtual void Visit(const Cast* op);
   virtual void Visit(const Array* op);

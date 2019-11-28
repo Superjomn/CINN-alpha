@@ -67,5 +67,98 @@ TEST(BasicExprVarsCanPassToSIMD, test) {
   }
 }
 
+// simd = scalar
+TEST(CastAssignLeftSimdArgument, test) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Constant M("M", 100);
+  ir::Constant N("M", 100);
+  ir::Var i, j;
+  Expr A({M, N}, primitive_t::float32);
+  Expr B({M, N}, primitive_t::float32);
+  Expr C({M, N}, primitive_t::float32);
+
+  auto left = ir::Identity::make(C[i][j], expr_ids::reference_address);
+  left.set_ctype(composite_t::simd256);
+
+  auto expr = (ir::Assign::make(left, Expr(1.f)));
+  LOG(INFO) << "left: " << left;
+  LOG(INFO) << "expr: " << expr;
+  CastAssignLeftSimdArgument(&expr);
+  ASSERT_EQ(GetStreamStr(expr), "#reference_address(var2<100,100>[i0,i1]) = cast<float32, simd256>(1);");
+}
+
+// scalar = simd
+TEST(CastAssignRightSimdArgument, test) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Constant M("M", 100);
+  ir::Constant N("M", 100);
+  ir::Var i, j;
+  Expr A({M, N}, primitive_t::float32);
+  Expr B({M, N}, primitive_t::float32);
+  Expr C({M, N}, primitive_t::float32);
+
+  auto simd = ir::SIMDOpr::make(8, ir::SIMDOpr::Opr::kAdd, A[i][j], B[i][j]);
+  Expr add = (C[i][j] = simd);
+  CastAssignRightSimdArgument(&add);
+  ASSERT_EQ(GetStreamStr(add),
+            "var2<100,100>[i0,i1] = cast<float32, primitive>(simd_add_8(var0<100,100>[i0,i1], var1<100,100>[i0,i1]));");
+}
+
+TEST(CastSimdBasicExprOprArgument, test) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Constant M("M", 100);
+  ir::Constant N("M", 100);
+  ir::Var i, j;
+  Expr A({M, N}, primitive_t::float32);
+  Expr B({M, N}, primitive_t::float32);
+  Expr C({M, N}, primitive_t::float32);
+
+  {
+    // simd + scalar
+    auto left_oprand = A;
+    left_oprand.set_ctype(composite_t::simd128);
+    auto right_oprand = B[i][j];  // scalar data
+    auto simd_opr = ir::SIMDOpr::make(8, ir::SIMDOpr::Opr::kAdd, left_oprand, right_oprand);
+
+    CastSimdBasicExprOprArgument(&simd_opr);
+    ASSERT_EQ(GetStreamStr(simd_opr), "simd_add_8(var0<100,100>, cast<float32, simd256>(var1<100,100>[i0,i1]))");
+  }
+  {
+    // simd + scalar
+    auto left_oprand = A[i][j];  // simd data
+    auto right_oprand = B;       // scalar data
+    right_oprand.set_ctype(composite_t::simd128);
+
+    auto simd_opr = ir::SIMDOpr::make(8, ir::SIMDOpr::Opr::kAdd, left_oprand, right_oprand);
+
+    CastSimdBasicExprOprArgument(&simd_opr);
+    ASSERT_EQ(GetStreamStr(simd_opr), "simd_add_8(cast<float32, simd256>(var0<100,100>[i0,i1]), var1<100,100>)");
+  }
+}
+
+TEST(IsReferenceExprSIMDLoadable, test) {
+  SetGlobalContext(new CINNContext);
+
+  ir::Constant M("M", 100);
+  ir::Constant N("M", 100);
+  ir::Var i, j;
+  Expr A({M, N}, primitive_t::float32);
+  Expr B({M, N}, primitive_t::float32);
+  Expr C({M, N}, primitive_t::float32);
+
+  std::vector<std::tuple<Expr, bool>> datas{{
+      std::make_tuple(A[i][j], true),   //
+      std::make_tuple(A[j][j], false),  //
+      std::make_tuple(A[j], true),      //
+  }};
+
+  for (auto& data : datas) {
+    ASSERT_EQ(IsReferenceExprSIMDLoadable(std::get<0>(data), j), std::get<1>(data));
+  }
+}
+
 }  // namespace optimize
 }  // namespace cinn
