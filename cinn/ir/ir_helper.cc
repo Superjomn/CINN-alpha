@@ -956,5 +956,27 @@ bool ReferenceIsAddress(const Expr& expr) {
   return identity->marked_as_address();
 }
 
+void ExpandAssignOpr(ir::Expr* expr) {
+  struct Mutator : ir::IRMutator {
+    void Visit(const ir::SumAssign* expr, ir::Expr* op) override {
+      op->Reset(ir::Assign::make(expr->a, ir::Add::make(expr->a, expr->b)));
+    }
+    void Visit(const ir::SubAssign* expr, ir::Expr* op) override {
+      op->Reset(ir::Assign::make(expr->a, ir::Sub::make(expr->a, expr->b)));
+    }
+    void Visit(const ir::MulAssign* expr, ir::Expr* op) override {
+      op->Reset(ir::Assign::make(expr->a, ir::Mul::make(expr->a, expr->b)));
+    }
+    void Visit(const ir::DivAssign* expr, ir::Expr* op) override {
+      op->Reset(ir::Assign::make(expr->a, ir::Div::make(expr->a, expr->b)));
+    }
+
+    void Visit(const ir::Expr* expr, ir::Expr* op) override { IRMutator::Visit(expr, op); }
+  };
+
+  Mutator mutator;
+  mutator.Visit(expr, expr);
+}
+
 }  // namespace ir
 }  // namespace cinn
