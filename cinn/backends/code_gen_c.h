@@ -1,5 +1,7 @@
 #pragma once
+#include "cinn/backends/x86_simd.h"
 #include "cinn/core/optimize/optimizer.h"
+#include "cinn/core/optimize/vectorize_utils.h"
 #include "cinn/ir/ir.h"
 #include "cinn/ir/ir_printer.h"
 
@@ -72,7 +74,53 @@ class C_CodeGen : public ir::IRPrinter {
   void Visit(const ir::Max* op) override;
   void Visit(const ir::Min* op) override;
   void Visit(const ir::Assign* op) override;
+  void Visit(const ir::SumAssign* op) override;
+  void Visit(const ir::SubAssign* op) override;
+  void Visit(const ir::MulAssign* op) override;
+  void Visit(const ir::DivAssign* op) override;
   void Visit(const ir::Identity* op) override;
+
+  template <typename AssignT>
+  void VisitAssignX(const AssignT* op) {
+    if (optimize::IsSimdData(op->a) && optimize::IsSimdData(op->b)) {
+      os_ << x86::GlobalX86SIMD(op->b.ctype()).store_ps();
+      os_ << "(&";
+      Print(op->a);
+      os_ << ", ";
+      Print(op->b);
+      os_ << ");";
+    } else if (!op->a.is_simd() && op->b.is_simd()) {
+      Print(op->a);
+
+      switch (op->type()) {
+        case ir::NodeTy::Assign:
+          os_ << " = ";
+          break;
+        case ir::NodeTy::SumAssign:
+          os_ << " += ";
+          break;
+        case ir::NodeTy::SubAssign:
+          os_ << " -= ";
+          break;
+        case ir::NodeTy::MulAssign:
+          os_ << " *= ";
+          break;
+        case ir::NodeTy::DivAssign:
+          os_ << " /= ";
+          break;
+        default:
+          NOT_IMPLEMENT
+      }
+
+      os_ << x86::GlobalX86SIMD(op->b.ctype()).custom_reduce_add_ps();  // for default
+      os_ << "(";
+      Print(op->b);
+      os_ << ");";
+      LOG(WARNING) << "to refine here";
+    } else {
+      IRPrinter::Visit(op);
+    }
+  }
 
  private:
   /**

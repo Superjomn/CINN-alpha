@@ -17,6 +17,7 @@ namespace backends {
 void C_CodeGen::PrintHeader() {
   os_ << "#include <immintrin.h>\n";
   os_ << "#include <math.h>\n";
+  os_ << "#include <simd.h>\n";
   os_ << "#include <stdio.h>\n";
   os_ << "\n";
   os_ << "typedef bool cinn_boolean_t;\n";
@@ -388,26 +389,11 @@ void C_CodeGen::Visit(const ir::Min *op) {
   os_ << ")";
 }
 
-void C_CodeGen::Visit(const ir::Assign *op) {
-  if (optimize::IsSimdData(op->a) && optimize::IsSimdData(op->b)) {
-    os_ << x86::GlobalX86SIMD(op->b.ctype()).store_ps();
-    os_ << "(&";
-    Print(op->a);
-    os_ << ", ";
-    Print(op->b);
-    os_ << ");";
-  } else if (!op->a.is_simd() && op->b.is_simd()) {
-    Print(op->a);
-    os_ << " = ";
-    os_ << x86::GlobalX86SIMD(op->b.ctype()).custom_reduce_add_ps();  // for default
-    os_ << "(";
-    Print(op->b);
-    os_ << ");";
-    LOG(WARNING) << "to refine here";
-  } else {
-    IRPrinter::Visit(op);
-  }
-}
+void C_CodeGen::Visit(const ir::Assign *op) { VisitAssignX(op); }
+void C_CodeGen::Visit(const ir::SumAssign *op) { VisitAssignX(op); }
+void C_CodeGen::Visit(const ir::SubAssign *op) { VisitAssignX(op); }
+void C_CodeGen::Visit(const ir::MulAssign *op) { VisitAssignX(op); }
+void C_CodeGen::Visit(const ir::DivAssign *op) { VisitAssignX(op); }
 
 void C_CodeGen::Visit(const ir::Identity *op) {
   if (op->marked_as_address()) {

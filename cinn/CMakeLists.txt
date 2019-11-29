@@ -54,5 +54,6 @@ add_subdirectory(model_loader)
 add_subdirectory(hlir)
 add_subdirectory(autotuner)
 add_subdirectory(api)
+add_subdirectory(execution)
 
 cc_library(cinn_lib SRCS cinn.cc DEPS ir code_gen_c code_gen_llvm ${llvm_libs} ops_overload transforms function any optimizer)

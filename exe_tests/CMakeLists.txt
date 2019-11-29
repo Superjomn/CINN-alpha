@@ -1,11 +1,12 @@
 # include the generate source file.
 include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/cinn/execution)
 
 function (_exe_test_ id test_src launcher_src)
   set(oneValueArgs "")
   cmake_parse_arguments(exe_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   cc_test(exe_test${id} SRCS ${test_src} DEPS cinn_lib hlir_lib)
-  cc_test(test${id}_c_launcher SRCS ${launcher_src} DEPS cinn_lib hlir_lib mklml)
+  cc_test(test${id}_c_launcher SRCS ${launcher_src} DEPS cinn_lib hlir_lib mklml cinn_execution)
   add_dependencies(test${id}_c_launcher exe_test${id})
 endfunction()
 
