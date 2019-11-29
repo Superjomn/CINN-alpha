@@ -890,6 +890,8 @@ struct SIMDOpr : public ir::ExprNode<SIMDOpr> {
     kDiv,
     kStore,
     kLoad,
+    kMax,
+    kMin,
     kReduceAdd,
     kReduceMul,
   };

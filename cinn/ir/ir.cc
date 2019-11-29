@@ -734,6 +734,8 @@ std::ostream &operator<<(std::ostream &os, SIMDOpr::Opr opr) {
     __(Sub);
     __(Mul);
     __(Div);
+    __(Min);
+    __(Max);
     __(Store);
     __(Load);
     __(ReduceAdd);
@@ -819,7 +821,8 @@ Expr SIMDOpr::make(int vector_width, SIMDOpr::Opr opr, Expr a, Expr b) {
     case Opr::kSub:
     case Opr::kMul:
     case Opr::kDiv:
-
+    case Opr::kMax:
+    case Opr::kMin:
       node->vector_width = vector_width;
       node->opr = opr;
       node->a = a;

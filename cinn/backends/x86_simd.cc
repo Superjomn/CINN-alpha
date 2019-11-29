@@ -21,18 +21,22 @@ std::array<std::string, 4> X86SIMD::m256_dtypes{{
     "__m2568u",  // unsigned ints
 }};
 
-std::array<std::string, 4> X86SIMD::m128_math_op{{
+std::array<std::string, 6> X86SIMD::m128_math_op{{
     "_mm_add_ps",  // +
     "_mm_sub_ps",  // -
     "_mm_mul_ps",  // *
     "_mm_div_ps",  // -
+    "_mm_max_ps",  // max
+    "_mm_min_ps",  // min
 }};
 
-std::array<std::string, 4> X86SIMD::m256_math_op{{
+std::array<std::string, 6> X86SIMD::m256_math_op{{
     "_mm256_add_ps",  // +
     "_mm256_sub_ps",  // -
     "_mm256_mul_ps",  // *
     "_mm256_div_ps",  // /
+    "_mm256_max_ps",  // max
+    "_mm256_min_ps",  // min
 }};
 
 std::array<std::string, 2> X86SIMD::m128_io_op{{
@@ -51,8 +55,8 @@ std::array<std::string, 2> X86SIMD::m128_set1_op{{
     "_mm_set1_pd",  //
 }};
 std::array<std::string, 2> X86SIMD::m256_set1_op{{
-    "_m256_set1_ps",  //
-    "_m256_set1_pd",  //
+    "_mm256_set1_ps",  //
+    "_mm256_set1_pd",  //
 }};
 
 std::array<std::string, 4> X86SIMD::m128_custom_reduce_op{{
