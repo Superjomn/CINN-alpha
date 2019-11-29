@@ -40,6 +40,7 @@ TEST(code_gen_c, easy) {
 #define CINN_FILE_
 #include <immintrin.h>
 #include <math.h>
+#include <simd.h>
 #include <stdio.h>
 
 typedef bool cinn_boolean_t;
@@ -104,6 +105,7 @@ TEST(cpp_code_gen, basic) {
 #define CINN_FILE_
 #include <immintrin.h>
 #include <math.h>
+#include <simd.h>
 #include <stdio.h>
 
 typedef bool cinn_boolean_t;
@@ -152,6 +154,7 @@ void fn (cinn_float32_t* A, cinn_float32_t* B, cinn_float32_t* C) {
 #define CINN_FILE_
 #include <immintrin.h>
 #include <math.h>
+#include <simd.h>
 #include <stdio.h>
 
 typedef bool cinn_boolean_t;

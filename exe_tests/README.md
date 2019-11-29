@@ -11,3 +11,4 @@
 - test9: X86 AVX instruction generation test
 - test10: final FC model with transpose and transform optimize
 - test11: enhanced tile, unroll and vectorize transform
+- test12: matrix multiply with Vectorize and Unroll, temporary variable fold optimization.
