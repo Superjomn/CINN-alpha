@@ -27,6 +27,7 @@ TEST(test, basic) {
     // s0.Vectorize({16, 8});
     s0.Vectorize({8});
     s1.Vectorize({16, 8});
+    s2.Vectorize({8});
 
     fn.Inputs({A, B, bias});
     fn.Outputs({C});

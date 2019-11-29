@@ -1,4 +1,5 @@
 #include "cinn/core/optimize/vectorize_utils.h"
+#include "cinn/ir/ir_helper.h"
 
 namespace cinn {
 namespace optimize {
@@ -9,7 +10,7 @@ void Vectorize::operator()(int vector_width, ir::Expr *for_expr) {
   CHECK(for_);
 
   ir::Expr &block_expr = for_expr->As<ir::For>()->body;
-  CINN_DEBUG(2) << "vectorize operation";
+  CINN_DEBUG(2) << "vectorize operation:\n" << *for_expr;
   VectorizeOperations(for_expr, vector_width);
   CINN_DEBUG(2) << "result:\n" << *for_expr;
 
@@ -101,6 +102,18 @@ struct VectorizeOperationsMutator : public ir::IRMutator {
     ir::IRMutator::Visit(&node->b, &node->b);
     DoVectorize(expr);
   }
+  void Visit(const ir::Max *op, ir::Expr *expr) override {
+    auto *node = expr->As<ir::Max>();
+    ir::IRMutator::Visit(&node->a, &node->a);
+    ir::IRMutator::Visit(&node->b, &node->b);
+    DoVectorize(expr);
+  }
+  void Visit(const ir::Min *op, ir::Expr *expr) override {
+    auto *node = expr->As<ir::Min>();
+    ir::IRMutator::Visit(&node->a, &node->a);
+    ir::IRMutator::Visit(&node->b, &node->b);
+    DoVectorize(expr);
+  }
 
   void Visit(const ir::Assign *op, ir::Expr *expr) override { VisitAssign(op, expr); }
   void Visit(const ir::SumAssign *op, ir::Expr *expr) override { VisitAssign(op, expr); }
@@ -139,7 +152,12 @@ struct VectorizeOperationsMutator : public ir::IRMutator {
     auto cast_argument_to_simd = [&](ir::Expr a, composite_t simd_type, ir::Expr iterator) -> ir::Expr {
       if (!a.is_simd()) {
         if (BasicExprVarsCanPassToSIMD(a, iterator)) {
-          a.Reset(ir::Identity::make(a, expr_ids::reference_address));
+          if (a.is_reference()) {
+            a.Reset(ir::Identity::make(a, expr_ids::reference_address));
+          } else if (a.is_var() || a.is_float_imm() || a.is_int_imm()) {  // scalar
+          } else {
+            NOT_IMPLEMENT
+          }
         }
         return ir::Cast::make(a, a.ptype(), simd_type);
       }
@@ -158,6 +176,8 @@ struct VectorizeOperationsMutator : public ir::IRMutator {
       __(Sub)
       __(Mul)
       __(Div)
+      __(Max)
+      __(Min)
 #undef __
       default:
         LOG(ERROR) << "unsupported " << expr->type();
@@ -187,6 +207,8 @@ bool BasicExprContainsOnlySIMDReleatedOpr(const Expr &expr) {
                                        ir::NodeTy::Sub,
                                        ir::NodeTy::Mul,
                                        ir::NodeTy::Div,
+                                       ir::NodeTy::Max,
+                                       ir::NodeTy::Min,
                                        ir::NodeTy::Assign,
                                        ir::NodeTy::SumAssign,
                                        ir::NodeTy::SubAssign,
@@ -194,7 +216,14 @@ bool BasicExprContainsOnlySIMDReleatedOpr(const Expr &expr) {
                                        ir::NodeTy::DivAssign};
 
     void Visit(const Expr *op) override {
-      if (op->type() == ir::NodeTy::Reference) return;
+      switch (op->type()) {
+        case ir::NodeTy::Reference:
+        case ir::NodeTy::Var:
+        case ir::NodeTy::IntImm:
+        case ir::NodeTy::FloatImm:
+          return;
+      }
+
       if (!supported_ops.count(op->type())) {
         CINN_DEBUG(2) << "detect SIMD not supported operation: " << *op;
         result = false;

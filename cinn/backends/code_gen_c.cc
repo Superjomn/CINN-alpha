@@ -260,6 +260,12 @@ void C_CodeGen::Visit(const ir::SIMDOpr *op) {
     case ir::SIMDOpr::Opr::kDiv:
       os_ << x86_simd->div_ps();
       break;
+    case ir::SIMDOpr::Opr::kMax:
+      os_ << x86_simd->max_ps();
+      break;
+    case ir::SIMDOpr::Opr::kMin:
+      os_ << x86_simd->max_ps();
+      break;
     case ir::SIMDOpr::Opr::kStore:
       os_ << x86_simd->store_ps();
       break;

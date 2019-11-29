@@ -19,8 +19,8 @@ class X86SIMD {
   static std::array<std::string, 4> m256_dtypes;
 
   // math operators
-  static std::array<std::string, 4> m128_math_op;
-  static std::array<std::string, 4> m256_math_op;
+  static std::array<std::string, 6> m128_math_op;
+  static std::array<std::string, 6> m256_math_op;
 
   // store load operators
   static std::array<std::string, 2> m128_io_op;
@@ -58,6 +58,8 @@ class X86SIMD {
   std::string sub_ps() const { return ops_arr_[1]; }
   std::string mul_ps() const { return ops_arr_[2]; }
   std::string div_ps() const { return ops_arr_[3]; }
+  std::string max_ps() const { return ops_arr_[4]; }
+  std::string min_ps() const { return ops_arr_[5]; }
 
   std::string load_ps() const { return io_arr_[0]; }
   std::string store_ps() const { return io_arr_[1]; }
