@@ -112,5 +112,10 @@ bool BasicExprIdentityVarScale(const Expr& expr, const Expr& var_expr);
 
 bool ReferenceIsAddress(const Expr& expr);
 
+/**
+ * Expand expressions contains SumAssign ..., DivAssign to Sum + Assign.
+ */
+void ExpandAssignOpr(ir::Expr* expr);
+
 }  // namespace ir
 }  // namespace cinn

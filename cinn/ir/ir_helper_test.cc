@@ -147,5 +147,15 @@ TEST(BasicExprIdentityVarScale, test) {
   }
 }
 
+TEST(ExpandAssignOpr, test) {
+  ir::Expr a("a", primitive_t::int32);
+  ir::Expr b("b", primitive_t::int32);
+  ir::Expr c("c", primitive_t::int32);
+
+  Expr expr = (ir::SumAssign::make(c, a));
+  ExpandAssignOpr(&expr);
+  EXPECT_EQ(GetStreamStr(expr), "c = (c + a);");
+}
+
 }  // namespace ir
 }  // namespace cinn

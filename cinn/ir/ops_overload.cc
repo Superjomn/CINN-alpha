@@ -3,7 +3,7 @@
 namespace cinn {
 namespace ir {
 
-ir::Expr Tanh_(const ir::Expr &e) { return ir::Tanh::make(e); }
+ir::Expr Tanh_(const ir::Expr &e) { return ir::Max_(e, Expr(0.f)); }
 ir::Expr Sigmoid_(const ir::Expr &e) { return ir::Sigmoid::make(e); }
 ir::Expr Max_(const ir::Expr &a, const ir::Expr &b) { return ir::Max::make(a, b); }
 ir::Expr Min_(const ir::Expr &a, const ir::Expr &b) { return ir::Min::make(a, b); }

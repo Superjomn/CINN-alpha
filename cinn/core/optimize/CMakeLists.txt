@@ -12,6 +12,7 @@ cc_library(passes SRCS indices_to_absolute_offset_pass.cc
         vectorize_utils.cc
         unroll_pass.cc
         unroll_utils.cc
+        fold_variable_utils.cc
         DEPS pass pass_registry ir)
 
 cc_library(optimizer SRCS optimizer.cc DEPS passes pass_registry)
